@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>DevToolbox</title>
+    <script>
+      // GitHub Pages SPA fallback：把 /devtoolbox/tools/xxx 重写为 /devtoolbox/?/tools/xxx
+      // 由 index.html 中的恢复脚本再还原回真实路径（react-router basename 方案）。
+      var pathSegmentsToKeep = 1;
+      var l = window.location;
+      l.replace(
+        l.protocol +
+          '//' +
+          l.hostname +
+          (l.port ? ':' + l.port : '') +
+          l.pathname
+            .split('/')
+            .slice(0, 1 + pathSegmentsToKeep)
+            .join('/') +
+          '/?/' +
+          l.pathname
+            .slice(1)
+            .split('/')
+            .slice(pathSegmentsToKeep)
+            .join('/')
+            .replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') + l.hash : l.hash),
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

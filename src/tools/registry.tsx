@@ -1,0 +1,112 @@
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
+
+/**
+ * 工具组件注册表。
+ * 每个工具独立分包，首屏只加载当前工具，降低初始 bundle 体积。
+ */
+export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>> = {
+  // 数据格式
+  'json-formatter': lazy(() => import('./JsonFormatterTool')),
+  'json-to-code': lazy(() => import('./JsonToCodeTool')),
+  'json-diff': lazy(() => import('./JsonDiffTool')),
+  'json-to-yaml': lazy(() => import('./JsonToYamlTool')),
+  'json-to-xml': lazy(() => import('./JsonToXmlTool')),
+  'json-query': lazy(() => import('./JsonQueryTool')),
+  jsonpath: lazy(() => import('./JsonPathTool')),
+  'json-schema': lazy(() => import('./JsonSchemaTool')),
+  'json-to-csv': lazy(() => import('./JsonToCsvTool')),
+  'yaml-properties': lazy(() => import('./YamlPropertiesTool')),
+
+  // 编码加密
+  base64: lazy(() => import('./Base64Tool')),
+  'url-codec': lazy(() => import('./UrlCodecTool')),
+  hash: lazy(() => import('./HashTool')),
+  'jwt-decoder': lazy(() => import('./JwtTool')),
+  unicode: lazy(() => import('./UnicodeTool')),
+  'hex-text': lazy(() => import('./HexTextTool')),
+  'js-escape': lazy(() => import('./JsEscapeTool')),
+  'password-generator': lazy(() => import('./PasswordTool')),
+  aes: lazy(() => import('./AesTool')),
+  'base-codec': lazy(() => import('./BaseCodecTool')),
+  'gzip-codec': lazy(() => import('./GzipCodecTool')),
+  'morse-codec': lazy(() => import('./MorseCodecTool')),
+  symcipher: lazy(() => import('./SymCipherTool')),
+  'rsa-codec': lazy(() => import('./RsaCodecTool')),
+  pwdhash: lazy(() => import('./PwdHashTool')),
+  htpasswd: lazy(() => import('./HtpasswdTool')),
+
+  // 开发调试
+  timestamp: lazy(() => import('./TimestampTool')),
+  uuid: lazy(() => import('./UuidTool')),
+  'regex-tester': lazy(() => import('./RegexTool')),
+  radix: lazy(() => import('./RadixTool')),
+  'http-status': lazy(() => import('./HttpStatusTool')),
+  'url-parser': lazy(() => import('./UrlParserTool')),
+  'file-size': lazy(() => import('./FileSizeTool')),
+  'color-converter': lazy(() => import('./ColorTool')),
+  'cron-parser': lazy(() => import('./CronTool')),
+  'ua-parser': lazy(() => import('./UaTool')),
+  'sql-formatter': lazy(() => import('./SqlTool')),
+  'web-formatter': lazy(() => import('./WebFormatterTool')),
+  'text-diff': lazy(() => import('./DiffTool')),
+  'mime-type': lazy(() => import('./MimeTool')),
+  ports: lazy(() => import('./PortsTool')),
+  'http-headers': lazy(() => import('./HttpHeadersTool')),
+  'http-methods': lazy(() => import('./HttpMethodsTool')),
+  'random-number': lazy(() => import('./RandomNumberTool')),
+  'regex-escape': lazy(() => import('./RegexEscapeTool')),
+  'proxy-link': lazy(() => import('./ProxyLinkTool')),
+  'crc-calc': lazy(() => import('./CrcCalcTool')),
+  'type7-cisco': lazy(() => import('./Type7Tool')),
+  'ppi-calc': lazy(() => import('./PpiCalcTool')),
+  'thunder-url': lazy(() => import('./ThunderUrlTool')),
+  'torrent-magnet': lazy(() => import('./TorrentMagnetTool')),
+  'ssl-cert': lazy(() => import('./SslCertTool')),
+  'linux-commands': lazy(() => import('./LinuxCommandsTool')),
+
+  // 文本处理
+  'text-dedupe': lazy(() => import('./TextDedupeTool')),
+  'text-sort': lazy(() => import('./TextSortTool')),
+  'case-converter': lazy(() => import('./CaseConverterTool')),
+  'word-count': lazy(() => import('./WordCountTool')),
+  'multi-line': lazy(() => import('./MultiLineTool')),
+  'occurrence-count': lazy(() => import('./OccurrenceCountTool')),
+  'html-cleaner': lazy(() => import('./HtmlCleanerTool')),
+  'html-entities': lazy(() => import('./HtmlEntitiesTool')),
+
+  // Markdown
+  'markdown-editor': lazy(() => import('./MarkdownTool')),
+
+  // 图像处理
+  'image-compress': lazy(() => import('./ImageCompressTool')),
+  'image-convert': lazy(() => import('./ImageConvertTool')),
+  'image-base64': lazy(() => import('./ImageBase64Tool')),
+  'qr-generator': lazy(() => import('./QrGeneratorTool')),
+
+  // 网络工具
+  'random-ip': lazy(() => import('./RandomIpTool')),
+  'random-ua': lazy(() => import('./RandomUaTool')),
+  'ua-collection': lazy(() => import('./UaCollectionTool')),
+  'shield-badge': lazy(() => import('./ShieldBadgeTool')),
+  'mac-address': lazy(() => import('./MacAddressTool')),
+  'robots-generator': lazy(() => import('./RobotsGeneratorTool')),
+  'ip-number': lazy(() => import('./IpNumberTool')),
+  'subnet-mask': lazy(() => import('./SubnetMaskTool')),
+  'browser-info': lazy(() => import('./BrowserInfoTool')),
+  'curl-code': lazy(() => import('./CurlCodeTool')),
+  'my-ip': lazy(() => import('./MyIpTool')),
+  'ip-info': lazy(() => import('./IpInfoTool')),
+  'ip-nearby': lazy(() => import('./IpNearbyTool')),
+  'http-simulator': lazy(() => import('./HttpSimulatorTool')),
+  'websocket-client': lazy(() => import('./WebSocketClientTool')),
+  'mqtt-cheatsheet': lazy(() => import('./MqttCheatsheetTool')),
+  'dns-records': lazy(() => import('./DnsRecordsTool')),
+  'ns-lookup': lazy(() => import('./NsLookupTool')),
+  'site-links': lazy(() => import('./SiteLinksTool')),
+  'seo-check': lazy(() => import('./SeoCheckTool')),
+  'resp-headers': lazy(() => import('./RespHeadersTool')),
+  'cookie-viewer': lazy(() => import('./CookieViewerTool')),
+  'page-refresh': lazy(() => import('./PageRefreshTool')),
+  webcheck: lazy(() => import('./WebcheckTool')),
+  'file-drop': lazy(() => import('./filedrop/FileDropTool')),
+};

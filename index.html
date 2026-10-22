@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // GitHub Pages SPA 深链恢复：404.html 把 /devtoolbox/tools/x?a=b 重定向为
+      // /devtoolbox/?/tools/x&a=b（& 转义为 ~and~），此处还原真实 URL，须在 React 启动前执行。
+      (function () {
+        var l = window.location;
+        if (l.search[1] === '/') {
+          var parts = l.search.slice(1).split('&').filter(function (s) {
+            return s !== '';
+          });
+          var path = (parts[0] || '').replace(/~and~/g, '&');
+          var query = parts
+            .slice(1)
+            .map(function (s) {
+              return s.replace(/~and~/g, '&');
+            })
+            .join('&');
+          window.history.replaceState(
+            null,
+            '',
+            l.pathname.slice(0, -1) + path + (query ? '?' + query : '') + l.hash,
+          );
+        }
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="开发者在线工具箱：JSON 格式化、格式转换、编码加密、时间戳、正则测试、Markdown 实时渲染、图片压缩等常用工具，纯前端本地处理。"
+    />
+    <meta name="theme-color" content="#f6f8fb" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DevToolbox" />
+    <meta name="twitter:card" content="summary" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232196f3'/%3E%3Cpath d='M24 21 14 32l10 11M40 21l10 11-10 11' stroke='white' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"
+    />
+    <title>DevToolbox · 开发者在线工具箱</title>
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('devtoolbox-store');
+          var state = raw ? JSON.parse(raw).state : {};
+          var mode = state.themeMode || 'system';
+          var isDark =
+            mode === 'dark' ||
+            (mode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+          if (state.locale === 'en') document.documentElement.lang = 'en';
+        } catch (error) {
+          /* 主题初始化失败时使用默认浅色主题 */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

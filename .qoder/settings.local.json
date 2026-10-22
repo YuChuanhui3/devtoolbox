@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/ych/Code/personal/web/webtool && npx vitest run src/lib/ip.test.ts src/lib/subnet.test.ts src/lib/curl.test.ts src/lib/mac.test.ts src/lib/badge.test.ts src/lib/robots.test.ts src/lib/uagen.test.ts src/lib/net.test.ts src/lib/htmlinspect.test.ts 2>&1 | tail -40)",
+      "Bash(cd /Users/ych/Code/personal/web/webtool && npx vitest run src/lib/ip.test.ts src/lib/subnet.test.ts src/lib/curl.test.ts src/lib/mac.test.ts src/lib/badge.test.ts src/lib/robots.test.ts src/lib/uagen.test.ts src/lib/net.test.ts src/lib/htmlinspect.test.ts 2>&1 | grep -E \"FAIL|AssertionError|Expected|Received|toThrow\" | head -60)"
+    ]
+  }
+}

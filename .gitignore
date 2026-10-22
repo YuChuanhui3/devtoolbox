@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+.playwright-mcp/
+*.local
+.DS_Store
+
+# 本地环境变量
+.env
+.env.*
+!.env.example
+
+# 编辑器
+.vscode/
+.idea/
+
+# 临时文件
+*.log
+smoke-*.json

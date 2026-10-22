@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# DevToolbox 为纯前端静态站点，所有工具页面均可被索引。
+Sitemap: https://YuChuanhui3.github.io/devtoolbox/sitemap.xml
