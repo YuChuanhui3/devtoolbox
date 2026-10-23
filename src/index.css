@@ -389,6 +389,47 @@
   font-size: 13px;
 }
 
+/* 预览里的顶层代码块：语言下拉 + 快捷复制的工具条 */
+.md-body .md-code {
+  margin: 1em 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background-color: var(--code-bg);
+}
+
+.md-body .md-code:first-child {
+  margin-top: 0;
+}
+
+.md-body .md-code:last-child {
+  margin-bottom: 0;
+}
+
+.md-body .md-code pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.md-code-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  background-color: var(--surface-2);
+}
+
+.md-body .md-segment > :first-child {
+  margin-top: 0;
+}
+
+.md-body .md-segment > :last-child {
+  margin-bottom: 0;
+}
+
 .md-body table {
   width: 100%;
   border-collapse: collapse;

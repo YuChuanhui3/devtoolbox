@@ -1,5 +1,15 @@
 import { describe, expect, test } from 'vitest';
-import { renderMarkdown, renderMarkdownDocument } from './markdown';
+import {
+  renderMarkdown,
+  renderMarkdownDocument,
+  renderMarkdownSegments,
+  type MarkdownSegment,
+} from './markdown';
+
+const htmlOf = (segment: MarkdownSegment | undefined): string =>
+  segment?.kind === 'html' ? segment.html : '';
+const codeOf = (segment: MarkdownSegment | undefined): string =>
+  segment?.kind === 'code' ? segment.code : '';
 
 describe('markdown rendering', () => {
   test('renders basic Markdown syntax', () => {
@@ -71,7 +81,32 @@ describe('markdown rendering', () => {
     expect(html).toContain('.hljs-keyword');
   });
 
+  test('splits top-level code blocks out of the sanitized HTML stream', () => {
+    const segments = renderMarkdownSegments(
+      '前段说明\n\n```js\nconst a = 1;\n```\n\n| A |\n| --- |\n| 1 |',
+    );
+
+    expect(segments.map((segment) => segment.kind)).toEqual(['html', 'code', 'html']);
+    expect(htmlOf(segments[0])).toContain('<p>前段说明</p>');
+    expect(codeOf(segments[1])).toBe('const a = 1;');
+    expect(segments[1]).toMatchObject({ language: 'js' });
+    expect(htmlOf(segments[2])).toContain('<table>');
+  });
+
+  test('segments sanitize markup the same way as the single-string renderer', () => {
+    const segments = renderMarkdownSegments('<img src="x" onerror="alert(1)">\n\n```py\nx = 1\n```');
+    expect(htmlOf(segments[0])).not.toContain('onerror');
+    expect(htmlOf(segments[0])).toContain('src="x"');
+  });
+
+  test('unlabelled code blocks become segments without a language', () => {
+    const segments = renderMarkdownSegments('```\nplain\n```');
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({ kind: 'code', code: 'plain', language: '' });
+  });
+
   test('handles empty markdown', () => {
     expect(renderMarkdown('')).toBe('');
+    expect(renderMarkdownSegments('')).toEqual([]);
   });
 });

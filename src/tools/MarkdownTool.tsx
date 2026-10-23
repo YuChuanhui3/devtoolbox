@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Segmented, type SegmentedOption } from '@/components/ui/Segmented';
 import { MarkdownToolbar, type MarkdownAction } from '@/components/tool/MarkdownToolbar';
+import { MarkdownCodeBlock } from '@/components/tool/MarkdownCodeBlock';
 import { ClearButton, CopyButton, DownloadButton, SampleButton } from '@/components/tool/ToolActions';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useToast } from '@/components/ui/Toast';
@@ -14,7 +15,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useHotkey } from '@/hooks/useHotkey';
 import { useAppStore } from '@/store/appStore';
 import { useI18n } from '@/i18n/I18nProvider';
-import { renderMarkdown, renderMarkdownDocument } from '@/lib/markdown';
+import { renderMarkdown, renderMarkdownDocument, renderMarkdownSegments } from '@/lib/markdown';
 import { countLines, countTextStats, offsetToLineColumn } from '@/lib/text';
 import { copyText } from '@/lib/clipboard';
 import { downloadText } from '@/lib/download';
@@ -52,7 +53,8 @@ export default function MarkdownTool() {
 
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const debouncedContent = useDebouncedValue(content, 200);
-  const html = useMemo(() => renderMarkdown(debouncedContent), [debouncedContent]);
+  const segments = useMemo(() => renderMarkdownSegments(debouncedContent), [debouncedContent]);
+  const [blockLanguages, setBlockLanguages] = useState<Record<number, string>>({});
   const stats = useMemo(() => countTextStats(content), [content]);
   const lineCount = useMemo(() => Math.max(1, countLines(content)), [content]);
   const lineNumbers = useMemo(
@@ -399,12 +401,24 @@ export default function MarkdownTool() {
             bodyClassName="p-0"
             actions={<Badge tone="success">{t({ zh: '已过滤脚本', en: 'Scripts sanitized' })}</Badge>}
           >
-            {html ? (
-              <div
-                ref={previewRef}
-                className="md-body code-scroll h-full overflow-y-auto p-5 sm:p-6"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
+            {segments.length > 0 ? (
+              <div ref={previewRef} className="md-body code-scroll h-full overflow-y-auto p-5 sm:p-6">
+                {segments.map((segment, index) =>
+                  segment.kind === 'code' ? (
+                    <MarkdownCodeBlock
+                      key={index}
+                      code={segment.code}
+                      language={segment.language}
+                      value={blockLanguages[index]}
+                      onValueChange={(value) =>
+                        setBlockLanguages((previous) => ({ ...previous, [index]: value }))
+                      }
+                    />
+                  ) : (
+                    <div key={index} className="md-segment" dangerouslySetInnerHTML={{ __html: segment.html }} />
+                  ),
+                )}
+              </div>
             ) : (
               <div className="flex h-full items-center justify-center px-6 text-center text-sm text-ink-3">
                 {t({ zh: '输入 Markdown 后，这里会实时渲染预览', en: 'Rendered preview of your Markdown appears here' })}
