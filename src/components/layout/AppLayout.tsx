@@ -41,7 +41,7 @@ export function AppLayout() {
     <div className="flex min-h-screen flex-col bg-bg">
       <a
         href="#main-content"
-        className="sr-only z-[110] rounded-full bg-accent px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-[110] rounded-full bg-accent-strong px-4 py-2 text-accent-contrast focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
         {t({ zh: '跳到主要内容', en: 'Skip to main content' })}
       </a>

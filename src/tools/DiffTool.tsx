@@ -219,7 +219,7 @@ export default function DiffTool() {
                   <div
                     key={`${partIndex}-${lineIndex}`}
                     className={cn(
-                      'flex gap-2 whitespace-pre-wrap break-words rounded px-2',
+                      'flex gap-2 whitespace-pre-wrap break-words rounded-lg px-2',
                       part.added && 'bg-ok-soft text-ok',
                       part.removed && 'bg-danger-soft text-danger',
                       !part.added && !part.removed && 'text-ink-2',
@@ -240,8 +240,8 @@ export default function DiffTool() {
               <span
                 key={partIndex}
                 className={cn(
-                  part.added && 'rounded bg-ok-soft px-0.5 text-ok',
-                  part.removed && 'rounded bg-danger-soft px-0.5 text-danger line-through',
+                  part.added && 'rounded-lg bg-ok-soft px-0.5 text-ok',
+                  part.removed && 'rounded-lg bg-danger-soft px-0.5 text-danger line-through',
                 )}
               >
                 {part.value}

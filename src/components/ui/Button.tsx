@@ -14,7 +14,7 @@ const BASE_CLASS =
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   primary:
-    'btn-shine text-white shadow-[0_6px_18px_rgba(33,150,243,0.28)] [background-image:var(--btn-grad)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(33,150,243,0.32)] active:translate-y-0',
+    'btn-shine text-accent-contrast shadow-[0_6px_18px_rgba(33,150,243,0.28)] [background-image:var(--btn-grad)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(33,150,243,0.32)] active:translate-y-0',
   secondary:
     'border border-line-strong bg-surface text-ink shadow-card hover:-translate-y-0.5 hover:border-accent/40 hover:bg-surface-2 hover:shadow-float active:translate-y-0',
   ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',

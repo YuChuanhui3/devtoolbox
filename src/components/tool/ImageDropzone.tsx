@@ -52,13 +52,13 @@ export function ImageDropzone({
         if (event.dataTransfer.files.length > 0) onFiles(event.dataTransfer.files);
       }}
       className={cn(
-        'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all duration-300',
+        'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-all duration-300',
         dragging
           ? 'border-accent bg-accent-soft'
           : 'border-line-strong bg-surface-2/30 hover:border-accent/50 hover:bg-accent-soft/30',
       )}
     >
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface text-accent shadow-card">
+      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface text-accent shadow-card">
         {dragging ? <Upload className="h-5 w-5" aria-hidden="true" /> : <ImagePlus className="h-5 w-5" aria-hidden="true" />}
       </span>
       <p className="mt-3 text-sm font-medium text-ink">{resolvedTitle}</p>

@@ -38,7 +38,7 @@ export default function MqttCheatsheetTool() {
               ariaLabel={t({ zh: '语言选择', en: 'Language selector' })}
               options={MQTT_LANGS.map((id) => ({ value: id, label: MQTT_SNIPPETS[id].label }))}
             />
-            <code className="rounded-md border border-line bg-surface-2/60 px-2 py-1 text-[11px] text-ink-3">
+            <code className="rounded-lg border border-line bg-surface-2/60 px-2 py-1 text-[11px] text-ink-3">
               {t(group.install)}
             </code>
           </div>

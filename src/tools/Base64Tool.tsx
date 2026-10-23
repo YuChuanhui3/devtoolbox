@@ -159,7 +159,7 @@ export default function Base64Tool() {
               const file = event.dataTransfer.files?.[0];
               if (file) handleFile(file);
             }}
-            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface-2/40 px-4 py-8 text-center transition-colors duration-300 hover:border-accent/50 hover:bg-accent-soft/30"
+            className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-line-strong bg-surface-2/40 px-4 py-8 text-center transition-colors duration-300 hover:border-accent/50 hover:bg-accent-soft/30"
           >
             <FileUp className="h-6 w-6 text-ink-3" aria-hidden="true" />
             <p className="mt-2 text-sm text-ink-2">

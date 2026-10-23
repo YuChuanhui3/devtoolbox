@@ -10,7 +10,6 @@ export const CATEGORIES: CategoryMeta[] = [
       en: 'Encoding, digest and encryption tools such as Base64, URL, Unicode, hash, JWT and AES.',
     },
     icon: 'ShieldCheck',
-    tone: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   },
   {
     id: 'dev',
@@ -21,7 +20,6 @@ export const CATEGORIES: CategoryMeta[] = [
       en: 'Helpers for daily development: timestamps, UUID, regex, radix, HTTP references, cron and text diff.',
     },
     icon: 'Terminal',
-    tone: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   },
   {
     id: 'markdown',
@@ -32,7 +30,6 @@ export const CATEGORIES: CategoryMeta[] = [
       en: 'Live Markdown rendering with split preview, synced scrolling, autosave and HTML / MD export.',
     },
     icon: 'FileText',
-    tone: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
   },
   {
     id: 'data',
@@ -43,7 +40,6 @@ export const CATEGORIES: CategoryMeta[] = [
       en: 'Format, validate and convert common data formats: JSON, YAML, XML, CSV and query strings.',
     },
     icon: 'Database',
-    tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   },
   {
     id: 'image',
@@ -54,7 +50,6 @@ export const CATEGORIES: CategoryMeta[] = [
       en: 'Compress and convert JPG / PNG / WebP entirely in the browser — files never leave your device.',
     },
     icon: 'Image',
-    tone: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   },
   {
     id: 'network',
@@ -65,7 +60,6 @@ export const CATEGORIES: CategoryMeta[] = [
       en: 'IP, subnet, DNS, HTTP / WebSocket debugging, plus generators for UA, MAC addresses and robots.txt.',
     },
     icon: 'Network',
-    tone: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   },
   {
     id: 'text',
@@ -76,7 +70,6 @@ export const CATEGORIES: CategoryMeta[] = [
       en: 'Dedupe, sort, change case, count words, edit multiline text and clean up HTML.',
     },
     icon: 'Type',
-    tone: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   },];
 
 export const CATEGORY_MAP = new Map<CategoryId, CategoryMeta>(

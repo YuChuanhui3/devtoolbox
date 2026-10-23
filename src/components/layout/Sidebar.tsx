@@ -95,7 +95,7 @@ export function Sidebar({ onNavigate, className, collapsed = false }: SidebarPro
                 <span className={labelClass}>{categoryName}</span>
                 <span
                   className={cn(
-                    'shrink-0 text-[11px] font-normal whitespace-nowrap text-ink-3 transition-opacity duration-200',
+                    'shrink-0 whitespace-nowrap font-mono text-xs tabular-nums font-normal text-ink-3 transition-opacity duration-200',
                     collapsed && 'opacity-0',
                   )}
                 >
@@ -179,17 +179,17 @@ export function Sidebar({ onNavigate, className, collapsed = false }: SidebarPro
               zh: '本地处理优先：文本、JSON 与图片默认在浏览器内完成，不会上传服务器。',
               en: 'Local-first: text, JSON and images stay in your browser and are never uploaded.',
             })}
-            className="mx-auto flex h-9 w-9 items-center justify-center rounded-2xl border border-line bg-surface-2/70 text-ok"
+            className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface-2/70 text-ok"
           >
             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
           </p>
         ) : (
-          <div className="rounded-2xl border border-line bg-surface-2/70 p-3">
+          <div className="rounded-xl border border-line bg-surface-2/70 p-3">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-2">
               <ShieldCheck className="h-3.5 w-3.5 text-ok" aria-hidden="true" />
               {t({ zh: '本地处理优先', en: 'Local-first processing' })}
             </p>
-            <p className="mt-1.5 text-[11px] leading-5 text-ink-3">
+            <p className="mt-1.5 text-xs leading-6 text-ink-3">
               {t({
                 zh: '文本、JSON 与图片默认在浏览器内完成，不会上传服务器。',
                 en: 'Text, JSON and images stay in your browser and are never uploaded.',

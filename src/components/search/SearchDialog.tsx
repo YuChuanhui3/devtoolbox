@@ -9,6 +9,7 @@ import { Kbd } from '@/components/ui/Kbd';
 import { ToolIcon } from '@/components/ui/ToolIcon';
 import { useI18n } from '@/i18n/I18nProvider';
 import { cn } from '@/lib/cn';
+import { toolChipTone } from '@/lib/toolTone';
 import { trackSearch } from '@/lib/analytics';
 import type { ToolMeta } from '@/types/tool';
 
@@ -126,7 +127,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
             en: 'Search tools, e.g. JSON, Base64, Markdown, timestamp',
           })}
           aria-label={t({ zh: '搜索工具', en: 'Search tools' })}
-          className="h-12 w-full rounded-2xl border border-line bg-surface-2 pl-11 pr-20 text-sm text-ink outline-none transition-colors placeholder:text-ink-3 focus:border-accent focus:ring-4 focus:ring-accent-soft"
+          className="h-12 w-full rounded-xl border border-line bg-surface-2 pl-11 pr-20 text-sm text-ink outline-none transition-colors placeholder:text-ink-3 focus:border-accent focus:ring-4 focus:ring-accent-soft"
         />
         <span className="absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 sm:flex">
           <Kbd>Esc</Kbd>
@@ -135,7 +136,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
 
       {query.trim() && results.length === 0 ? (
         <div className="px-2 py-10 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-ink-3">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-ink-3">
             <Search className="h-5 w-5" aria-hidden="true" />
           </div>
           <p className="text-sm font-semibold text-ink">
@@ -196,7 +197,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
                   <span
                     className={cn(
                       'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-                      category?.tone ?? 'bg-accent-soft text-accent',
+                      toolChipTone(entry.tool.sensitive),
                     )}
                   >
                     <ToolIcon name={entry.tool.icon} className="h-4 w-4" />

@@ -10,6 +10,7 @@ import { Kbd } from '@/components/ui/Kbd';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { L10n } from '@/i18n/locale';
 import { useSeo } from '@/hooks/useSeo';
+import { DEFAULT_CHIP } from '@/lib/toolTone';
 
 const QUICK_TAGS: Array<{ label: L10n; toolId: string }> = [
   { label: { zh: 'JSON', en: 'JSON' }, toolId: 'json-formatter' },
@@ -39,7 +40,7 @@ function SectionHeader({
           {icon}
         </span>
         <div>
-          <h2 className="text-base font-semibold tracking-[0.01em] text-ink">{title}</h2>
+          <h2 className="text-lg font-semibold tracking-[0.01em] text-ink">{title}</h2>
           {subtitle ? <p className="mt-0.5 text-xs text-ink-3">{subtitle}</p> : null}
         </div>
       </div>
@@ -73,7 +74,7 @@ export function HomePage() {
       <section className="hero-glow relative overflow-hidden rounded-[28px] border border-line bg-surface px-5 py-10 shadow-card sm:px-8 sm:py-14">
         <div className="pointer-events-none absolute inset-0 bg-dots opacity-30 [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]" />
         <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3 py-1 text-[11px] font-medium text-accent-strong">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-strong">
             <ShieldCheck className="h-3 w-3" aria-hidden="true" />
             {t({ zh: '本地优先处理 · 数据不上传', en: 'Local-first processing · no uploads' })}
           </span>
@@ -81,10 +82,9 @@ export function HomePage() {
           <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight tracking-[0.01em] text-ink sm:text-[42px]">
             {t({ zh: '开发者在线工具箱', en: 'The Online Toolbox for Developers' })}
             <span className="mt-2 block text-lg font-medium text-ink-2 sm:text-xl">
-              {t({
-                zh: `${TOOLS.length} 个高频工具，打开即用`,
-                en: `${TOOLS.length} everyday tools, ready to use`,
-              })}
+              {/* 数字用等宽 + tabular-nums，让工具数量在标题里像读数一样对齐。 */}
+              <span className="font-mono tabular-nums">{TOOLS.length}</span>
+              {t({ zh: ' 个高频工具，打开即用', en: ' everyday tools, ready to use' })}
             </span>
           </h1>
 
@@ -121,7 +121,7 @@ export function HomePage() {
               <Link
                 key={tag.toolId}
                 to={toolPath(tag.toolId)}
-                className="rounded-full border border-line bg-surface px-3 py-1 text-[11px] text-ink-2 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:text-accent-strong"
+                className="inline-flex min-h-8 items-center rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs text-ink-2 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:text-accent-strong"
               >
                 {t(tag.label)}
               </Link>
@@ -218,14 +218,14 @@ export function HomePage() {
               <div key={category.id} className="card-surface flex flex-col p-4">
                 <div className="flex items-start gap-3">
                   <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${category.tone}`}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${DEFAULT_CHIP}`}
                   >
                     <ToolIcon name={category.icon} className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <Link
                       to={`/category/${category.id}`}
-                      className="text-sm font-semibold text-ink transition-colors hover:text-accent-strong"
+                      className="inline-flex items-center text-sm font-semibold text-ink transition-colors hover:text-accent-strong"
                     >
                       {t(category.name)}
                     </Link>

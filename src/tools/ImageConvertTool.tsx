@@ -185,9 +185,9 @@ export default function ImageConvertTool() {
                     <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-3">
                       <span>{formatBytes(item.file.size)}</span>
                       <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                      <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px]">{inputFormatLabel(item.file)}</span>
+                      <span className="rounded-lg bg-surface-2 px-1.5 py-0.5 font-mono text-[10px]">{inputFormatLabel(item.file)}</span>
                       <span>→</span>
-                      <span className="rounded bg-accent-soft px-1.5 py-0.5 font-mono text-[10px] text-accent-strong">
+                      <span className="rounded-lg bg-accent-soft px-1.5 py-0.5 font-mono text-[10px] text-accent-strong">
                         {formatLabelForMime(target)}
                       </span>
                       {result ? (

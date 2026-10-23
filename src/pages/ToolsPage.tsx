@@ -72,7 +72,7 @@ export function ToolsPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-[0.01em] text-ink">
+            <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">
               {t({ zh: '全部工具', en: 'All Tools' })}
             </h1>
             <Badge tone="accent">{t({ zh: `${TOOLS.length} 个`, en: `${TOOLS.length} tools` })}</Badge>
@@ -118,16 +118,16 @@ export function ToolsPage() {
               type="button"
               onClick={() => setFilter(item.value)}
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs transition-all duration-300',
+                'inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-all duration-300',
                 filter === item.value
-                  ? 'bg-accent text-white shadow-[0_4px_12px_rgba(33,150,243,0.25)]'
+                  ? 'bg-accent-strong text-accent-contrast shadow-[0_4px_12px_rgba(33,150,243,0.25)]'
                   : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
               )}
             >
               {t(item.label)}
               <span
                 className={cn(
-                  'rounded-full px-1 text-[10px]',
+                  'rounded-full px-1.5 font-mono text-[11px] tabular-nums',
                   filter === item.value ? 'bg-white/20' : 'bg-surface-3 text-ink-3',
                 )}
               >

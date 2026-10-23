@@ -9,7 +9,7 @@ const TONE_CLASS: Record<BadgeTone, string> = {
   success: 'border-ok/25 bg-ok-soft text-ok',
   warning: 'border-warn/25 bg-warn-soft text-warn',
   danger: 'border-danger/25 bg-danger-soft text-danger',
-  new: 'border-transparent bg-accent text-white',
+  new: 'border-transparent bg-accent-strong text-accent-contrast',
 };
 
 export interface BadgeProps {
@@ -22,7 +22,7 @@ export function Badge({ children, tone = 'neutral', className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium leading-5',
+        'inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-xs leading-4 tabular-nums',
         TONE_CLASS[tone],
         className,
       )}

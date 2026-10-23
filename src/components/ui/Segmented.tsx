@@ -40,7 +40,7 @@ export function Segmented<T extends string>({
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-300 ease-in-out disabled:cursor-not-allowed disabled:opacity-40',
+              'inline-flex min-h-9 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-300 ease-in-out disabled:cursor-not-allowed disabled:opacity-40',
               active
                 ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)]'
                 : 'text-ink-3 hover:text-ink',

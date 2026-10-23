@@ -187,7 +187,7 @@ function Timeline({ items, onAccept, onReject }: { items: TimelineItem[]; onAcce
             <div
               key={item.id}
               className={`max-w-[86%] whitespace-pre-wrap break-words rounded-card px-3.5 py-2.5 text-sm leading-6 shadow-card ${
-                item.mine ? 'ml-auto bg-accent text-white' : 'border border-line bg-surface text-ink'
+                item.mine ? 'ml-auto bg-accent-strong text-accent-contrast' : 'border border-line bg-surface text-ink'
               }`}
             >
               {item.body}

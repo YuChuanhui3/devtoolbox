@@ -75,7 +75,7 @@ function analyze(pattern: string, flags: string, text: string): RegexAnalysis {
     for (const match of matches) {
       html += escapeHtml(text.slice(cursor, match.index));
       if (match.value) {
-        html += `<mark class="rounded bg-accent-soft px-0.5 text-accent-strong">${escapeHtml(match.value)}</mark>`;
+        html += `<mark class="rounded-lg bg-accent-soft px-0.5 text-accent-strong">${escapeHtml(match.value)}</mark>`;
       }
       cursor = match.index + match.value.length;
     }
@@ -241,7 +241,7 @@ export default function RegexTool() {
                 <li key={`${match.index}-${index}`} className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-ink-3">{t({ zh: `匹配 ${index + 1}`, en: `Match ${index + 1}` })}</span>
-                    <code className="min-w-0 flex-1 break-all rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[12px] text-accent-strong">
+                    <code className="min-w-0 flex-1 break-all rounded-lg bg-accent-soft px-1.5 py-0.5 font-mono text-[12px] text-accent-strong">
                       {match.value || t({ zh: '(空匹配)', en: '(empty match)' })}
                     </code>
                     <span className="shrink-0 text-[10px] text-ink-3">{t({ zh: `索引 ${match.index}`, en: `Index ${match.index}` })}</span>
@@ -252,7 +252,7 @@ export default function RegexTool() {
                       {match.groups.map((group, groupIndex) => (
                         <span
                           key={`${groupIndex}-${group}`}
-                          className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-ink-2"
+                          className="rounded-lg border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-ink-2"
                         >
                           ${groupIndex + 1}: {group || t({ zh: '(空)', en: '(empty)' })}
                         </span>
@@ -264,7 +264,7 @@ export default function RegexTool() {
                       {Object.entries(match.namedGroups).map(([name, group]) => (
                         <span
                           key={name}
-                          className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-ink-2"
+                          className="rounded-lg border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-ink-2"
                         >
                           {name}: {group || t({ zh: '(空)', en: '(empty)' })}
                         </span>

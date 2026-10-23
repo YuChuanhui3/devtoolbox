@@ -107,7 +107,7 @@ function TreeNode({ name, value, path, depth, expanded, onToggle }: TreeNodeProp
             type="button"
             aria-label={`${t(open ? { zh: '折叠', en: 'Collapse' } : { zh: '展开', en: 'Expand' })} ${label}`}
             onClick={() => onToggle(path)}
-            className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-ink-3 transition-colors hover:bg-surface-3 hover:text-ink"
+            className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-3 hover:text-ink"
           >
             {open ? (
               <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />

@@ -13,6 +13,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import type { Localized } from '@/i18n/locale';
 import { useSeo } from '@/hooks/useSeo';
 import { cn } from '@/lib/cn';
+import { toolChipTone } from '@/lib/toolTone';
 import type { RecentEntry, ToolMeta } from '@/types/tool';
 
 function formatRelativeTime(
@@ -76,7 +77,7 @@ export function RecentPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-[0.01em] text-ink">
+            <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">
               {t({ zh: '最近使用', en: 'Recently Used' })}
             </h1>
             <Badge tone="accent">
@@ -146,7 +147,7 @@ export function RecentPage() {
                   <span
                     className={cn(
                       'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-                      category?.tone ?? 'bg-accent-soft text-accent',
+                      toolChipTone(tool.sensitive),
                     )}
                   >
                     <ToolIcon name={tool.icon} className="h-4 w-4" />

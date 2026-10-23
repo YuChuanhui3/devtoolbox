@@ -23,7 +23,7 @@ export function ToolSeoNote({ tool }: { tool: ToolMeta }) {
       {category && (
         <p className="mt-1.5 text-[13px] leading-6 text-ink-3">
           {t({ zh: '所属分类：', en: 'Category: ' })}
-          <Link to={`/category/${category.id}`} className="text-accent hover:underline">
+          <Link to={`/category/${category.id}`} className="text-accent-strong hover:underline">
             {t(category.name)}
           </Link>
           {siblings.length > 0 && (
@@ -32,7 +32,7 @@ export function ToolSeoNote({ tool }: { tool: ToolMeta }) {
               {siblings.map((item, index) => (
                 <span key={item.id}>
                   {index > 0 && t({ zh: '、', en: ', ' })}
-                  <Link to={`/tools/${item.id}`} className="text-accent hover:underline">
+                  <Link to={`/tools/${item.id}`} className="text-accent-strong hover:underline">
                     {locale === 'en' ? item.nameEn ?? item.name : item.name}
                   </Link>
                 </span>

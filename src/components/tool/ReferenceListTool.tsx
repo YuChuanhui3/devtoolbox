@@ -76,7 +76,7 @@ export function ReferenceListTool({ dataset }: { dataset: ReferenceDataset }) {
               className={cn(
                 'rounded-full px-2.5 py-1 text-xs transition-colors duration-300',
                 filter === option.id
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent-strong text-accent-contrast'
                   : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
               )}
             >
@@ -122,14 +122,14 @@ export function ReferenceListTool({ dataset }: { dataset: ReferenceDataset }) {
                     <dl className="mt-1.5 grid gap-x-6 gap-y-1 text-[11px] leading-4 sm:grid-cols-2">
                       {item.params.map(([flag, meaning]) => (
                         <div key={flag} className="flex gap-2">
-                          <dt className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-ink-2">{flag}</dt>
+                          <dt className="shrink-0 rounded-lg bg-surface-2 px-1.5 py-0.5 font-mono text-ink-2">{flag}</dt>
                           <dd className="min-w-0 text-ink-3">{t(meaning)}</dd>
                         </div>
                       ))}
                     </dl>
                   ) : null}
                   {item.example ? (
-                    <code className="mt-1.5 block break-all rounded-md bg-code-bg px-2 py-1 font-mono text-[11px] text-ink-2">
+                    <code className="mt-1.5 block break-all rounded-lg bg-code-bg px-2 py-1 font-mono text-[11px] text-ink-2">
                       {item.example}
                     </code>
                   ) : null}

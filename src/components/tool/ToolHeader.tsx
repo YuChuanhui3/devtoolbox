@@ -10,6 +10,7 @@ import { ToolIcon } from '@/components/ui/ToolIcon';
 import { useToast } from '@/components/ui/Toast';
 import { copyText } from '@/lib/clipboard';
 import { cn } from '@/lib/cn';
+import { toolChipTone } from '@/lib/toolTone';
 import type { ToolMeta } from '@/types/tool';
 
 export function ToolHeader({ tool }: { tool: ToolMeta }) {
@@ -24,13 +25,16 @@ export function ToolHeader({ tool }: { tool: ToolMeta }) {
     <header className="space-y-3">
       <nav
         aria-label={t({ zh: '面包屑', en: 'Breadcrumb' })}
-        className="flex flex-wrap items-center gap-1 text-[11px] text-ink-3"
+        className="flex flex-wrap items-center gap-1 text-xs text-ink-3"
       >
-        <Link to="/" className="transition-colors hover:text-accent-strong">
+        <Link to="/" className="inline-flex items-center px-0.5 transition-colors hover:text-accent-strong">
           {t({ zh: '首页', en: 'Home' })}
         </Link>
         <ChevronRight className="h-3 w-3" aria-hidden="true" />
-        <Link to={`/category/${tool.category}`} className="transition-colors hover:text-accent-strong">
+        <Link
+          to={`/category/${tool.category}`}
+          className="inline-flex items-center px-0.5 transition-colors hover:text-accent-strong"
+        >
           {t(category?.name ?? { zh: '工具', en: 'Tools' })}
         </Link>
         <ChevronRight className="h-3 w-3" aria-hidden="true" />
@@ -41,8 +45,8 @@ export function ToolHeader({ tool }: { tool: ToolMeta }) {
         <div className="flex min-w-0 items-start gap-3">
           <span
             className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
-              category?.tone ?? 'bg-accent-soft text-accent',
+              'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+              toolChipTone(tool.sensitive),
             )}
           >
             <ToolIcon name={tool.icon} className="h-5.5 w-5.5" />
@@ -50,7 +54,7 @@ export function ToolHeader({ tool }: { tool: ToolMeta }) {
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-[0.01em] text-ink">{name}</h1>
+              <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">{name}</h1>
               {category ? <Badge tone="accent">{t(category.name)}</Badge> : null}
               {tool.priority === 'P0' ? (
                 <Badge tone="success">{t({ zh: '常用', en: 'Popular' })}</Badge>
@@ -64,7 +68,7 @@ export function ToolHeader({ tool }: { tool: ToolMeta }) {
                 .map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-line bg-surface-2/60 px-2 py-0.5 text-[10px] text-ink-3"
+                    className="rounded-full border border-line bg-surface-2/60 px-2 py-1 font-mono text-[11px] text-ink-3"
                   >
                     {tag}
                   </span>

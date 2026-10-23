@@ -36,7 +36,7 @@ export function FavoritesPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-[0.01em] text-ink">
+            <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">
               {t({ zh: '我的收藏', en: 'My Favorites' })}
             </h1>
             <Badge tone="accent">

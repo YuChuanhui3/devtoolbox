@@ -30,8 +30,8 @@ function LinkTable({ links }: { links: LinkInfo[] }) {
           <span
             className={
               link.internal
-                ? 'mt-0.5 shrink-0 rounded-md bg-ok-soft px-1.5 py-0.5 text-[10px] text-ok'
-                : 'mt-0.5 shrink-0 rounded-md bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent-strong'
+                ? 'mt-0.5 shrink-0 rounded-lg bg-ok-soft px-1.5 py-0.5 text-[10px] text-ok'
+                : 'mt-0.5 shrink-0 rounded-lg bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent-strong'
             }
           >
             {link.internal ? t({ zh: '同域', en: 'Internal' }) : t({ zh: '外域', en: 'External' })}

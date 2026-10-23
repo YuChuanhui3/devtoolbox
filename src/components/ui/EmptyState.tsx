@@ -18,7 +18,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
         className,
       )}
     >
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2 text-ink-3">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-surface-2 text-ink-3">
         {icon ?? <Inbox className="h-6 w-6" aria-hidden="true" />}
       </div>
       <h3 className="text-base font-semibold text-ink">{title}</h3>

@@ -207,7 +207,7 @@ export default function QrGeneratorTool() {
                     type="color"
                     value={style.foreground}
                     onChange={(event) => updateStyle('foreground', event.target.value)}
-                    className="h-7 w-9 cursor-pointer rounded-md border border-line bg-transparent p-0.5"
+                    className="h-7 w-9 cursor-pointer rounded-lg border border-line bg-transparent p-0.5"
                   />
                   <span className="font-mono text-xs uppercase text-ink-2">
                     {style.foreground}
@@ -225,7 +225,7 @@ export default function QrGeneratorTool() {
                     type="color"
                     value={style.background}
                     onChange={(event) => updateStyle('background', event.target.value)}
-                    className="h-7 w-9 cursor-pointer rounded-md border border-line bg-transparent p-0.5"
+                    className="h-7 w-9 cursor-pointer rounded-lg border border-line bg-transparent p-0.5"
                   />
                   <span className="font-mono text-xs uppercase text-ink-2">
                     {style.background}

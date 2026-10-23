@@ -62,7 +62,7 @@ export function ThemeToggle() {
         <div
           role="menu"
           aria-label={t({ zh: '主题设置', en: 'Theme settings' })}
-          className="absolute right-0 top-full z-50 mt-2 w-40 animate-fade-in rounded-2xl border border-line bg-surface p-1.5 shadow-float"
+          className="absolute right-0 top-full z-50 mt-2 w-40 animate-fade-in rounded-xl border border-line bg-surface p-1.5 shadow-float"
         >
           {OPTIONS.map((option) => {
             const Icon = option.icon;

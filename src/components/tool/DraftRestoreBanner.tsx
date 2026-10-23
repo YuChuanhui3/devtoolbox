@@ -25,7 +25,7 @@ export function DraftRestoreBanner() {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-2xl border border-accent/20 bg-accent-soft/60 px-3.5 py-2.5 text-xs text-ink-2"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border border-accent/20 bg-accent-soft/60 px-3.5 py-2.5 text-xs text-ink-2"
     >
       <History className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
       <span className="min-w-0 flex-1">

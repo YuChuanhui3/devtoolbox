@@ -128,7 +128,7 @@ function DiffCell({ node, side, depth, collapsed, onToggle }: DiffCellProps) {
               zh: `${collapsed ? '展开' : '折叠'} ${node.path}`,
               en: `${collapsed ? 'Expand' : 'Collapse'} ${node.path}`,
             })}
-            className="inline-flex h-5 w-4 items-center justify-center rounded text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+            className="inline-flex h-5 w-4 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
           >
             {collapsed ? (
               <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -160,7 +160,7 @@ function DiffCell({ node, side, depth, collapsed, onToggle }: DiffCellProps) {
       </span>
 
       {node.orderChanged && side === 'left' ? (
-        <span className="shrink-0 rounded border border-warn/30 bg-warn-soft px-1 text-[10px] font-sans text-warn">
+        <span className="shrink-0 rounded-lg border border-warn/30 bg-warn-soft px-1 text-[10px] font-sans text-warn">
           {t({ zh: '键顺序不同', en: 'Key order differs' })}
         </span>
       ) : null}

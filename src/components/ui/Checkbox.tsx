@@ -24,7 +24,7 @@ export function Checkbox({ checked, onChange, label, description, disabled, clas
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-line-strong accent-[var(--accent)]"
+        className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded-lg border-line-strong accent-[var(--accent)]"
       />
       <span className="min-w-0">
         <span className="leading-5">{label}</span>

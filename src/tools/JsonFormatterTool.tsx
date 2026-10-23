@@ -275,7 +275,7 @@ export default function JsonFormatterTool() {
       </ActionBar>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-card border border-line bg-surface-2/40 px-3 py-2">
-        <span className="text-[11px] font-semibold rounded bg-accent-soft px-1.5 py-0.5 text-accent-strong">
+        <span className="text-[11px] font-semibold rounded-lg bg-accent-soft px-1.5 py-0.5 text-accent-strong">
           {t({ zh: '字符串', en: 'Strings' })}
         </span>
         <Button
@@ -305,7 +305,7 @@ export default function JsonFormatterTool() {
 
         <span className="mx-1 hidden h-5 w-px bg-line sm:block" />
 
-        <span className="text-[11px] font-semibold rounded bg-accent-soft px-1.5 py-0.5 text-accent-strong">Unicode</span>
+        <span className="text-[11px] font-semibold rounded-lg bg-accent-soft px-1.5 py-0.5 text-accent-strong">Unicode</span>
         <Button
           size="sm"
           variant="secondary"

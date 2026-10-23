@@ -24,7 +24,7 @@ export function ImagePreviewModal({ preview, onClose }: ImagePreviewModalProps) 
       {preview ? (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <figure className="overflow-hidden rounded-2xl border border-line bg-[repeating-conic-gradient(var(--surface-2)_0%_25%,var(--surface)_0%_50%)] bg-[length:20px_20px]">
+            <figure className="overflow-hidden rounded-xl border border-line bg-[repeating-conic-gradient(var(--surface-2)_0%_25%,var(--surface)_0%_50%)] bg-[length:20px_20px]">
               <img
                 src={preview.originalUrl}
                 alt={t({ zh: '原图预览', en: 'Original preview' })}
@@ -36,7 +36,7 @@ export function ImagePreviewModal({ preview, onClose }: ImagePreviewModalProps) 
               </figcaption>
             </figure>
 
-            <figure className="overflow-hidden rounded-2xl border border-line bg-[repeating-conic-gradient(var(--surface-2)_0%_25%,var(--surface)_0%_50%)] bg-[length:20px_20px]">
+            <figure className="overflow-hidden rounded-xl border border-line bg-[repeating-conic-gradient(var(--surface-2)_0%_25%,var(--surface)_0%_50%)] bg-[length:20px_20px]">
               <img
                 src={preview.resultUrl}
                 alt={t({ zh: '处理后预览', en: 'Processed preview' })}

@@ -102,7 +102,7 @@ export default function DnsRecordsTool() {
               {answers.map((answer, index) => (
                 <tr key={`${answer.name}-${index}`} className="border-b border-line last:border-b-0">
                   <td className="px-4 py-2.5 font-mono text-ink-2">{answer.name}</td>
-                  <td className="px-4 py-2.5"><span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">{dohTypeName(answer.type)}</span></td>
+                  <td className="px-4 py-2.5"><span className="rounded-lg bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">{dohTypeName(answer.type)}</span></td>
                   <td className="px-4 py-2.5 font-mono text-ink-2">{answer.TTL}</td>
                   <td className="max-w-[420px] break-all px-4 py-2.5 font-mono text-ink">{answer.data}</td>
                 </tr>

@@ -104,12 +104,12 @@ export function AboutPage() {
     <div className="mx-auto max-w-4xl space-y-8">
       <header className="rounded-card border border-line bg-surface p-6 shadow-card sm:p-8">
         <div className="flex items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl [background-image:var(--btn-grad)] text-white shadow-[0_8px_22px_rgba(33,150,243,0.3)]">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl [background-image:var(--btn-grad)] text-white shadow-[0_8px_22px_rgba(33,150,243,0.3)]">
             <Braces className="h-6 w-6" aria-hidden="true" />
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-[0.01em] text-ink">
+              <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">
                 {t({ zh: '关于 DevToolbox', en: 'About DevToolbox' })}
               </h1>
               <Badge tone="accent">v{APP_VERSION}</Badge>

@@ -60,7 +60,7 @@ export default function ColorTool() {
       <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <Panel title={t({ zh: '颜色输入', en: 'Color input' })} bodyClassName="space-y-4 p-4">
           <div
-            className="relative flex h-48 items-end justify-between overflow-hidden rounded-2xl border border-line p-4 shadow-inner"
+            className="relative flex h-48 items-end justify-between overflow-hidden rounded-xl border border-line p-4 shadow-inner"
             style={{ backgroundColor: result?.hex ?? '#e5e7eb' }}
           >
             <span

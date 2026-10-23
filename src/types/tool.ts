@@ -31,7 +31,6 @@ export interface CategoryMeta {
   description: L10n;
   icon: string;
   /** Tailwind class names, kept as full literals so the compiler can see them. */
-  tone: string;
 }
 
 export interface RecentEntry {

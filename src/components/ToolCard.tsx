@@ -8,6 +8,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { ToolIcon } from '@/components/ui/ToolIcon';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/cn';
+import { toolChipTone } from '@/lib/toolTone';
 import type { ToolMeta } from '@/types/tool';
 
 interface ToolCardProps {
@@ -35,7 +36,7 @@ export function ToolCard({ tool, showCategory = false, className }: ToolCardProp
       <span
         className={cn(
           'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-500 ease-in-out group-hover:scale-105',
-          category?.tone ?? 'bg-accent-soft text-accent',
+          toolChipTone(tool.sensitive),
         )}
       >
         <ToolIcon name={tool.icon} className="h-5 w-5" />
@@ -46,11 +47,11 @@ export function ToolCard({ tool, showCategory = false, className }: ToolCardProp
           <span className="truncate text-sm font-semibold text-ink">{name}</span>
           {tool.isNew ? <Badge tone="new">New</Badge> : null}
         </span>
-        <span className="mt-1 line-clamp-2 block text-xs leading-5 text-ink-3">
+        <span className="mt-1 line-clamp-2 text-sm leading-6 text-ink-3">
           {toolDescription(tool, locale)}
         </span>
         {showCategory && category ? (
-          <span className="mt-2 inline-flex text-[11px] font-medium text-ink-3">{t(category.name)}</span>
+          <span className="mt-2 inline-flex text-xs font-medium text-ink-3">{t(category.name)}</span>
         ) : null}
       </span>
 
@@ -73,7 +74,7 @@ export function ToolCard({ tool, showCategory = false, className }: ToolCardProp
           );
         }}
         className={cn(
-          'absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full transition-all duration-300',
+          'absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300',
           isFavorite
             ? 'text-amber-500 opacity-100'
             : 'text-ink-3 opacity-0 hover:bg-surface-2 hover:text-ink group-hover:opacity-100 focus-visible:opacity-100',

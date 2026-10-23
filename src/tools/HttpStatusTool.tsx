@@ -77,7 +77,7 @@ export default function HttpStatusTool() {
             onClick={() => setFilter('all')}
             className={cn(
               'rounded-full px-2.5 py-1 text-xs transition-colors duration-300',
-              filter === 'all' ? 'bg-accent text-white' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+              filter === 'all' ? 'bg-accent-strong text-accent-contrast' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
             )}
           >
             {t({ zh: '全部', en: 'All' })} {HTTP_STATUS_CODES.length}
@@ -91,7 +91,7 @@ export default function HttpStatusTool() {
               className={cn(
                 'rounded-full px-2.5 py-1 text-xs transition-colors duration-300',
                 filter === category.id
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent-strong text-accent-contrast'
                   : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
               )}
             >

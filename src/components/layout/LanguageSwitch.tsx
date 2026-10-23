@@ -13,7 +13,7 @@ export function LanguageSwitch() {
     <div
       role="group"
       aria-label="语言 / Language"
-      className="inline-flex h-9 items-center rounded-full border border-line bg-surface p-0.5 shadow-card"
+      className="inline-flex min-h-9 items-center rounded-full border border-line bg-surface p-0.5 shadow-card"
     >
       {OPTIONS.map((option) => (
         <button
@@ -23,7 +23,7 @@ export function LanguageSwitch() {
           aria-pressed={locale === option.value}
           className={
             locale === option.value
-              ? 'h-full min-w-8 rounded-full bg-accent px-2 text-xs font-semibold text-white transition-colors duration-200'
+              ? 'h-full min-w-8 rounded-full bg-accent-strong px-2 text-xs font-semibold text-accent-contrast transition-colors duration-200'
               : 'h-full min-w-8 rounded-full px-2 text-xs font-semibold text-ink-3 transition-colors duration-200 hover:bg-surface-2 hover:text-ink'
           }
         >

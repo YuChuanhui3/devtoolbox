@@ -30,7 +30,7 @@ export function Footer({ onShowShortcuts }: FooterProps) {
 
         <nav
           aria-label={t({ zh: '页脚导航', en: 'Footer navigation' })}
-          className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-2"
+          className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-2 [&>a]:inline-flex [&>a]:items-center"
         >
           <Link to="/about" className="transition-colors hover:text-accent-strong">
             {t({ zh: '关于', en: 'About' })}
@@ -54,7 +54,7 @@ export function Footer({ onShowShortcuts }: FooterProps) {
       </div>
 
       <div className="border-t border-line">
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-2 px-4 py-4 text-[11px] text-ink-3 sm:flex-row sm:px-6">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-ink-3 sm:flex-row sm:px-6">
           <p>
             © {new Date().getFullYear()} DevToolbox ·{' '}
             {t({ zh: '纯前端静态站点', en: 'a fully static front-end site' })}

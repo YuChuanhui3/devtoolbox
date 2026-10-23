@@ -101,7 +101,7 @@ export function PrivacyPage() {
       <header className="rounded-card border border-line bg-surface p-6 shadow-card sm:p-8">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-6 w-6 text-ok" aria-hidden="true" />
-          <h1 className="text-2xl font-semibold tracking-[0.01em] text-ink">
+          <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">
             {t({ zh: '隐私说明', en: 'Privacy Notes' })}
           </h1>
           <Badge tone="success">{t({ zh: '本地优先', en: 'Local-first' })}</Badge>

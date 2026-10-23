@@ -147,7 +147,7 @@ export default function JsonSchemaTool() {
               <ul className="mt-1 max-h-64 space-y-1 overflow-auto text-[12px] leading-5">
                 {validation.result.issues.map((issueItem, index) => (
                   <li key={index} className="flex flex-wrap gap-x-2">
-                    <code className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">{issueItem.path}</code>
+                    <code className="shrink-0 rounded-lg bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">{issueItem.path}</code>
                     <span>{t(issueItem.message)}</span>
                   </li>
                 ))}

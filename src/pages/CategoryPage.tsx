@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useSeo } from '@/hooks/useSeo';
 import { categorySeoDescription, categorySeoTitle } from '@/lib/seoTemplates';
+import { DEFAULT_CHIP } from '@/lib/toolTone';
 
 export function CategoryPage() {
   const { t, locale } = useI18n();
@@ -55,12 +56,12 @@ export function CategoryPage() {
 
       <header className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-line bg-surface p-5 shadow-card">
         <div className="flex items-start gap-3.5">
-          <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${category.tone}`}>
+          <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${DEFAULT_CHIP}`}>
             <ToolIcon name={category.icon} className="h-6 w-6" />
           </span>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-[0.01em] text-ink">{t(category.name)}</h1>
+              <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">{t(category.name)}</h1>
               <Badge tone="accent">
                 {t({ zh: `${tools.length} 个工具`, en: `${tools.length} tools` })}
               </Badge>

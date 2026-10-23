@@ -13,7 +13,7 @@
   --line-strong: rgba(15, 23, 42, 0.14);
   --ink: #111827;
   --ink-2: #4b5563;
-  --ink-3: #8b95a5;
+  --ink-3: #5f6b7a;
   --accent: #2196f3;
   --accent-strong: #1673c9;
   --accent-soft: rgba(33, 150, 243, 0.1);
@@ -29,9 +29,8 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.05);
   --shadow-md: 0 10px 30px rgba(16, 24, 40, 0.08);
   --shadow-lg: 0 25px 45px rgba(16, 24, 40, 0.1);
-  --btn-grad: linear-gradient(135deg, #5ebbf5, #3c99d3);
-  --hero-glow-1: rgba(94, 187, 245, 0.28);
-  --hero-glow-2: rgba(124, 154, 255, 0.22);
+  --btn-grad: linear-gradient(135deg, #1878c4, #1268b8);
+  --hero-glow-1: rgba(94, 187, 245, 0.2);
 }
 
 .dark {
@@ -43,7 +42,7 @@
   --line-strong: rgba(255, 255, 255, 0.14);
   --ink: #e6edf5;
   --ink-2: #a3b0c2;
-  --ink-3: #6b7a8f;
+  --ink-3: #7b8aa0;
   --accent: #4da6ff;
   --accent-strong: #7cbcff;
   --accent-soft: rgba(77, 166, 255, 0.13);
@@ -61,7 +60,6 @@
   --shadow-lg: 0 25px 45px rgba(0, 0, 0, 0.45);
   --btn-grad: linear-gradient(135deg, #4da6ff, #2f7cf6);
   --hero-glow-1: rgba(77, 166, 255, 0.16);
-  --hero-glow-2: rgba(124, 154, 255, 0.14);
 }
 
 @theme inline {
@@ -198,9 +196,7 @@
   }
 
   .hero-glow {
-    background:
-      radial-gradient(600px 280px at 18% 10%, var(--hero-glow-1), transparent 65%),
-      radial-gradient(520px 260px at 82% 0%, var(--hero-glow-2), transparent 68%);
+    background: radial-gradient(760px 300px at 50% -12%, var(--hero-glow-1), transparent 70%);
   }
 
   .bg-dots {
@@ -671,5 +667,17 @@
   body {
     background: #fff;
     color: #000;
+  }
+}
+
+/* ---------------- touch ---------------- */
+/* 未分层规则优先于 Tailwind 的 @layer utilities，让 44px 触控下限能覆盖控件自带的 min-h-*。
+   正文里的行内链接不受影响：min-height 对 display: inline 无效。 */
+@media (pointer: coarse) {
+  a,
+  button,
+  [role='tab'],
+  [role='combobox'] {
+    min-height: 44px;
   }
 }
