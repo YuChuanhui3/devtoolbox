@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import hljs from 'highlight.js/lib/common';
 import { Columns2, Download, Eye, Pencil, ShieldCheck } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
 import { Badge } from '@/components/ui/Badge';
@@ -78,18 +77,6 @@ export default function MarkdownTool() {
 
     return () => window.clearTimeout(timer);
   }, [content, draftEnabled, isTooLarge, setMarkdownDraft]);
-
-  useEffect(() => {
-    const root = previewRef.current;
-    if (!root) return;
-    root.querySelectorAll('pre code').forEach((block) => {
-      try {
-        hljs.highlightElement(block as HTMLElement);
-      } catch {
-        /* 代码高亮失败不影响预览 */
-      }
-    });
-  }, [html]);
 
   const view: 'edit' | 'split' | 'preview' = isMobile
     ? mode === 'preview'

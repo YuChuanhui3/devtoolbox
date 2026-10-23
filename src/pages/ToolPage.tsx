@@ -6,11 +6,13 @@ import { getTool, toolPath } from '@/data/tools';
 import { useAppStore } from '@/store/appStore';
 import { ToolHeader } from '@/components/tool/ToolHeader';
 import { RelatedTools } from '@/components/tool/RelatedTools';
+import { ToolSeoNote } from '@/components/tool/ToolSeoNote';
 import { ToolProvider } from '@/components/tool/ToolContext';
 import { DraftRestoreBanner } from '@/components/tool/DraftRestoreBanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useSeo } from '@/hooks/useSeo';
+import { toolSeoDescription, toolSeoKeywords, toolSeoTitle } from '@/lib/seoTemplates';
 import { trackToolView } from '@/lib/analytics';
 
 function ToolSkeleton() {
@@ -35,11 +37,10 @@ export function ToolPage() {
   const addRecent = useAppStore((state) => state.addRecent);
   const { t } = useI18n();
 
-  const seoTitle = tool ? { zh: tool.name, en: tool.nameEn ?? tool.name } : undefined;
-  const seoDescription = tool
-    ? { zh: tool.description, en: tool.descriptionEn ?? tool.description }
-    : undefined;
-  useSeo(seoTitle, seoDescription);
+  const seoTitle = tool ? toolSeoTitle(tool) : undefined;
+  const seoDescription = tool ? toolSeoDescription(tool) : undefined;
+  const seoKeywords = tool ? toolSeoKeywords(tool) : undefined;
+  useSeo(seoTitle, seoDescription, seoKeywords);
 
   useEffect(() => {
     if (!tool) return;
@@ -101,6 +102,8 @@ export function ToolPage() {
         )}
 
         <RelatedTools tool={tool} />
+
+        <ToolSeoNote tool={tool} />
       </div>
     </ToolProvider>
   );

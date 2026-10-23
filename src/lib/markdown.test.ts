@@ -45,6 +45,32 @@ describe('markdown rendering', () => {
     expect(html).toContain('<style>');
   });
 
+  test('highlights fenced code blocks and keeps the token classes through sanitizing', () => {
+    const html = renderMarkdown('```js\nconst answer = 42;\n```');
+    expect(html).toContain('<code class="hljs language-js">');
+    expect(html).toContain('<span class="hljs-keyword">const</span>');
+    expect(html).toContain('<span class="hljs-number">42</span>');
+  });
+
+  test('escapes unknown languages instead of highlighting them', () => {
+    const html = renderMarkdown('```not-a-language\n<b>&amp;</b>\n```');
+    expect(html).toContain('<code class="hljs language-not-a-language">');
+    expect(html).toContain('&lt;b&gt;&amp;amp;&lt;/b&gt;');
+    expect(html).not.toContain('<b>');
+  });
+
+  test('drops unsafe language info strings from the class attribute', () => {
+    const html = renderMarkdown('```js"onclick="alert(1)\nx = 1\n```');
+    expect(html).toContain('<code class="hljs">');
+    expect(html).not.toContain('onclick');
+  });
+
+  test('renderMarkdownDocument embeds highlight token colors', () => {
+    const html = renderMarkdownDocument('```py\ndef f():\n    pass\n```');
+    expect(html).toContain('class="hljs language-py"');
+    expect(html).toContain('.hljs-keyword');
+  });
+
   test('handles empty markdown', () => {
     expect(renderMarkdown('')).toBe('');
   });

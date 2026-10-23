@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Clock, LayoutGrid, ShieldCheck, Star } from 'lucide-react';
+import { ChevronRight, Clock, LayoutGrid, ShieldCheck, Star } from 'lucide-react';
 import { CATEGORIES } from '@/data/categories';
 import { getTool, getToolsByCategory, sortToolsForLocale, toolPath, toolName } from '@/data/tools';
 import { ToolIcon } from '@/components/ui/ToolIcon';
@@ -36,6 +37,11 @@ export function Sidebar({ onNavigate, className, collapsed = false }: SidebarPro
   const { pathname } = useLocation();
   const { t, locale } = useI18n();
   const currentCategory = resolveCategory(pathname);
+  const [expanded, setExpanded] = useState<CategoryId | null>(currentCategory);
+
+  // 路由决定展开项（搜索、快捷入口等外部跳转也会命中）；同一路由上重复点击标题由 toggle 处理。
+  useEffect(() => setExpanded(currentCategory), [currentCategory]);
+
   const labelClass = cn(
     'min-w-0 flex-1 truncate transition-opacity duration-200',
     collapsed && 'opacity-0',
@@ -58,23 +64,31 @@ export function Sidebar({ onNavigate, className, collapsed = false }: SidebarPro
 
         {CATEGORIES.map((category) => {
           const tools = sortToolsForLocale(getToolsByCategory(category.id), locale);
-          const active = currentCategory === category.id && !collapsed;
+          const onCurrentRoute = currentCategory === category.id;
+          const open = expanded === category.id && !collapsed;
           const categoryName = t(category.name);
 
           return (
             <div key={category.id}>
               <NavLink
                 to={`/category/${category.id}`}
-                onClick={onNavigate}
+                aria-expanded={!collapsed ? open : undefined}
+                onClick={(event) => {
+                  onNavigate?.();
+                  if (onCurrentRoute && !collapsed) {
+                    event.preventDefault();
+                    setExpanded(open ? null : category.id);
+                  }
+                }}
                 title={collapsed ? `${categoryName} · ${tools.length}` : undefined}
                 className={cn(
                   'group relative flex items-center gap-2.5 overflow-hidden rounded-xl px-3 py-2 text-sm transition-colors duration-300',
-                  currentCategory === category.id
+                  onCurrentRoute
                     ? 'bg-accent-soft font-semibold text-accent-strong'
                     : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
                 )}
               >
-                {currentCategory === category.id ? (
+                {onCurrentRoute ? (
                   <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
                 ) : null}
                 <ToolIcon name={category.icon} className="h-4 w-4 shrink-0" />
@@ -87,9 +101,17 @@ export function Sidebar({ onNavigate, className, collapsed = false }: SidebarPro
                 >
                   {tools.length}
                 </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className={cn(
+                    '-mr-1 h-3.5 w-3.5 shrink-0 text-ink-3 transition-transform duration-200',
+                    open && 'rotate-90',
+                    collapsed && 'opacity-0',
+                  )}
+                />
               </NavLink>
 
-              {active ? (
+              {open ? (
                 <ul className="mb-1 ml-[22px] mt-0.5 space-y-0.5 border-l border-line pl-2">
                   {tools.map((tool) => (
                     <li key={tool.id}>

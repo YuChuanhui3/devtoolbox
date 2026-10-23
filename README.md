@@ -39,7 +39,7 @@ Requires Node.js 20+ (22 recommended).
 npm install
 npm run dev          # dev server at http://localhost:5173
 npm run build        # typecheck + production build
-npm run test:run     # 566 unit tests (Vitest + Testing Library)
+npm run test:run     # 572 unit tests (Vitest + Testing Library)
 ```
 
 ## Tech Stack
@@ -51,6 +51,8 @@ React 19 + TypeScript + Vite 6 + Tailwind CSS 4 + Zustand + React Router 7. Pure
 - **GitHub Actions → GitHub Pages**: push to `main` triggers `.github/workflows/deploy.yml`, which runs `npm run build:ghpages` (subpath base `/devtoolbox/` + sitemap generation) and publishes `dist/`.
 - SPA deep links on GitHub Pages are handled by `public/404.html` + a URL-restore script in `index.html`; Netlify/Vercel use `_redirects` / `vercel.json` rewrites.
 - `sitemap.xml` is generated from the tool registry via `npm run sitemap`.
+- **SEO prerender**: `scripts/render-routes.ts` (vite-node) stamps every route with a static `index.html` shell — per-route `<title>` (在线XX工具 keyword pattern), meta description/keywords/OG and crawlable h1/intro/link body inside `#root`. Real users never see it (React's `createRoot` replaces the children), so crawlers without JS (Bing, Baidu, AI engines) get full content.
+- **Search engine submission**: Google verified in Search Console with the sitemap submitted; for Bing use <https://www.bing.com/webmasters> (import the GSC property, then submit `sitemap.xml`); for Baidu submit via <https://ziyuan.baidu.com> — note github.io subpaths are indexed slowly by Baidu, a custom domain is the long-term fix.
 
 ## Contributing
 
@@ -190,7 +192,7 @@ src/
 ## 测试与质量
 
 - 单元测试覆盖 `src/lib/` 下的核心纯函数：JSON 解析与错误定位、JSON Schema 校验、编码解码、格式转换、颜色、Cron、Diff、Markdown 安全过滤、图片处理、SDP 压缩信封、分块传输协议等；另有 i18n 内核（`tl` / `detectLocale` / 语言切换渲染）与双语元数据完整性守卫测试。
-- 当前测试规模：**58 个测试文件、566 个测试用例全部通过（2 个跳过）**。
+- 当前测试规模：**59 个测试文件、572 个测试用例全部通过（2 个跳过）**。
 - `src/lib/**` 覆盖率：**语句 96%+、分支 89%+、函数 98%+**。
 - 已通过 `tsc -b` 类型检查与 `vite build` 生产构建。
 - 已对全部工具路由做浏览器冒烟检查，并在英文界面下重跑；局域网文件互传另有双页 WebRTC 端到端测试（配对、文本、5MB 文件字节一致性、拒绝流程），中文与英文模式均已覆盖。
@@ -215,6 +217,8 @@ npm run build
 - **其他静态服务器**：配置 SPA fallback 即可。
 
 如使用其他子路径部署，需要同步调整 Vite `base`、`homepage` 与 sitemap 生成脚本中的路径前缀。
+
+构建期会由 `scripts/render-routes.ts` 为每个路由生成带「在线XX工具」关键词标题、描述与简介正文的静态 `index.html` 壳（目录 index），供不执行 JS 的搜索引擎抓取；真实用户由 React 接管，看到的仍是完整应用。搜索引擎提交：Google 已完成站长验证并提交 `sitemap.xml`；Bing 在 <https://www.bing.com/webmasters> 导入 Google 属性后提交同一 sitemap；百度在 <https://ziyuan.baidu.com> 提交（github.io 子路径收录慢，长期建议自定义域名）。
 
 ## 浏览器兼容性
 

@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useSeo } from '@/hooks/useSeo';
+import { TOOLS_PAGE_DESCRIPTION, TOOLS_PAGE_TITLE } from '@/lib/seoTemplates';
 import { cn } from '@/lib/cn';
 import type { CategoryId, ToolMeta } from '@/types/tool';
 
@@ -21,13 +22,10 @@ type SortValue = 'default' | 'name' | 'recent' | 'favorites';
 
 export function ToolsPage() {
   const { t, locale } = useI18n();
-  useSeo(
-    { zh: '全部工具', en: 'All Tools' },
-    {
-      zh: '浏览 DevToolbox 的全部在线工具，支持分类筛选、搜索与排序。',
-      en: 'Browse every DevToolbox tool, with category filters, search and sorting.',
-    },
-  );
+  useSeo(TOOLS_PAGE_TITLE, TOOLS_PAGE_DESCRIPTION(TOOLS.length), {
+    zh: '在线工具,在线格式转换工具,开发者工具大全,JSON 格式化,编码加密,网络工具',
+    en: 'online tools, online format converter, developer tools list, JSON formatter, encoding, network tools',
+  });
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FilterValue>('all');

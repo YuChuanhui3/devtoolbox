@@ -51,8 +51,11 @@ function SectionHeader({
 export function HomePage() {
   const { t, locale } = useI18n();
   useSeo(undefined, {
-    zh: '开发者在线工具箱：JSON 格式化、编码加密、时间戳、正则测试、Markdown 实时渲染、图片压缩等常用工具，纯前端本地处理。',
-    en: 'Online toolbox for developers: JSON formatting, encoding & encryption, timestamps, regex testing, live Markdown, image compression and more. Fully local, front-end only.',
+    zh: `开发者在线工具箱：免费在线格式转换工具合集——JSON 格式化、图片转换、编码加密、时间戳、正则测试、Markdown 实时渲染、图片压缩等 ${TOOLS.length} 个工具，纯浏览器本地处理。`,
+    en: `Online toolbox for developers: free online format converters plus JSON formatting, encoding & encryption, timestamps, regex testing, live Markdown and image compression — ${TOOLS.length} tools, fully local.`,
+  }, {
+    zh: '在线工具,在线格式转换工具,开发者工具箱,JSON 格式化工具,免费工具箱',
+    en: 'online tools, online format converter, developer toolbox, json formatter, free tools',
   });
 
   const { openSearch } = useSearch();

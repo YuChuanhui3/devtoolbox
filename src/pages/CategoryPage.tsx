@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useSeo } from '@/hooks/useSeo';
+import { categorySeoDescription, categorySeoTitle } from '@/lib/seoTemplates';
 
 export function CategoryPage() {
   const { t, locale } = useI18n();
@@ -15,7 +16,10 @@ export function CategoryPage() {
   const category = getCategory(categoryId);
   const tools = category ? sortToolsForLocale(getToolsByCategory(category.id), locale) : [];
 
-  useSeo(category?.name, category?.description);
+  useSeo(
+    category ? categorySeoTitle(category, getToolsByCategory(category.id).length) : undefined,
+    category ? categorySeoDescription(category, getToolsByCategory(category.id).length) : undefined,
+  );
 
   if (!category) {
     return (

@@ -11,3 +11,13 @@ export function highlightCode(code: string, language: string): string {
     return escapeHtml(code);
   }
 }
+
+/** 未声明语言时的自动识别；识别不出或失败都退回转义文本。 */
+export function highlightCodeAuto(code: string): string {
+  if (!code) return '';
+  try {
+    return hljs.highlightAuto(code).value;
+  } catch {
+    return escapeHtml(code);
+  }
+}

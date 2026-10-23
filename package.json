@@ -8,9 +8,9 @@
   "description": "开发者在线工具箱 · 纯前端、本地优先的一站式工具站",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build:ghpages": "tsc -b && node scripts/gen-sitemap.mjs && vite build --base=/devtoolbox/",
-    "sitemap": "node scripts/gen-sitemap.mjs",
+    "build": "tsc -b && vite build && vite-node scripts/render-routes.ts",
+    "build:ghpages": "tsc -b && vite-node scripts/gen-sitemap.ts && vite build --base=/devtoolbox/ && ROUTE_BASE=/devtoolbox vite-node scripts/render-routes.ts",
+    "sitemap": "vite-node scripts/gen-sitemap.ts",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest",
