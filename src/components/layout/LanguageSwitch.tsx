@@ -23,8 +23,8 @@ export function LanguageSwitch() {
           aria-pressed={locale === option.value}
           className={
             locale === option.value
-              ? 'h-full min-w-8 rounded-full bg-accent-strong px-2 text-xs font-semibold text-accent-contrast transition-colors duration-200'
-              : 'h-full min-w-8 rounded-full px-2 text-xs font-semibold text-ink-3 transition-colors duration-200 hover:bg-surface-2 hover:text-ink'
+              ? 'inline-flex min-w-8 items-center justify-center self-stretch rounded-full bg-accent-soft px-2 text-xs font-semibold text-accent-strong ring-1 ring-accent/25 transition-colors duration-200'
+              : 'inline-flex min-w-8 items-center justify-center self-stretch rounded-full px-2 text-xs font-semibold text-ink-3 transition-colors duration-200 hover:bg-surface-2 hover:text-ink'
           }
         >
           {option.label}
