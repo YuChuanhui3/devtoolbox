@@ -59,6 +59,44 @@ export function yamlToJson(text: string, indent = 2): string {
 
 export interface XmlParseOptions {
   keepAttributes: boolean;
+  keepComments?: boolean;
+  fieldMapping?: boolean;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasNameAttribute = (value: unknown): value is Record<string, unknown> =>
+  isRecord(value) && (typeof value['@_name'] === 'string' || typeof value['@_name'] === 'number');
+
+/** 字段定义 XML 专用：把带 name 属性的元素（单个或数组）折叠为 name→desc 映射；无 desc 时保留其余字段（去 @_ 前缀）。 */
+function foldNamed(items: Record<string, unknown>[]): Record<string, unknown> {
+  const mapped: Record<string, unknown> = {};
+  for (const item of items) {
+    const { '@_name': name, '@_desc': desc, ...rest } = item;
+    const extras = Object.fromEntries(
+      Object.entries(rest).map(([key, value]) => [
+        key.startsWith('@_') ? key.slice(2) : key,
+        applyFieldMapping(value),
+      ]),
+    );
+    mapped[String(name)] = desc !== undefined && Object.keys(extras).length === 0
+      ? desc
+      : { ...(desc !== undefined ? { desc } : {}), ...extras };
+  }
+  return mapped;
+}
+
+function applyFieldMapping(node: unknown): unknown {
+  if (Array.isArray(node)) {
+    if (node.length > 0 && node.every(hasNameAttribute)) return foldNamed(node as Record<string, unknown>[]);
+    return node.map(applyFieldMapping);
+  }
+  if (isRecord(node)) {
+    if (hasNameAttribute(node)) return foldNamed([node]);
+    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, applyFieldMapping(value)]));
+  }
+  return node;
 }
 
 export function xmlToJson(text: string, options: XmlParseOptions): string {
@@ -70,16 +108,19 @@ export function xmlToJson(text: string, options: XmlParseOptions): string {
   }
 
   try {
+    // fast-xml-parser rejects real <remark> tags when comments are captured into remark, so fall back to plain parsing there.
+    const captureComments = options.keepComments && !/<remark(?=[\s/>])/.test(text);
     const parser = new XMLParser({
       ignoreAttributes: !options.keepAttributes,
       attributeNamePrefix: '@_',
       textNodeName: '#text',
+      ...(captureComments ? { commentPropName: 'remark' } : {}),
       trimValues: true,
       parseTagValue: true,
       parseAttributeValue: true,
     });
     const value: unknown = parser.parse(text);
-    return JSON.stringify(value, null, 2);
+    return JSON.stringify(options.fieldMapping ? applyFieldMapping(value) : value, null, 2);
   } catch (error) {
     throw new ToolError(
       { zh: 'XML 解析失败', en: 'XML parsing failed' },
@@ -98,6 +139,7 @@ export function jsonToXml(text: string, rootName: string): string {
       ignoreAttributes: false,
       attributeNamePrefix: '@_',
       textNodeName: '#text',
+      commentPropName: 'remark',
       format: true,
       indentBy: '  ',
       suppressEmptyNode: true,
