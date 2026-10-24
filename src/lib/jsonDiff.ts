@@ -1,6 +1,6 @@
 import { parseTree, type Node as JsoncNode, type Segment } from 'jsonc-parser';
 import { toToolError } from './errors';
-import { parseJson } from './json';
+import { parseJson, sortKeysDeep } from './json';
 import type { Localized } from '@/i18n/locale';
 
 export type JsonDiffSide = 'left' | 'right';
@@ -9,10 +9,13 @@ export type JsonValueKind = 'object' | 'array' | 'string' | 'number' | 'boolean'
 
 export interface JsonDiffOptions {
   ignoreKeyOrder?: boolean;
+  /** 比较前先把两侧对象的键名排序，让同一份数据的不同键顺序呈现为逐行对齐的差异。 */
+  sortKeys?: boolean;
 }
 
 export const DEFAULT_JSON_DIFF_OPTIONS: Required<JsonDiffOptions> = {
   ignoreKeyOrder: true,
+  sortKeys: false,
 };
 
 export interface JsonDiffError {
@@ -262,7 +265,9 @@ function buildNode(
     const rightRecord = right as Record<string, unknown>;
     const leftKeys = Object.keys(leftRecord);
     const rightKeys = Object.keys(rightRecord);
-    const keys = [...leftKeys, ...rightKeys.filter((key) => !hasOwn(leftRecord, key))];
+    const keys = options.sortKeys
+      ? [...new Set([...leftKeys, ...rightKeys])].sort()
+      : [...leftKeys, ...rightKeys.filter((key) => !hasOwn(leftRecord, key))];
 
     const leftCommon = leftKeys.filter((key) => hasOwn(rightRecord, key));
     const rightCommon = rightKeys.filter((key) => hasOwn(leftRecord, key));
@@ -360,6 +365,7 @@ export function compareJson(
 ): JsonDiffResult {
   const resolved: ResolvedOptions = {
     ignoreKeyOrder: options.ignoreKeyOrder ?? DEFAULT_JSON_DIFF_OPTIONS.ignoreKeyOrder,
+    sortKeys: options.sortKeys ?? DEFAULT_JSON_DIFF_OPTIONS.sortKeys,
   };
   const errors: JsonDiffError[] = [];
 
@@ -385,8 +391,8 @@ export function compareJson(
 
   const root = buildNode(
     [],
-    left,
-    right,
+    resolved.sortKeys ? sortKeysDeep(left) : left,
+    resolved.sortKeys ? sortKeysDeep(right) : right,
     resolved,
     collectLineNumbers(leftText),
     collectLineNumbers(rightText),

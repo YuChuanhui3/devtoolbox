@@ -197,6 +197,7 @@ export default function JsonDiffTool() {
     () => restoredPairRef.current?.right ?? SAMPLE_JSON_DIFF_RIGHT,
   );
   const [ignoreKeyOrder, setIgnoreKeyOrder] = useState(true);
+  const [sortKeys, setSortKeys] = useState(false);
   const [onlyChanges, setOnlyChanges] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -206,8 +207,8 @@ export default function JsonDiffTool() {
 
   const analysis = useMemo(() => {
     if (!ready) return null;
-    return compareJson(debouncedLeft, debouncedRight, { ignoreKeyOrder });
-  }, [ready, debouncedLeft, debouncedRight, ignoreKeyOrder]);
+    return compareJson(debouncedLeft, debouncedRight, { ignoreKeyOrder, sortKeys });
+  }, [ready, debouncedLeft, debouncedRight, ignoreKeyOrder, sortKeys]);
 
   const okResult = analysis?.ok ? analysis : null;
   const stats = okResult?.stats ?? null;
@@ -349,6 +350,12 @@ export default function JsonDiffTool() {
           className="text-xs"
         />
         <Checkbox
+          checked={sortKeys}
+          onChange={setSortKeys}
+          label={t({ zh: '按键名排序后比较', en: 'Sort keys before comparing' })}
+          className="text-xs"
+        />
+        <Checkbox
           checked={onlyChanges}
           onChange={setOnlyChanges}
           label={t({ zh: '仅显示变更', en: 'Show changes only' })}
@@ -462,7 +469,13 @@ export default function JsonDiffTool() {
           hasDiff ? (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-3">
               <span>{t({ zh: '绿色=新增 · 红色=删除 · 黄色=修改', en: 'Green = added · Red = removed · Yellow = modified' })}</span>
-              <span>{ignoreKeyOrder ? t({ zh: '已忽略键顺序', en: 'Key order ignored' }) : t({ zh: '键顺序参与比较', en: 'Key order compared' })}</span>
+              <span>
+                {sortKeys
+                  ? t({ zh: '已按键名排序后比较', en: 'Keys sorted before comparing' })
+                  : ignoreKeyOrder
+                    ? t({ zh: '已忽略键顺序', en: 'Key order ignored' })
+                    : t({ zh: '键顺序参与比较', en: 'Key order compared' })}
+              </span>
               <span className="ml-auto tabular-nums">
                 {t({ zh: `${rows.length} 行可见`, en: `${rows.length} rows visible` })}
               </span>

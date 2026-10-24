@@ -164,6 +164,49 @@ describe('compareJson', () => {
     expect(result.stats).toEqual({ added: 1, removed: 0, modified: 0 });
   });
 
+  it('sorts both sides first so reordered keys never count as changes', () => {
+    const result = expectOk(
+      compareJson('{"z":1,"a":{"y":1,"b":2}}', '{"a":{"b":9,"y":1},"z":2}', {
+        ignoreKeyOrder: false,
+        sortKeys: true,
+      }),
+    );
+
+    expect(result.root.orderChanged).toBe(false);
+    expect(result.root.children.map((child) => child.key)).toEqual(['a', 'z']);
+    expect(findNode(result.root, '$.a')?.orderChanged).toBe(false);
+    expect(findNode(result.root, '$.a')?.children.map((child) => child.key)).toEqual(['b', 'y']);
+    expect(result.stats).toEqual({ added: 0, removed: 0, modified: 2 });
+  });
+
+  it('merges added and removed keys into alphabetical order', () => {
+    const unsorted = expectOk(compareJson('{"b":1,"d":2}', '{"a":0,"b":1,"c":9}'));
+    expect(unsorted.root.children.map((child) => child.key)).toEqual(['b', 'd', 'a', 'c']);
+
+    const sorted = expectOk(compareJson('{"b":1,"d":2}', '{"a":0,"b":1,"c":9}', { sortKeys: true }));
+    expect(sorted.root.children.map((child) => child.key)).toEqual(['a', 'b', 'c', 'd']);
+    expect(sorted.stats).toEqual({ added: 2, removed: 1, modified: 0 });
+  });
+
+  it('keeps array items in place while sorting keys', () => {
+    const result = expectOk(compareJson('{"l":[3,1]}', '{"k":0,"l":[1,3]}', { sortKeys: true }));
+
+    expect(result.root.children.map((child) => child.key)).toEqual(['k', 'l']);
+    expect(findNode(result.root, '$.l[0]')?.status).toBe('modified');
+    expect(findNode(result.root, '$.l[1]')?.status).toBe('modified');
+  });
+
+  it('resolves source lines by path, not by sorted position', () => {
+    const left = `{\n  "z": 1,\n  "a": 2\n}`;
+    const result = expectOk(compareJson(left, '{"a":2,"z":9}', { sortKeys: true }));
+    const node = findNode(result.root, '$.z');
+
+    expect(result.root.children.map((child) => child.key)).toEqual(['a', 'z']);
+    expect(node?.left?.line).toBe(2);
+    expect(node?.right?.line).toBe(1);
+    expect(node?.status).toBe('modified');
+  });
+
   it('maps source line numbers for each side', () => {
     const left = `{
   "a": 1,
