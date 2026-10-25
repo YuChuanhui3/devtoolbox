@@ -63,6 +63,8 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'torrent-magnet': lazy(() => import('./TorrentMagnetTool')),
   'ssl-cert': lazy(() => import('./SslCertTool')),
   'linux-commands': lazy(() => import('./LinuxCommandsTool')),
+  'virtual-card': lazy(() => import('./VirtualBankCardTool')),
+  'virtual-address': lazy(() => import('./VirtualAddressTool')),
 
   // 文本处理
   'text-dedupe': lazy(() => import('./TextDedupeTool')),

@@ -2,12 +2,12 @@
 
 [![Deploy to GitHub Pages](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml/badge.svg)](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-![Tools](https://img.shields.io/badge/tools-91-blue)
+![Tools](https://img.shields.io/badge/tools-93-blue)
 ![PRs%20Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 **Live site: <https://YuChuanhui3.github.io/devtoolbox/>**
 
-DevToolbox is a free, open-source online toolbox for developers: **91 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Everything runs 100% client-side — your text, JSON and images never leave your device. No account, no backend, no analytics scripts. The interface is fully bilingual (English / 中文) with instant switching.
+DevToolbox is a free, open-source online toolbox for developers: **93 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Everything runs 100% client-side — your text, JSON and images never leave your device. No account, no backend, no analytics scripts. The interface is fully bilingual (English / 中文) with instant switching.
 
 ## Why DevToolbox
 
@@ -17,12 +17,12 @@ DevToolbox is a free, open-source online toolbox for developers: **91 browser-ba
 - **Peer-to-peer LAN file transfer** — WebRTC DataChannel file/transfer between phone and desktop on the same Wi-Fi, no server in between.
 - **Built for daily use** — global search (`⌘/Ctrl + K`), favorites, recent tools, auto-saved drafts, light/dark/system theme, per-tool code splitting.
 
-## Tool Categories (91 tools)
+## Tool Categories (93 tools)
 
 | Category | Count | Representative tools |
 |---|---|---|
 | Encoding & Encryption 编码加密 | 16 | Base64/Base32/Base58 codec, URL encoder, MD5/SHA digest, AES & RSA encrypt/decrypt, JWT decoder, bcrypt/scrypt, hex, gzip, htpasswd, random password |
-| Developer Utilities 开发调试 | 27 | Timestamp converter, regex tester, UUID generator, code compare, cron parser, HTTP status codes & headers reference, port reference, color converter, SQL/HTML/JS formatter, CRC16/CRC32, self-signed cert |
+| Developer Utilities 开发调试 | 29 | Timestamp converter, regex tester, UUID generator, code compare, cron parser, HTTP status codes & headers reference, port reference, color converter, SQL/HTML/JS formatter, CRC16/CRC32, self-signed cert, virtual bank card & multi-country identity generator |
 | Data Formats 数据格式 | 10 | JSON formatter, JSON Schema validate & generate, JSON↔CSV/XML/YAML/Query converters, JSON Diff, JSONPath query, JSON to Java/TS/Go entities, YAML↔Properties |
 | Network Tools 网络工具 | 25 | My IP lookup, IP info & DNS record query, curl to code, WebSocket tester, subnet mask calculator, robots.txt generator, shields badge, SEO checker, LAN file transfer (WebRTC), MQTT cheatsheet & examples |
 | Image Tools 图像处理 | 4 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator |
@@ -64,14 +64,14 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 # 中文说明
 
-一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **91 个高频工具**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
+一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **93 个高频工具**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
 
 没有账号、没有后端、没有第三方统计脚本。文本、JSON、图片等内容默认在浏览器内处理，不会上传服务器；收藏、最近使用与草稿仅保存在本机 `localStorage`。
 
 ## 功能特性
 
 - **全局搜索**：`⌘ / Ctrl + K` 唤起，支持名称、别名、标签与描述搜索，键盘上下选择、Enter 打开。
-- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；91 个工具、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
+- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；93 个工具、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
 - **工具分类**：编码加密、开发调试、Markdown、数据格式、图像处理、网络工具、文本处理七大分类，按名称拼音首字母排序。
 - **收藏与最近使用**：收藏工具、记录最近访问，刷新后仍然保留。
 - **主题模式**：浅色 / 深色 / 跟随系统，首次绘制前应用主题，避免闪烁。
@@ -91,9 +91,9 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 AES 加密解密、Base32/58/62/100 互转、Base64 编码解码、Bcrypt/Scrypt 哈希、DES/3DES/Rabbit/RC4、Gzip 压缩解压、Hex 文本互转、htpasswd 生成器、JS 字符串转义、JWT 解析、MD5 / SHA 摘要、莫斯密码互转、RSA/RSA2 公私钥、随机密码生成、Unicode 转换、URL 编码解码。
 
-### 开发调试（27）
+### 开发调试（29）
 
-常用端口查询、Cisco Type7 加解密、CRC16/CRC32 校验、Cron 表达式解析、代码对比、HTML/CSS/JS 格式化、HTTP Header 查询、HTTP 状态码、HTTP 请求方法、进制转换、Linux 命令速查、MIME Type 查询、屏幕 PPI 计算、时间戳转换、SQL 格式化、随机数生成、URL 地址解析、User-Agent 解析、UUID 生成、VMess/SS/SSR 链接解析、文件大小换算、迅雷/快车/旋风链接、颜色转换、正则表达式测试、正则转义、种子转磁力链接、自签名证书生成。
+常用端口查询、Cisco Type7 加解密、CRC16/CRC32 校验、Cron 表达式解析、代码对比、HTML/CSS/JS 格式化、HTTP Header 查询、HTTP 状态码、HTTP 请求方法、进制转换、Linux 命令速查、MIME Type 查询、屏幕 PPI 计算、时间戳转换、SQL 格式化、随机数生成、URL 地址解析、User-Agent 解析、UUID 生成、VMess/SS/SSR 链接解析、文件大小换算、迅雷/快车/旋风链接、虚拟地址生成器、虚拟银行卡生成器、颜色转换、正则表达式测试、正则转义、种子转磁力链接、自签名证书生成。
 
 ### Markdown（1）
 
@@ -164,7 +164,7 @@ src/
 ├── lib/                 # 纯函数与浏览器能力封装（JSON、编码、转换、图片等）
 ├── pages/               # 首页、全部工具、分类、收藏、最近、关于、隐私
 ├── store/               # Zustand 全局状态
-├── tools/               # 91 个工具组件，按工具独立分包
+├── tools/               # 93 个工具组件，按工具独立分包
 └── workers/             # JSON 转代码 Web Worker
 ```
 

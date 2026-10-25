@@ -60,8 +60,8 @@ const RAW_TOOLS: ToolMeta[] = [
     name: 'JSON ↔ XML 互转',
     nameEn: 'JSON ↔ XML Converter',
     category: 'data',
-    description: 'JSON 与 XML 双向转换，支持保留属性、注释转 remark 与 name→desc 字段映射。',
-    descriptionEn: 'Two-way conversion between JSON and XML, with attribute preservation, comments kept as remark and name→desc field mapping.',
+    description: 'JSON 与 XML 双向转换，支持自定义根节点与保留属性。',
+    descriptionEn: 'Two-way conversion between JSON and XML, with a custom root node and attribute preservation.',
     tags: ['json', 'xml', '转换', '互转'],
     aliases: ['json2xml', 'json转xml', 'xml2json', 'xml转json', 'xml'],
     icon: 'CodeXml',
@@ -664,6 +664,30 @@ const RAW_TOOLS: ToolMeta[] = [
     icon: 'Terminal',
     priority: 'P1',
   },
+  {
+    id: 'virtual-card',
+    name: '虚拟银行卡生成器',
+    nameEn: 'Virtual Bank Card Generator',
+    category: 'dev',
+    description: '批量生成虚拟姓名、手机号、身份证号与银联借记卡号，校验位均合法，仅供开发测试与表单填充。',
+    descriptionEn: 'Generate batches of virtual names, mobile numbers, Chinese ID numbers and UnionPay debit card numbers with valid check digits, for development testing and form filling only.',
+    tags: ['银行卡', '身份证', '手机号', '测试数据', '生成器'],
+    aliases: ['银行卡号生成', '身份证生成', '测试卡号', '借记卡', '随机身份'],
+    icon: 'CreditCard',
+    priority: 'P2',
+  },
+  {
+    id: 'virtual-address',
+    name: '虚拟地址生成器',
+    nameEn: 'Virtual Address Generator',
+    category: 'dev',
+    description: '按国家生成完整虚拟身份资料：姓名、地址、邮编、电话、信用卡与职业等，覆盖美英加澳日德中，仅供测试填充。',
+    descriptionEn: 'Generate complete virtual identity profiles by country — name, address, post code, phone, credit card, occupation and more across the US, UK, Canada, Australia, Japan, Germany and China, for test data only.',
+    tags: ['地址', '身份', '测试数据', '生成器', 'fake'],
+    aliases: ['假地址', '虚拟身份', '美国地址', '随机地址', '测试资料'],
+    icon: 'MapPin',
+    priority: 'P2',
+  },
 
   // ---------------- 文本处理 ----------------
   {
@@ -1167,6 +1191,7 @@ const CJK_INITIAL_PINYIN: Record<string, string> = {
   进: 'jin',
   随: 'sui',
   迅: 'xun',
+  虚: 'xu',
 };
 
 const pinyinSortKey = (name: string): string => {
