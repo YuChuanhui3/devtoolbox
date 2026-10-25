@@ -61,45 +61,6 @@ describe('format converters', () => {
     expect(() => xmlToJson('', { keepAttributes: true })).toThrow('输入内容为空');
   });
 
-  test('xmlToJson keeps comments as remark only when keepComments is on', () => {
-    const xml = '<a><!--note--><b>1</b></a>';
-    const kept = JSON.parse(xmlToJson(xml, { keepAttributes: true, keepComments: true }));
-    expect(kept.a.remark).toBe('note');
-    const dropped = JSON.parse(xmlToJson(xml, { keepAttributes: true }));
-    expect(dropped.a.remark).toBeUndefined();
-  });
-
-  test('xmlToJson field mapping collapses name attributes into name→desc keys', () => {
-    const xml =
-      '<snd><field name="payAcc" desc="付款账户"/><field name="isRepeat" desc="是否重复" required="false"/><!--0:否;1:是--></snd>';
-    const parsed = JSON.parse(
-      xmlToJson(xml, { keepAttributes: true, keepComments: true, fieldMapping: true }),
-    );
-    expect(parsed.snd.field.payAcc).toBe('付款账户');
-    expect(parsed.snd.field.isRepeat).toEqual({ desc: '是否重复', required: false });
-    expect(parsed.snd.remark).toBe('0:否;1:是');
-  });
-
-  test('field mapping keeps {desc, remark} when the field has its own note', () => {
-    const xml = '<list><field name="antiFraud" desc="反欺诈标志"><remark>0:实时;1:离线</remark></field></list>';
-    const parsed = JSON.parse(
-      xmlToJson(xml, { keepAttributes: true, keepComments: true, fieldMapping: true }),
-    );
-    expect(parsed.list.field.antiFraud).toEqual({ desc: '反欺诈标志', remark: '0:实时;1:离线' });
-  });
-
-  test('xmlToJson parses real remark elements even with keepComments on', () => {
-    const parsed = JSON.parse(
-      xmlToJson('<f><remark>说明</remark></f>', { keepAttributes: true, keepComments: true }),
-    );
-    expect(parsed.f.remark).toBe('说明');
-  });
-
-  test('jsonToXml writes remark values back as XML comments', () => {
-    const xml = jsonToXml('{"a":{"remark":"note","b":"1"}}', 'root');
-    expect(xml).toContain('<!--note-->');
-  });
-
   test('jsonToCsv converts object arrays to CSV', () => {
     const csv = jsonToCsv('[{"name":"a","age":1},{"name":"b","age":2}]');
     expect(csv).toBe('name,age\na,1\nb,2');

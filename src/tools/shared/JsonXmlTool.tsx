@@ -16,8 +16,6 @@ export function JsonXmlTool({ initialDirection }: { initialDirection: Direction 
   const [directionVersion, setDirectionVersion] = useState(0);
   const [rootName, setRootName] = useState('root');
   const [keepAttributes, setKeepAttributes] = useState(true);
-  const [keepComments, setKeepComments] = useState(true);
-  const [fieldMapping, setFieldMapping] = useState(false);
 
   const isJsonToXml = direction === 'json-to-xml';
 
@@ -32,7 +30,7 @@ export function JsonXmlTool({ initialDirection }: { initialDirection: Direction 
       transform={(input) =>
         isJsonToXml
           ? jsonToXml(input, rootName)
-          : xmlToJson(input, { keepAttributes, keepComments, fieldMapping })
+          : xmlToJson(input, { keepAttributes })
       }
       sample={isJsonToXml ? SAMPLE_JSON : SAMPLE_XML}
       inputLabel={
@@ -81,32 +79,18 @@ export function JsonXmlTool({ initialDirection }: { initialDirection: Direction 
               />
             </label>
           ) : (
-            <div className="flex flex-wrap items-center gap-3">
-              <Checkbox
-                checked={keepAttributes}
-                onChange={setKeepAttributes}
-                label={t({ zh: '保留属性', en: 'Keep attributes' })}
-                className="text-xs"
-              />
-              <Checkbox
-                checked={keepComments}
-                onChange={setKeepComments}
-                label={t({ zh: '注释转 remark', en: 'Comments → remark' })}
-                className="text-xs"
-              />
-              <Checkbox
-                checked={fieldMapping}
-                onChange={setFieldMapping}
-                label={t({ zh: '字段映射 name→desc', en: 'Field mapping name→desc' })}
-                className="text-xs"
-              />
-            </div>
+            <Checkbox
+              checked={keepAttributes}
+              onChange={setKeepAttributes}
+              label={t({ zh: '保留属性', en: 'Keep attributes' })}
+              className="text-xs"
+            />
           )}
         </>
       }
       helpText={t({
-        zh: 'XML 解析会将属性以 @_ 前缀保存、注释写入 remark；字段映射会把带 name 属性的元素数组折叠为 {name: desc} 紧凑映射，备注等信息自动并入 {desc, remark} 结构。JSON 转 XML 时 remark 会写回注释。',
-        en: 'Parsing keeps attributes with an @_ prefix and stores comments in remark. Field mapping collapses element arrays with a name attribute into a compact {name: desc} map, keeping notes in a {desc, remark} object. On JSON to XML, remark is written back as a comment.',
+        zh: 'XML 解析会将属性以 @_ 前缀保存；空节点会被保留为空对象。',
+        en: 'XML parsing stores attributes with an @_ prefix; empty nodes are kept as empty objects.',
       })}
     />
   );
