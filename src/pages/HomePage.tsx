@@ -13,7 +13,7 @@ import { useSeo } from '@/hooks/useSeo';
 import { DEFAULT_CHIP } from '@/lib/toolTone';
 
 const QUICK_TAGS: Array<{ label: L10n; toolId: string }> = [
-  { label: { zh: 'JSON', en: 'JSON' }, toolId: 'json-formatter' },
+  { label: { zh: 'JSON', en: 'JSON' }, toolId: 'json-toolkit' },
   { label: { zh: 'Base64', en: 'Base64' }, toolId: 'base64' },
   { label: { zh: '时间戳', en: 'Timestamp' }, toolId: 'timestamp' },
   { label: { zh: 'UUID', en: 'UUID' }, toolId: 'uuid' },

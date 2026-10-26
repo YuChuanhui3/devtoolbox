@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowLeftRight,
   CheckCircle2,
@@ -20,10 +20,7 @@ import { ActionBar, ClearButton, CopyButton, SampleButton } from '@/components/t
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { Localized } from '@/i18n/locale';
-import { useToolContext } from '@/components/tool/ToolContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { removeToolDraft } from '@/lib/drafts';
-import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import {
   collectJsonDiffContainerIds,
   compareJson,
@@ -37,6 +34,7 @@ import {
 import { countTextStats } from '@/lib/text';
 import { cn } from '@/lib/cn';
 import { SAMPLE_JSON_DIFF_LEFT, SAMPLE_JSON_DIFF_RIGHT } from '@/data/samples';
+import type { ToolkitPanelProps } from './types';
 
 const DEBOUNCE_DELAY = 300;
 
@@ -45,24 +43,6 @@ const STATUS_TEXT_CLASS: Partial<Record<JsonDiffStatus, string>> = {
   removed: 'text-danger',
   modified: 'text-warn',
 };
-
-interface DraftPair {
-  left: string;
-  right: string;
-}
-
-function readDraftPair(raw: string): DraftPair | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-    const pair = parsed as { left?: unknown; right?: unknown };
-    if (typeof pair.left !== 'string' || typeof pair.right !== 'string') return null;
-    return { left: pair.left, right: pair.right };
-  } catch {
-    return null;
-  }
-}
 
 function valueClass(kind: JsonValueKind): string {
   switch (kind) {
@@ -188,18 +168,20 @@ function ResultPlaceholder({
   );
 }
 
-export default function JsonDiffTool() {
+export interface DiffPanelProps extends ToolkitPanelProps {
+  /** 对比右侧内容；左侧使用工具箱共享输入。 */
+  right: string;
+  setRight: (value: string) => void;
+}
+
+export function DiffPanel({ input, setInput, right, setRight }: DiffPanelProps) {
   const { t } = useI18n();
-  const toolContext = useToolContext();
-  const restoredPairRef = useRef<DraftPair | null>(readDraftPair(toolContext?.initialInput ?? ''));
-  const [left, setLeftState] = useState(() => restoredPairRef.current?.left ?? SAMPLE_JSON_DIFF_LEFT);
-  const [right, setRightState] = useState(
-    () => restoredPairRef.current?.right ?? SAMPLE_JSON_DIFF_RIGHT,
-  );
   const [ignoreKeyOrder, setIgnoreKeyOrder] = useState(true);
   const [sortKeys, setSortKeys] = useState(false);
   const [onlyChanges, setOnlyChanges] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const left = input;
 
   const debouncedLeft = useDebouncedValue(left, DEBOUNCE_DELAY);
   const debouncedRight = useDebouncedValue(right, DEBOUNCE_DELAY);
@@ -234,45 +216,21 @@ export default function JsonDiffTool() {
     [okResult, collapsed, onlyChanges],
   );
 
-  const { markDirty } = useDraftAutosave(
-    () => (left || right ? JSON.stringify({ left, right }) : null),
-    [left, right],
-    () => {
-      setLeftState('');
-      setRightState('');
-      setCollapsed(new Set());
-    },
-  );
-
-  const setLeft = (value: string) => {
-    markDirty();
-    setLeftState(value);
-  };
-
-  const setRight = (value: string) => {
-    markDirty();
-    setRightState(value);
-  };
-
   const handleSample = () => {
-    markDirty();
-    setLeftState(SAMPLE_JSON_DIFF_LEFT);
-    setRightState(SAMPLE_JSON_DIFF_RIGHT);
+    setInput(SAMPLE_JSON_DIFF_LEFT);
+    setRight(SAMPLE_JSON_DIFF_RIGHT);
     setCollapsed(new Set());
   };
 
   const handleSwap = () => {
-    markDirty();
-    setLeftState(right);
-    setRightState(left);
+    setInput(right);
+    setRight(left);
   };
 
   const handleClear = () => {
-    markDirty();
-    setLeftState('');
-    setRightState('');
+    setInput('');
+    setRight('');
     setCollapsed(new Set());
-    if (toolContext) removeToolDraft(toolContext.tool.id);
   };
 
   const handleToggle = (id: string) => {
@@ -300,7 +258,7 @@ export default function JsonDiffTool() {
       ? { zh: '正在分析两侧 JSON…', en: 'Analyzing both JSON documents…' }
       : left || right
         ? { zh: '等待两侧 JSON 输入完整', en: 'Waiting for valid JSON on both sides' }
-        : { zh: '左右两侧各输入一个 JSON 后自动对比', en: 'Enter a JSON on each side to compare automatically' }
+        : { zh: '左侧共享输入与右侧各一份 JSON 后自动对比', en: 'Compare automatically once the shared input and the right side both hold JSON' }
     : !analysis.ok
       ? { zh: '请修正输入的 JSON 语法错误', en: 'Fix the JSON syntax errors' }
       : analysis.equal
@@ -308,7 +266,7 @@ export default function JsonDiffTool() {
         : { zh: `共发现 ${totalChanges} 处差异`, en: `${totalChanges} differences found` };
 
   const statusLabel: Localized = !ready
-    ? { zh: '两侧 JSON 输入完整后自动对比', en: 'Compares automatically once both sides have JSON' }
+    ? { zh: '共享输入（左）与右侧 JSON 齐备后自动对比', en: 'Compares automatically once both sides have JSON' }
     : !analysis
       ? { zh: '正在分析…', en: 'Analyzing…' }
       : !analysis.ok
@@ -398,9 +356,9 @@ export default function JsonDiffTool() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <InputPanel
-          label={t({ zh: '原始 JSON（左）', en: 'Original JSON (left)' })}
+          label={t({ zh: '原始 JSON（左 · 共享输入）', en: 'Original JSON (left · shared input)' })}
           value={left}
-          onChange={setLeft}
+          onChange={setInput}
           placeholder={t({ zh: '粘贴原始 JSON，例如 {"name": "qwen", "version": "1.0.0"}', en: 'Paste the original JSON, e.g. {"name": "qwen", "version": "1.0.0"}' })}
           minHeight={260}
           showLineNumbers
@@ -488,8 +446,8 @@ export default function JsonDiffTool() {
             icon={<FileDiff className="h-6 w-6 text-ink-3" aria-hidden="true" />}
             title={t({ zh: '等待 JSON 输入', en: 'Waiting for JSON input' })}
             description={t({
-              zh: '左右两侧都输入合法 JSON 后，会按结构展示新增、删除与修改的键值对，缩进和空白差异自动忽略。',
-              en: 'Once both sides hold valid JSON, added, removed, and changed key/value pairs are shown by structure; indentation and whitespace differences are ignored.',
+              zh: '左侧就是工具箱共享输入；左右两侧都有合法 JSON 后，会按结构展示新增、删除与修改的键值对，缩进和空白差异自动忽略。',
+              en: 'The left side is the toolkit\'s shared input. Once both sides hold valid JSON, added, removed, and changed key/value pairs are shown by structure; indentation and whitespace differences are ignored.',
             })}
           />
         ) : !analysis.ok ? (

@@ -10,6 +10,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { parseJson } from '@/lib/json';
 import { toToolError } from '@/lib/errors';
 import { inferJsonSchema, validateAgainstSchema, type SchemaIssue } from '@/lib/jsonSchema';
+import type { ToolkitPanelProps } from './types';
 
 type Mode = 'validate' | 'generate';
 
@@ -52,23 +53,18 @@ const SAMPLE_DATA = JSON.stringify(
   2,
 );
 
-const DATA_FOR_GENERATE = SAMPLE_DATA;
-
-export default function JsonSchemaTool() {
+export function SchemaPanel({ input, setInput }: ToolkitPanelProps) {
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>('validate');
   const [schemaText, setSchemaText] = useState(SAMPLE_SCHEMA);
-  const [dataText, setDataText] = useState(SAMPLE_DATA);
-  const [sourceText, setSourceText] = useState(DATA_FOR_GENERATE);
 
   const debouncedSchema = useDebouncedValue(schemaText, 250);
-  const debouncedData = useDebouncedValue(dataText, 250);
-  const debouncedSource = useDebouncedValue(sourceText, 250);
+  const debouncedData = useDebouncedValue(input, 250);
 
   const validation = useMemo((): { result: { valid: boolean; issues: SchemaIssue[] } | null; error: Localized | null; parseHint: Localized | null } => {
     if (mode !== 'validate') return { result: null, error: null, parseHint: null };
     if (!debouncedSchema.trim() || !debouncedData.trim()) {
-      return { result: null, error: null, parseHint: { zh: '请同时填写 Schema 与待校验 JSON', en: 'Fill in both the schema and the JSON to validate' } };
+      return { result: null, error: null, parseHint: { zh: '请同时填写 Schema 与待校验 JSON（共享输入区）', en: 'Fill in the schema and the JSON to validate (shared input)' } };
     }
     try {
       const schema = parseJson(debouncedSchema);
@@ -82,30 +78,28 @@ export default function JsonSchemaTool() {
 
   const generation = useMemo((): { output: string; error: Localized | null } => {
     if (mode !== 'generate') return { output: '', error: null };
-    if (!debouncedSource.trim()) return { output: '', error: null };
+    if (!debouncedData.trim()) return { output: '', error: null };
     try {
-      return { output: JSON.stringify(inferJsonSchema(parseJson(debouncedSource)), null, 2), error: null };
+      return { output: JSON.stringify(inferJsonSchema(parseJson(debouncedData)), null, 2), error: null };
     } catch (caught) {
       return { output: '', error: toToolError(caught).localized };
     }
-  }, [mode, debouncedSource]);
+  }, [mode, debouncedData]);
 
   const applySample = () => {
     if (mode === 'validate') {
       setSchemaText(SAMPLE_SCHEMA);
-      setDataText(SAMPLE_DATA);
+      setInput(SAMPLE_DATA);
     } else {
-      setSourceText(DATA_FOR_GENERATE);
+      setInput(SAMPLE_DATA);
     }
   };
 
   const clearAll = () => {
     if (mode === 'validate') {
       setSchemaText('');
-      setDataText('');
-    } else {
-      setSourceText('');
     }
+    setInput('');
   };
 
   return (
@@ -156,6 +150,18 @@ export default function JsonSchemaTool() {
           ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
+            <Panel title={t({ zh: '待校验 JSON（共享输入）', en: 'JSON to validate (shared input)' })} bodyClassName="p-0">
+              <Textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                mono
+                rows={16}
+                spellCheck={false}
+                className="h-full min-h-[300px] resize-none rounded-none border-0 text-[12px]"
+                placeholder={t({ zh: '粘贴要校验的 JSON…', en: 'Paste the JSON to validate…' })}
+                aria-label={t({ zh: '待校验 JSON 输入', en: 'JSON input to validate' })}
+              />
+            </Panel>
             <Panel title={t({ zh: 'JSON Schema', en: 'JSON Schema' })} bodyClassName="p-0">
               <Textarea
                 value={schemaText}
@@ -166,18 +172,6 @@ export default function JsonSchemaTool() {
                 className="h-full min-h-[300px] resize-none rounded-none border-0 text-[12px]"
                 placeholder={t({ zh: '{ "type": "object", ... }', en: '{ "type": "object", ... }' })}
                 aria-label={t({ zh: 'JSON Schema 输入', en: 'JSON Schema input' })}
-              />
-            </Panel>
-            <Panel title={t({ zh: '待校验 JSON', en: 'JSON to validate' })} bodyClassName="p-0">
-              <Textarea
-                value={dataText}
-                onChange={(event) => setDataText(event.target.value)}
-                mono
-                rows={16}
-                spellCheck={false}
-                className="h-full min-h-[300px] resize-none rounded-none border-0 text-[12px]"
-                placeholder={t({ zh: '粘贴要校验的 JSON…', en: 'Paste the JSON to validate…' })}
-                aria-label={t({ zh: '待校验 JSON 输入', en: 'JSON input to validate' })}
               />
             </Panel>
           </div>
@@ -193,10 +187,10 @@ export default function JsonSchemaTool() {
         <>
           {generation.error ? <ToolAlert tone="error" title={generation.error} hint={{ zh: '请检查 JSON 是否完整（括号与引号配对）', en: 'Check that the JSON is complete (balanced braces and quotes)' }} /> : null}
           <div className="grid gap-4 lg:grid-cols-2">
-            <Panel title={t({ zh: '示例 JSON', en: 'Sample JSON' })} bodyClassName="p-0">
+            <Panel title={t({ zh: '示例 JSON（共享输入）', en: 'Sample JSON (shared input)' })} bodyClassName="p-0">
               <Textarea
-                value={sourceText}
-                onChange={(event) => setSourceText(event.target.value)}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
                 mono
                 rows={16}
                 spellCheck={false}

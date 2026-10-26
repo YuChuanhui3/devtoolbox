@@ -6,16 +6,8 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
  */
 export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>> = {
   // 数据格式
-  'json-formatter': lazy(() => import('./JsonFormatterTool')),
+  'json-toolkit': lazy(() => import('./JsonToolkitTool')),
   'json-to-code': lazy(() => import('./JsonToCodeTool')),
-  'json-diff': lazy(() => import('./JsonDiffTool')),
-  'json-to-yaml': lazy(() => import('./JsonToYamlTool')),
-  'json-to-xml': lazy(() => import('./JsonToXmlTool')),
-  'json-query': lazy(() => import('./JsonQueryTool')),
-  jsonpath: lazy(() => import('./JsonPathTool')),
-  'json-schema': lazy(() => import('./JsonSchemaTool')),
-  'json-to-csv': lazy(() => import('./JsonToCsvTool')),
-  'yaml-properties': lazy(() => import('./YamlPropertiesTool')),
 
   // 编码加密
   base64: lazy(() => import('./Base64Tool')),

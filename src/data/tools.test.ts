@@ -49,7 +49,7 @@ describe('双语元数据', () => {
 
   test('英文名与英文说明参与搜索', () => {
     expect(searchTools('subnet mask')[0]?.id).toBe('subnet-mask');
-    expect(searchTools('formatter').some((tool) => tool.id === 'json-formatter')).toBe(true);
+    expect(searchTools('formatter').some((tool) => tool.id === 'json-toolkit')).toBe(true);
     expect(searchTools('QR', 'en')[0]?.id).toBe('qr-generator');
   });
 });
@@ -66,7 +66,7 @@ describe('tool registry search', () => {
 
   test('finds tools by name, alias and tag', () => {
     expect(searchTools('base64')[0]?.id).toBe('base64');
-    expect(searchTools('jsonpath')[0]?.id).toBe('jsonpath');
+    expect(searchTools('jsonpath')[0]?.id).toBe('json-toolkit');
     expect(searchTools('二维码')[0]?.id).toBe('qr-generator');
     expect(searchTools('图片').some((tool) => tool.category === 'image')).toBe(true);
   });
@@ -84,33 +84,35 @@ describe('tool registry search', () => {
   });
 });
 
-describe('bidirectional conversion tools', () => {
-  test('lists each reversible converter once in its category', () => {
+describe('JSON 工具箱合并', () => {
+  test('data category keeps the toolkit plus json-to-code and no legacy ids', () => {
     const dataToolIds = getToolsByCategory('data').map((tool) => tool.id);
-    expect(dataToolIds.filter((id) => id === 'json-to-yaml')).toHaveLength(1);
-    expect(dataToolIds.filter((id) => id === 'json-to-xml')).toHaveLength(1);
-    expect(dataToolIds.filter((id) => id === 'json-to-csv')).toHaveLength(1);
+    expect(dataToolIds).toEqual(['json-toolkit', 'json-to-code']);
     expect(Object.keys(LEGACY_TOOL_IDS).every((id) => !dataToolIds.includes(id))).toBe(true);
   });
 
-  test('resolves legacy reverse routes to the merged tool', () => {
-    expect(getTool('yaml-to-json')?.id).toBe('json-to-yaml');
-    expect(getTool('xml-to-json')?.id).toBe('json-to-xml');
-    expect(getTool('csv-to-json')?.id).toBe('json-to-csv');
-    expect(toolPath('csv-to-json')).toBe('/tools/json-to-csv');
-    expect(toolPath('yaml-to-json')).toBe('/tools/json-to-yaml');
+  test('resolves all legacy data-format routes to the unified toolkit', () => {
+    for (const legacyId of Object.keys(LEGACY_TOOL_IDS)) {
+      expect(getTool(legacyId)?.id).toBe('json-toolkit');
+      expect(toolPath(legacyId)).toBe('/tools/json-toolkit');
+    }
   });
 
-  test('finds merged tools from reverse direction keywords', () => {
-    expect(searchTools('csv转json')[0]?.id).toBe('json-to-csv');
-    expect(searchTools('yaml转json')[0]?.id).toBe('json-to-yaml');
-    expect(searchTools('xml转json')[0]?.id).toBe('json-to-xml');
+  test('finds the toolkit from old keywords', () => {
+    expect(searchTools('json格式化')[0]?.id).toBe('json-toolkit');
+    expect(searchTools('schema校验')[0]?.id).toBe('json-toolkit');
+    expect(searchTools('生成schema').some((tool) => tool.id === 'json-toolkit')).toBe(true);
+    expect(searchTools('csv转json')[0]?.id).toBe('json-toolkit');
+    expect(searchTools('xml转json')[0]?.id).toBe('json-toolkit');
+    expect(searchTools('json对比')[0]?.id).toBe('json-toolkit');
+    expect(searchTools('jsondiff')[0]?.id).toBe('json-toolkit');
   });
 
-  test('resolves saved legacy ids without duplicate entries', () => {
-    expect(getToolsByIds(['csv-to-json', 'json-to-csv'])).toHaveLength(1);
-    expect(getToolsByIds(['csv-to-json', 'json-to-csv'])[0]?.id).toBe('json-to-csv');
-    expect(getToolsByIds(['yaml-to-json'], 1)[0]?.id).toBe('json-to-yaml');
+  test('saved legacy ids collapse to one toolkit entry', () => {
+    expect(getToolsByIds(['json-formatter', 'jsonpath', 'json-schema'])).toHaveLength(1);
+    expect(getToolsByIds(['csv-to-json', 'json-to-csv', 'json-diff', 'format-converter'])).toHaveLength(1);
+    expect(getToolsByIds(['csv-to-json', 'json-diff', 'format-converter'])[0]?.id).toBe('json-toolkit');
+    expect(getToolsByIds(['yaml-to-json'], 1)[0]?.id).toBe('json-toolkit');
   });
 });
 

@@ -21,16 +21,16 @@ function renderNote(id: string, locale: 'zh' | 'en') {
 
 describe('ToolSeoNote', () => {
   test('中文界面渲染在线XX工具标题句与别名导流', () => {
-    const { container } = renderNote('json-formatter', 'zh');
+    const { container } = renderNote('json-toolkit', 'zh');
     expect(container.textContent).toContain('关于此工具');
-    expect(container.textContent).toContain('在线JSON 格式化工具');
+    expect(container.textContent).toContain('在线JSON 工具箱');
     expect(container.textContent).toContain('也被称为');
     expect(container.textContent).toContain('数据格式');
   });
 
   test('英文界面渲染 Online X Tool 并隐藏中文别名细节', () => {
-    const { container } = renderNote('json-formatter', 'en');
+    const { container } = renderNote('json-toolkit', 'en');
     expect(container.textContent).toContain('About this tool');
-    expect(container.textContent).toContain('Online JSON Formatter Tool');
+    expect(container.textContent).toContain('Online JSON Toolkit Tool');
   });
 });

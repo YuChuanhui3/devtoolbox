@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Braces, CheckCircle2, Code2, ListTree, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
-import { Select } from '@/components/ui/Select';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Segmented } from '@/components/ui/Segmented';
 import { InputPanel, OutputPanel, StatsBar } from '@/components/tool/EditorPanels';
@@ -29,6 +28,7 @@ import {
 import { decodeUnicode, escapeUnicode } from '@/lib/unicode';
 import { countTextStats } from '@/lib/text';
 import { SAMPLE_JSON } from '@/data/samples';
+import type { ToolkitPanelProps } from './types';
 
 type ViewMode = 'text' | 'tree';
 type ResultKind = 'format' | 'escape' | 'unescape' | 'unicode-encode' | 'unicode-decode';
@@ -75,7 +75,7 @@ const RESULT_META: Record<
   },
 };
 
-export default function JsonFormatterTool() {
+export function FormatPanel({ input, setInput, active }: ToolkitPanelProps) {
   const { t } = useI18n();
   const io = useToolIO();
   const [indent, setIndent] = useState<'2' | '4'>('2');
@@ -91,8 +91,8 @@ export default function JsonFormatterTool() {
   const runFormat = () => {
     setValidation(null);
     setResultKind('format');
-    const escaped = io.input.trim().startsWith('"');
-    void io.run((input) => formatJson(input, Number(indent), sortKeys), {
+    const escaped = input.trim().startsWith('"');
+    void io.runWithValue((value) => formatJson(value, Number(indent), sortKeys), input, {
       success: escaped
         ? t({ zh: '检测到转义后的 JSON 字符串，已自动去转义并格式化', en: 'Escaped JSON string detected; unescaped and formatted automatically' })
         : t({ zh: '格式化完成', en: 'Formatted' }),
@@ -102,8 +102,8 @@ export default function JsonFormatterTool() {
   const runMinify = () => {
     setValidation(null);
     setResultKind('format');
-    const escaped = io.input.trim().startsWith('"');
-    void io.run((input) => minifyJson(input), {
+    const escaped = input.trim().startsWith('"');
+    void io.runWithValue((value) => minifyJson(value), input, {
       success: escaped
         ? t({ zh: '检测到转义后的 JSON 字符串，已自动去转义并压缩', en: 'Escaped JSON string detected; unescaped and minified automatically' })
         : t({ zh: '压缩完成', en: 'Minified' }),
@@ -111,7 +111,7 @@ export default function JsonFormatterTool() {
   };
 
   const runValidate = () => {
-    const result = validateJson(io.input);
+    const result = validateJson(input);
     setValidation(result);
     if (result.valid) {
       setValidation({ ...result, message: { zh: '✅ JSON 格式合法', en: '✅ Valid JSON' } });
@@ -122,7 +122,7 @@ export default function JsonFormatterTool() {
     setValidation(null);
     setResultKind('escape');
     setViewMode('text');
-    void io.run((input) => escapeJsonString(input, { outerQuotes }), {
+    void io.runWithValue((value) => escapeJsonString(value, { outerQuotes }), input, {
       success: t({ zh: 'JSON 转义完成', en: 'Escaped' }),
     });
   };
@@ -131,14 +131,14 @@ export default function JsonFormatterTool() {
     setValidation(null);
     setResultKind('unescape');
     setViewMode('text');
-    void io.run(unescapeJsonString, { success: t({ zh: '去转义完成', en: 'Unescaped' }) });
+    void io.runWithValue(unescapeJsonString, input, { success: t({ zh: '去转义完成', en: 'Unescaped' }) });
   };
 
   const runUnicodeEncode = () => {
     setValidation(null);
     setResultKind('unicode-encode');
     setViewMode('text');
-    void io.run((input) => escapeUnicode(input, { escapeAll: false, uppercase: uppercaseUnicode }), {
+    void io.runWithValue((value) => escapeUnicode(value, { escapeAll: false, uppercase: uppercaseUnicode }), input, {
       success: t({ zh: '已转换为 Unicode 转义', en: 'Converted to Unicode escapes' }),
     });
   };
@@ -147,14 +147,14 @@ export default function JsonFormatterTool() {
     setValidation(null);
     setResultKind('unicode-decode');
     setViewMode('text');
-    void io.run((input) => decodeUnicode(input, { nonAsciiOnly: true, jsonOnly: true }), {
+    void io.runWithValue((value) => decodeUnicode(value, { nonAsciiOnly: true, jsonOnly: true }), input, {
       success: t({ zh: 'Unicode 已还原为中文', en: 'Unicode decoded back to text' }),
     });
   };
 
-  useHotkey({ key: 'Enter', metaOrCtrl: true }, () => runFormat());
+  useHotkey({ key: 'Enter', metaOrCtrl: true, enabled: active }, () => runFormat());
 
-  const inputStats = useMemo(() => countTextStats(io.input), [io.input]);
+  const inputStats = useMemo(() => countTextStats(input), [input]);
   const outputStats = useMemo(() => countTextStats(io.output), [io.output]);
   const outputType = useMemo(() => {
     if (!io.output) return null;
@@ -173,7 +173,7 @@ export default function JsonFormatterTool() {
   const treeResult = useMemo(() => {
     // 树形视图只在 viewMode === 'tree' 时渲染；默认的文本视图下每次按键都重解析整篇 JSON 纯属浪费。
     if (viewMode !== 'tree') return { hasValue: false, value: undefined, message: { zh: '', en: '' } };
-    const source = io.output.trim() ? io.output : io.input;
+    const source = io.output.trim() ? io.output : input;
     if (!source.trim()) {
       return {
         hasValue: false,
@@ -193,7 +193,15 @@ export default function JsonFormatterTool() {
             : { zh: 'JSON 解析失败', en: 'JSON parsing failed' },
       };
     }
-  }, [viewMode, io.input, io.output]);
+  }, [viewMode, input, io.output]);
+
+  const clearAll = () => {
+    setInput('');
+    io.setOutput('');
+    io.setError(null);
+    io.setNotice(null);
+    setValidation(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -213,19 +221,16 @@ export default function JsonFormatterTool() {
 
         <span className="mx-1 hidden h-5 w-px bg-line sm:block" />
 
-        <label className="flex items-center gap-1.5 text-xs text-ink-3">
-          {t({ zh: '缩进', en: 'Indent' })}
-          <Select
-            value={indent}
-            onChange={(event) => setIndent(event.target.value as '2' | '4')}
-            aria-label={t({ zh: '缩进方式', en: 'Indent style' })}
-            className="h-8 text-xs"
-            wrapperClassName="w-24"
-          >
-            <option value="2">{t({ zh: '2 空格', en: '2 spaces' })}</option>
-            <option value="4">{t({ zh: '4 空格', en: '4 spaces' })}</option>
-          </Select>
-        </label>
+        <Segmented<'2' | '4'>
+          value={indent}
+          onChange={setIndent}
+          ariaLabel={t({ zh: '缩进方式', en: 'Indent style' })}
+          size="sm"
+          options={[
+            { value: '2', label: t({ zh: '2 空格', en: '2 spaces' }) },
+            { value: '4', label: t({ zh: '4 空格', en: '4 spaces' }) },
+          ]}
+        />
 
         <Checkbox
           checked={sortKeys}
@@ -249,7 +254,7 @@ export default function JsonFormatterTool() {
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <SampleButton
             onClick={() => {
-              io.reset(SAMPLE_JSON);
+              setInput(SAMPLE_JSON);
               setValidation(null);
               setResultKind('format');
               try {
@@ -259,12 +264,7 @@ export default function JsonFormatterTool() {
               }
             }}
           />
-          <ClearButton
-            onClick={() => {
-              io.clear();
-              setValidation(null);
-            }}
-          />
+          <ClearButton onClick={clearAll} />
           <CopyButton text={io.output} label={t({ zh: '复制结果', en: 'Copy result' })} />
           <DownloadButton
             filename={resultMeta.filename}
@@ -345,9 +345,9 @@ export default function JsonFormatterTool() {
       <div className="grid gap-4 lg:grid-cols-2">
         <InputPanel
           label={t({ zh: '输入内容', en: 'Input' })}
-          value={io.input}
+          value={input}
           onChange={(value) => {
-            io.setInput(value);
+            setInput(value);
             setValidation(null);
           }}
           placeholder={t({ zh: '粘贴 JSON、转义字符串或其他待处理文本，例如 {"name":"qwen"}', en: 'Paste JSON, an escaped string, or other text, e.g. {"name":"qwen"}' })}
@@ -364,7 +364,7 @@ export default function JsonFormatterTool() {
           <Panel
             title={t({ zh: '树形视图', en: 'Tree view' })}
             subtitle={t({ zh: '只读浏览；点击箭头展开或折叠', en: 'Read-only; click the arrows to expand or collapse' })}
-            actions={<CopyIconButton text={io.output || io.input} label={t({ zh: '复制 JSON', en: 'Copy JSON' })} />}
+            actions={<CopyIconButton text={io.output || input} label={t({ zh: '复制 JSON', en: 'Copy JSON' })} />}
             footer={
               <StatsBar
                 items={[

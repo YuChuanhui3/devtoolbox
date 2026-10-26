@@ -21,10 +21,11 @@ import { ToolError, errorHint } from '@/lib/errors';
 import { highlightJson, parseJson } from '@/lib/json';
 import { countTextStats } from '@/lib/text';
 import { SAMPLE_JSONPATH, SAMPLE_JSONPATH_INPUT } from '@/data/samples';
+import type { ToolkitPanelProps } from './types';
 
 const EXAMPLES = ['$', '$.data.list[*].name', '$.data.list[0]', '$.data.list[*].score'];
 
-export default function JsonPathTool() {
+export function JsonPathPanel({ input, setInput, active }: ToolkitPanelProps) {
   const { t } = useI18n();
   const io = useToolIO();
   const [path, setPath] = useState(SAMPLE_JSONPATH);
@@ -34,9 +35,9 @@ export default function JsonPathTool() {
     setWarning(null);
     let emptyResult = false;
 
-    await io.run(
-      (input) => {
-        const data = parseJson(input);
+    await io.runWithValue(
+      (value) => {
+        const data = parseJson(value);
         if (!path.trim()) {
           throw new ToolError(
             { zh: '请输入 JSONPath 表达式', en: 'Enter a JSONPath expression' },
@@ -55,6 +56,7 @@ export default function JsonPathTool() {
         emptyResult = matches.length === 0;
         return JSON.stringify(matches, null, 2);
       },
+      input,
       { success: t({ zh: '查询完成', en: 'Query finished' }) },
     );
 
@@ -66,13 +68,21 @@ export default function JsonPathTool() {
     }
   };
 
-  useHotkey({ key: 'Enter', metaOrCtrl: true }, () => {
+  useHotkey({ key: 'Enter', metaOrCtrl: true, enabled: active }, () => {
     void runQuery();
   });
 
   const highlighted = useMemo(() => (io.output ? highlightJson(io.output) : ''), [io.output]);
-  const inputStats = useMemo(() => countTextStats(io.input), [io.input]);
+  const inputStats = useMemo(() => countTextStats(input), [input]);
   const outputStats = useMemo(() => countTextStats(io.output), [io.output]);
+
+  const clearAll = () => {
+    setInput('');
+    io.setOutput('');
+    io.setError(null);
+    io.setNotice(null);
+    setWarning(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -95,21 +105,16 @@ export default function JsonPathTool() {
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <SampleButton
             onClick={() => {
-              io.reset(SAMPLE_JSONPATH_INPUT);
+              setInput(SAMPLE_JSONPATH_INPUT);
               setPath(SAMPLE_JSONPATH);
               setWarning(null);
               void io.runWithValue(
-                (input) => JSON.stringify(JSONPath({ path: SAMPLE_JSONPATH, json: parseJson(input) as object, wrap: true }), null, 2),
+                (value) => JSON.stringify(JSONPath({ path: SAMPLE_JSONPATH, json: parseJson(value) as object, wrap: true }), null, 2),
                 SAMPLE_JSONPATH_INPUT,
               );
             }}
           />
-          <ClearButton
-            onClick={() => {
-              io.clear();
-              setWarning(null);
-            }}
-          />
+          <ClearButton onClick={clearAll} />
           <CopyButton text={io.output} label={t({ zh: '复制结果', en: 'Copy result' })} />
           <DownloadButton filename="jsonpath-result.json" content={io.output} mime="application/json;charset=utf-8" />
         </div>
@@ -142,8 +147,8 @@ export default function JsonPathTool() {
       <div className="grid gap-4 lg:grid-cols-2">
         <InputPanel
           label={t({ zh: 'JSON 输入', en: 'JSON input' })}
-          value={io.input}
-          onChange={io.setInput}
+          value={input}
+          onChange={setInput}
           placeholder={t({ zh: '粘贴 JSON 内容…', en: 'Paste JSON content…' })}
           footer={
             <StatsBar

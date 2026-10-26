@@ -2,12 +2,12 @@
 
 [![Deploy to GitHub Pages](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml/badge.svg)](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-![Tools](https://img.shields.io/badge/tools-93-blue)
+![Tools](https://img.shields.io/badge/tools-85-blue)
 ![PRs%20Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 **Live site: <https://YuChuanhui3.github.io/devtoolbox/>**
 
-DevToolbox is a free, open-source online toolbox for developers: **93 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Everything runs 100% client-side — your text, JSON and images never leave your device. No account, no backend, no analytics scripts. The interface is fully bilingual (English / 中文) with instant switching.
+DevToolbox is a free, open-source online toolbox for developers: **85 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Everything runs 100% client-side — your text, JSON and images never leave your device. No account, no backend, no analytics scripts. The interface is fully bilingual (English / 中文) with instant switching.
 
 ## Why DevToolbox
 
@@ -17,13 +17,13 @@ DevToolbox is a free, open-source online toolbox for developers: **93 browser-ba
 - **Peer-to-peer LAN file transfer** — WebRTC DataChannel file/transfer between phone and desktop on the same Wi-Fi, no server in between.
 - **Built for daily use** — global search (`⌘/Ctrl + K`), favorites, recent tools, auto-saved drafts, light/dark/system theme, per-tool code splitting.
 
-## Tool Categories (93 tools)
+## Tool Categories (85 tools)
 
 | Category | Count | Representative tools |
 |---|---|---|
 | Encoding & Encryption 编码加密 | 16 | Base64/Base32/Base58 codec, URL encoder, MD5/SHA digest, AES & RSA encrypt/decrypt, JWT decoder, bcrypt/scrypt, hex, gzip, htpasswd, random password |
 | Developer Utilities 开发调试 | 29 | Timestamp converter, regex tester, UUID generator, code compare, cron parser, HTTP status codes & headers reference, port reference, color converter, SQL/HTML/JS formatter, CRC16/CRC32, self-signed cert, virtual bank card & multi-country identity generator |
-| Data Formats 数据格式 | 10 | JSON formatter, JSON Schema validate & generate, JSON↔CSV/XML/YAML/Query converters, JSON Diff, JSONPath query, JSON to Java/TS/Go entities, YAML↔Properties |
+| Data Formats 数据格式 | 2 | JSON Toolkit (format/minify/validate + JSONPath query + Schema + structural diff + six-format converter JSON/XML/YAML/CSV/Properties/Query, all on one shared input), JSON to Java/TS/Go entities |
 | Network Tools 网络工具 | 25 | My IP lookup, IP info & DNS record query, curl to code, WebSocket tester, subnet mask calculator, robots.txt generator, shields badge, SEO checker, LAN file transfer (WebRTC), MQTT cheatsheet & examples |
 | Image Tools 图像处理 | 4 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator |
 | Text Tools 文本处理 | 8 | Word/character counter, case converter, line utils, dedupe, sort, occurrence counter, HTML sanitize & entity escape |
@@ -64,14 +64,14 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 # 中文说明
 
-一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **93 个高频工具**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
+一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **85 个高频工具**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
 
 没有账号、没有后端、没有第三方统计脚本。文本、JSON、图片等内容默认在浏览器内处理，不会上传服务器；收藏、最近使用与草稿仅保存在本机 `localStorage`。
 
 ## 功能特性
 
 - **全局搜索**：`⌘ / Ctrl + K` 唤起，支持名称、别名、标签与描述搜索，键盘上下选择、Enter 打开。
-- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；93 个工具、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
+- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；85 个工具、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
 - **工具分类**：编码加密、开发调试、Markdown、数据格式、图像处理、网络工具、文本处理七大分类，按名称拼音首字母排序。
 - **收藏与最近使用**：收藏工具、记录最近访问，刷新后仍然保留。
 - **主题模式**：浅色 / 深色 / 跟随系统，首次绘制前应用主题，避免闪烁。
@@ -99,9 +99,9 @@ AES 加密解密、Base32/58/62/100 互转、Base64 编码解码、Bcrypt/Scrypt
 
 Markdown 实时渲染：编辑 / 分栏 / 预览三种模式、同步滚动、语法高亮、自动保存、复制 Markdown / HTML、下载 `.md` / `.html`、移动端编辑 / 预览切换。
 
-### 数据格式（10）
+### 数据格式（2）
 
-JSON Diff 对比、JSON ↔ CSV 互转、JSON ↔ XML 互转、JSON ↔ YAML 互转、JSON ↔ Query 互转、JSON 格式化、JSON Schema 校验生成、JSON 转多语言实体类、JSONPath 查询、YAML ↔ Properties 互转。
+JSON 工具箱（格式化/压缩/校验 + JSONPath 查询 + Schema 校验生成 + JSON 结构化对比 + 六种格式互转（JSON/XML/YAML/CSV/Properties/Query），共享同一份输入）、JSON 转多语言实体类。
 
 ### 图像处理（4）
 
@@ -164,7 +164,7 @@ src/
 ├── lib/                 # 纯函数与浏览器能力封装（JSON、编码、转换、图片等）
 ├── pages/               # 首页、全部工具、分类、收藏、最近、关于、隐私
 ├── store/               # Zustand 全局状态
-├── tools/               # 93 个工具组件，按工具独立分包
+├── tools/               # 85 个工具组件，按工具独立分包
 └── workers/             # JSON 转代码 Web Worker
 ```
 
