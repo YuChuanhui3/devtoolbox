@@ -1,9 +1,8 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Braces, Keyboard, Menu, Search, Settings2 } from 'lucide-react';
 import { useSearch } from '@/components/search/SearchProvider';
 import { useHotkey } from '@/hooks/useHotkey';
 import { useI18n } from '@/i18n/I18nProvider';
-import type { L10n } from '@/i18n/locale';
 import { IconButton } from '@/components/ui/IconButton';
 import { Kbd } from '@/components/ui/Kbd';
 import { ThemeToggle } from './ThemeToggle';
@@ -16,12 +15,7 @@ interface HeaderProps {
   onShowShortcuts: () => void;
 }
 
-const NAV_LINKS: Array<{ to: string; label: L10n; end: boolean }> = [
-  { to: '/', label: { zh: '首页', en: 'Home' }, end: true },
-  { to: '/tools', label: { zh: '全部工具', en: 'All Tools' }, end: false },
-  { to: '/recent', label: { zh: '最近使用', en: 'Recent' }, end: false },
-  { to: '/favorites', label: { zh: '我的收藏', en: 'Favorites' }, end: false },
-];
+// 全部工具/收藏/最近由侧栏「快捷入口」承载，顶栏不再重复放置导航。
 
 export function Header({ onOpenMenu, onOpenSettings, onShowShortcuts }: HeaderProps) {
   const { openSearch } = useSearch();
@@ -50,29 +44,6 @@ export function Header({ onOpenMenu, onOpenSettings, onShowShortcuts }: HeaderPr
             </span>
           </span>
         </Link>
-
-        <nav
-          aria-label={t({ zh: '主导航', en: 'Main navigation' })}
-          className="ml-2 hidden items-center gap-0.5 md:flex"
-        >
-          {NAV_LINKS.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={({ isActive }) =>
-                cn(
-                  'rounded-full px-3 py-1.5 text-sm transition-colors duration-300',
-                  isActive
-                    ? 'bg-accent-soft font-semibold text-accent-strong'
-                    : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
-                )
-              }
-            >
-              {t(link.label)}
-            </NavLink>
-          ))}
-        </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
           <button

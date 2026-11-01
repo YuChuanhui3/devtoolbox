@@ -22,7 +22,7 @@ export function ToolHeader({ tool }: { tool: ToolMeta }) {
   const name = toolName(tool, locale);
 
   return (
-    <header className="space-y-3">
+    <header className="space-y-1.5">
       <nav
         aria-label={t({ zh: '面包屑', en: 'Breadcrumb' })}
         className="flex flex-wrap items-center gap-1 text-xs text-ink-3"
@@ -41,39 +41,28 @@ export function ToolHeader({ tool }: { tool: ToolMeta }) {
         <span className="text-ink-2">{name}</span>
       </nav>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 items-center gap-3">
           <span
             className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
               toolChipTone(tool.sensitive),
             )}
           >
-            <ToolIcon name={tool.icon} className="h-5.5 w-5.5" />
+            <ToolIcon name={tool.icon} className="h-5 w-5" />
           </span>
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink">{name}</h1>
+              <h1 className="text-[22px] font-semibold leading-tight tracking-[0.01em] text-ink">{name}</h1>
               {category ? <Badge tone="accent">{t(category.name)}</Badge> : null}
               {tool.priority === 'P0' ? (
                 <Badge tone="success">{t({ zh: '常用', en: 'Popular' })}</Badge>
               ) : null}
             </div>
-            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-ink-3">{toolDescription(tool, locale)}</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {tool.tags
-                .filter((tag) => locale === 'zh' || !/[\u4e00-\u9fff]/.test(tag))
-                .slice(0, 5)
-                .map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full border border-line bg-surface-2/60 px-2 py-1 font-mono text-[11px] text-ink-3"
-                  >
-                    {tag}
-                  </span>
-                ))}
-            </div>
+            <p className="mt-0.5 max-w-3xl truncate text-xs leading-5 text-ink-3" title={toolDescription(tool, locale)}>
+              {toolDescription(tool, locale)}
+            </p>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import type { CategoryId, ToolMeta } from '@/types/tool';
+import type { CategoryId, SubFeatureMeta, ToolMeta } from '@/types/tool';
 import type { Locale } from '@/i18n/locale';
 import { CATEGORIES } from './categories';
 
@@ -6,6 +6,13 @@ const RAW_TOOLS: ToolMeta[] = [
   // ---------------- 数据格式 ----------------
   {
     id: 'json-toolkit',
+    subFeatures: [
+    { id: 'format', name: { zh: '格式化', en: 'Format' }, keywords: ['json格式化', '美化', '压缩', '校验', 'beautify', 'minify', 'validate'] },
+    { id: 'path', name: { zh: 'JSONPath 查询', en: 'JSONPath' }, keywords: ['jsonpath', '路径查询', 'jp'] },
+    { id: 'schema', name: { zh: 'Schema', en: 'Schema' }, keywords: ['json schema', 'schema校验', '生成schema'] },
+    { id: 'diff', name: { zh: 'JSON 对比', en: 'JSON Diff' }, keywords: ['diff', '对比', '差异'] },
+    { id: 'convert', name: { zh: '格式转换', en: 'Convert' }, keywords: ['xml', 'yaml', 'csv', 'properties', '互转', '转换'] },
+    ],
     name: 'JSON 工具箱',
     nameEn: 'JSON Toolkit',
     category: 'data',
@@ -82,6 +89,16 @@ const RAW_TOOLS: ToolMeta[] = [
   // ---------------- 编码加密 ----------------
   {
     id: 'codec-toolkit',
+    subFeatures: [
+    { id: 'base64', name: { zh: 'Base64', en: 'Base64' }, keywords: ['b64', 'base64编码', 'base64解码'] },
+    { id: 'url', name: { zh: 'URL', en: 'URL' }, keywords: ['urlencode', 'urldecode', 'url编码'] },
+    { id: 'unicode', name: { zh: 'Unicode', en: 'Unicode' }, keywords: ['u编码', 'unicode中文', '转义'] },
+    { id: 'hex', name: { zh: 'Hex', en: 'Hex' }, keywords: ['十六进制', '16进制'] },
+    { id: 'js-escape', name: { zh: 'JS 转义', en: 'JS Escape' }, keywords: ['escape', 'unescape', 'js字符串'] },
+    { id: 'base-n', name: { zh: 'Base32/58/62/100', en: 'Base32/58/62/100' }, keywords: ['base32', 'base58', 'base62', 'base100'] },
+    { id: 'gzip', name: { zh: 'Gzip', en: 'Gzip' }, keywords: ['压缩', '解压', 'deflate'] },
+    { id: 'morse', name: { zh: '莫尔斯', en: 'Morse' }, keywords: ['摩斯密码', '莫斯电码', 'morse'] },
+    ],
     name: '编码解码工具箱',
     nameEn: 'Codec Toolkit',
     category: 'encode',
@@ -95,6 +112,11 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'hash-toolkit',
+    subFeatures: [
+    { id: 'hash', name: { zh: '摘要计算', en: 'Digests' }, keywords: ['md5', 'sha', 'sha256', '文件哈希', 'gravatar'] },
+    { id: 'pwdhash', name: { zh: 'Bcrypt/Scrypt', en: 'Bcrypt/Scrypt' }, keywords: ['bcrypt', 'scrypt', '口令哈希', '密码哈希'] },
+    { id: 'htpasswd', name: { zh: 'htpasswd', en: 'htpasswd' }, keywords: ['apache', 'apr1', '认证文件'] },
+    ],
     name: '哈希与口令工具箱',
     nameEn: 'Hash & Password Toolkit',
     category: 'encode',
@@ -109,6 +131,12 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'crypto-toolkit',
+    subFeatures: [
+    { id: 'aes', name: { zh: 'AES', en: 'AES' }, keywords: ['aes加密', 'aes解密', 'gcm', 'cbc'] },
+    { id: 'symcipher', name: { zh: '经典对称', en: 'Classic Symmetric' }, keywords: ['des', '3des', 'rc4', 'rabbit'] },
+    { id: 'rsa', name: { zh: 'RSA', en: 'RSA' }, keywords: ['密钥对', '签名', '验签', 'pem'] },
+    { id: 'jwt', name: { zh: 'JWT', en: 'JWT' }, keywords: ['token', 'jwt解析', 'jwt解码', '解码token'] },
+    ],
     name: '加解密工具箱',
     nameEn: 'Cipher Toolkit',
     category: 'encode',
@@ -138,6 +166,11 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'random-toolkit',
+    subFeatures: [
+    { id: 'uuid', name: { zh: 'UUID', en: 'UUID' }, keywords: ['uuid v4', 'guid', '生成uuid'] },
+    { id: 'number', name: { zh: '随机数', en: 'Random Number' }, keywords: ['随机数', '整数', '范围', '骰子'] },
+    { id: 'password', name: { zh: '密码', en: 'Password' }, keywords: ['强密码', '随机密码', '口令生成'] },
+    ],
     name: '随机生成工具箱',
     nameEn: 'Random Generator Toolkit',
     category: 'dev',
@@ -152,6 +185,10 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'regex-toolkit',
+    subFeatures: [
+    { id: 'tester', name: { zh: '正则测试', en: 'Regex Tester' }, keywords: ['正则', 'regex', '匹配', '捕获组', '替换'] },
+    { id: 'escape', name: { zh: '正则转义', en: 'Regex Escape' }, keywords: ['转义', '元字符'] },
+    ],
     name: '正则表达式工具箱',
     nameEn: 'Regex Toolkit',
     category: 'dev',
@@ -166,6 +203,12 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'dev-calc-toolkit',
+    subFeatures: [
+    { id: 'radix', name: { zh: '进制转换', en: 'Base Conversion' }, keywords: ['二进制', '十六进制', '八进制', '进制'] },
+    { id: 'file-size', name: { zh: '文件大小', en: 'File Size' }, keywords: ['kb', 'mb', '字节', '容量换算'] },
+    { id: 'crc', name: { zh: 'CRC 校验', en: 'CRC Check' }, keywords: ['crc32', '校验和', 'checksum'] },
+    { id: 'ppi', name: { zh: 'PPI 计算', en: 'PPI Calc' }, keywords: ['像素密度', '屏幕', 'dpi'] },
+    ],
     name: '开发换算计算工具箱',
     nameEn: 'Developer Calc Toolkit',
     category: 'dev',
@@ -179,6 +222,15 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'dev-reference',
+    subFeatures: [
+    { id: 'http-status', name: { zh: '状态码', en: 'Status Codes' }, keywords: ['404', '502', 'http status'] },
+    { id: 'http-headers', name: { zh: '请求头', en: 'Headers' }, keywords: ['header', '响应头字段'] },
+    { id: 'http-methods', name: { zh: '方法', en: 'Methods' }, keywords: ['get', 'post', 'put', '动词'] },
+    { id: 'ports', name: { zh: '端口', en: 'Ports' }, keywords: ['port', '常用端口'] },
+    { id: 'mime-type', name: { zh: 'MIME', en: 'MIME' }, keywords: ['content-type', '文件类型'] },
+    { id: 'linux-commands', name: { zh: 'Linux 命令', en: 'Linux Commands' }, keywords: ['shell', '命令速查', 'bash'] },
+    { id: 'mqtt', name: { zh: 'MQTT', en: 'MQTT' }, keywords: ['物联网', 'topic', '订阅'] },
+    ],
     name: '开发速查手册',
     nameEn: 'Developer Reference',
     category: 'dev',
@@ -228,6 +280,10 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'code-format-toolkit',
+    subFeatures: [
+    { id: 'sql', name: { zh: 'SQL 格式化', en: 'SQL Format' }, keywords: ['sql', '美化sql'] },
+    { id: 'web', name: { zh: 'HTML/CSS/JS 格式化', en: 'Web Format' }, keywords: ['html', 'css', 'js', 'beautify', 'prettier'] },
+    ],
     name: '代码格式化工具箱',
     nameEn: 'Code Formatter Toolkit',
     category: 'dev',
@@ -252,6 +308,12 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'link-parser-toolkit',
+    subFeatures: [
+    { id: 'proxy-link', name: { zh: '代理链接', en: 'Proxy Link' }, keywords: ['clash', 'v2ray', '订阅链接', '机场'] },
+    { id: 'thunder-url', name: { zh: '迅雷链接', en: 'Thunder Link' }, keywords: ['thunder', 'xunlei', '迅雷'] },
+    { id: 'torrent-magnet', name: { zh: '种子磁力', en: 'Torrent Magnet' }, keywords: ['magnet', 'bt', '磁力链', '种子'] },
+    { id: 'type-7', name: { zh: 'Cisco Type7', en: 'Cisco Type-7' }, keywords: ['cisco', 'type 7', '思科'] },
+    ],
     name: '链接解析工具箱',
     nameEn: 'Link Parser Toolkit',
     category: 'dev',
@@ -278,6 +340,10 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'identity-toolkit',
+    subFeatures: [
+    { id: 'card', name: { zh: '虚拟银行卡', en: 'Bank Card' }, keywords: ['银行卡', '信用卡', '测试卡'] },
+    { id: 'address', name: { zh: '虚拟地址', en: 'Virtual Address' }, keywords: ['地址生成', '收货地址', 'identity'] },
+    ],
     name: '虚拟身份生成',
     nameEn: 'Identity Generator',
     category: 'dev',
@@ -387,12 +453,11 @@ const RAW_TOOLS: ToolMeta[] = [
     priority: 'P1',
   },
 
-  // ---------------- Markdown ----------------
   {
     id: 'markdown-editor',
     name: 'Markdown 实时渲染',
     nameEn: 'Markdown Live Renderer',
-    category: 'markdown',
+    category: 'text',
     description: '左右分栏实时预览，代码块语法高亮，支持同步滚动、自动保存与导出。',
     descriptionEn: 'Side-by-side live preview with syntax-highlighted code blocks, synchronized scrolling, auto-save, and export.',
     tags: ['markdown', 'md', '编辑器', '预览', 'html', '代码高亮'],
@@ -456,6 +521,11 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'qr-transfer',
+    subFeatures: [
+    { id: 'send', name: { zh: '发送', en: 'Send' }, keywords: ['二维码发送', '生成二维码', '播放二维码'] },
+    { id: 'receive', name: { zh: '接收', en: 'Receive' }, keywords: ['扫码', '摄像头', '二维码接收'] },
+    { id: 'salvage', name: { zh: '截图/录屏回收', en: 'Salvage' }, keywords: ['录屏', '批量解码', '回收'] },
+    ],
     name: '二维码跨网传输',
     nameEn: 'QR File Transfer (Air-gapped)',
     category: 'image',
@@ -471,6 +541,14 @@ const RAW_TOOLS: ToolMeta[] = [
   // ---------------- 网络工具 ----------------
   {
     id: 'ip-toolkit',
+    subFeatures: [
+    { id: 'query', name: { zh: '归属查询', en: 'IP Lookup' }, keywords: ['ip查询', '归属地', 'ipwho'] },
+    { id: 'number', name: { zh: 'IP ↔ 整数', en: 'IP ↔ Number' }, keywords: ['整数转换', 'long', '无符号'] },
+    { id: 'subnet', name: { zh: '子网计算', en: 'Subnet' }, keywords: ['cidr', '掩码', '网段', '子网'] },
+    { id: 'my', name: { zh: '我的 IP', en: 'My IP' }, keywords: ['出口ip', '公网ip', '本机ip'] },
+    { id: 'nearby', name: { zh: '就近查询', en: 'Nearby' }, keywords: ['定位', '地图', '周边'] },
+    { id: 'generators', name: { zh: '随机生成', en: 'Generators' }, keywords: ['随机ip', 'mac地址', '生成mac'] },
+    ],
     name: 'IP 与网络地址工具箱',
     nameEn: 'IP Toolkit',
     category: 'network',
@@ -484,6 +562,11 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'ua-toolkit',
+    subFeatures: [
+    { id: 'random', name: { zh: '随机 UA', en: 'Random UA' }, keywords: ['useragent', '伪造ua'] },
+    { id: 'collection', name: { zh: 'UA 大全', en: 'UA Library' }, keywords: ['ua列表', 'user-agent 示例'] },
+    { id: 'parser', name: { zh: 'UA 解析', en: 'UA Parser' }, keywords: ['解析ua', '识别浏览器', 'user-agent解析'] },
+    ],
     name: 'UA 工具箱',
     nameEn: 'User-Agent Toolkit',
     category: 'network',
@@ -496,6 +579,10 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'webmaster-toolkit',
+    subFeatures: [
+    { id: 'robots', name: { zh: 'robots.txt', en: 'robots.txt' }, keywords: ['爬虫', 'seo', 'robots'] },
+    { id: 'badge', name: { zh: '徽章', en: 'Badge' }, keywords: ['shields', 'svg徽章', 'skill badge'] },
+    ],
     name: '站长工具',
     nameEn: 'Webmaster Toolkit',
     category: 'network',
@@ -508,6 +595,10 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'browser-toolkit',
+    subFeatures: [
+    { id: 'info', name: { zh: '浏览器信息', en: 'Browser Info' }, keywords: ['navigator', '指纹', '屏幕'] },
+    { id: 'cookie', name: { zh: 'Cookie', en: 'Cookie' }, keywords: ['cookie查看', 'cookie编辑'] },
+    ],
     name: '浏览器检测工具箱',
     nameEn: 'Browser Toolkit',
     category: 'network',
@@ -557,6 +648,14 @@ const RAW_TOOLS: ToolMeta[] = [
   },
   {
     id: 'site-diagnosis-toolkit',
+    subFeatures: [
+    { id: 'dns', name: { zh: 'DNS 记录', en: 'DNS' }, keywords: ['a记录', 'cname', '解析记录'] },
+    { id: 'ns', name: { zh: 'NS 查询', en: 'NS' }, keywords: ['nameserver', '域名服务器'] },
+    { id: 'links', name: { zh: '链接抓取', en: 'Links' }, keywords: ['抓取', '站内链接', '爬取'] },
+    { id: 'seo', name: { zh: 'SEO 检查', en: 'SEO' }, keywords: ['meta', 'tdk', '关键词'] },
+    { id: 'headers', name: { zh: '响应头', en: 'Headers' }, keywords: ['cache', '跨域', 'cors'] },
+    { id: 'webcheck', name: { zh: '综合体检', en: 'Checkup' }, keywords: ['检测', '可用性'] },
+    ],
     name: '网站诊断工具箱',
     nameEn: 'Site Diagnosis Toolkit',
     category: 'network',
@@ -897,4 +996,28 @@ export const searchTools = (query: string, locale: Locale = 'zh'): ToolMeta[] =>
       { name: toolName(b.tool, locale) },
     ))
     .map((item) => item.tool);
+};
+
+/** 搜索命中项：工具箱本身，或其中可直达的子页签（?mode=）。 */
+export interface ToolTargetHit {
+  tool: ToolMeta;
+  sub?: SubFeatureMeta;
+}
+
+export const subFeatureName = (sub: SubFeatureMeta, locale: Locale): string =>
+  locale === 'zh' ? sub.name.zh : sub.name.en;
+
+export const searchToolTargets = (query: string, locale: Locale = 'zh', limit = 12): ToolTargetHit[] => {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hits: ToolTargetHit[] = [];
+  for (const tool of searchTools(query, locale)) {
+    const matched = terms.length === 0 ? [] : (tool.subFeatures ?? []).filter((sub) => {
+      const hay = [sub.name.zh, sub.name.en, ...(sub.keywords ?? [])].join(' ').toLowerCase();
+      return terms.some((term) => hay.includes(term));
+    });
+    hits.push({ tool });
+    for (const sub of matched.slice(0, 2)) hits.push({ tool, sub });
+    if (hits.length >= limit) break;
+  }
+  return hits.slice(0, limit);
 };

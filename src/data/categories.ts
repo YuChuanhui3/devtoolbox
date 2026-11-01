@@ -22,16 +22,6 @@ export const CATEGORIES: CategoryMeta[] = [
     icon: 'Terminal',
   },
   {
-    id: 'markdown',
-    name: { zh: 'Markdown', en: 'Markdown' },
-    shortName: { zh: 'Markdown', en: 'Markdown' },
-    description: {
-      zh: 'Markdown 实时渲染、分栏预览、同步滚动、自动保存与 HTML / MD 导出。',
-      en: 'Live Markdown rendering with split preview, synced scrolling, autosave and HTML / MD export.',
-    },
-    icon: 'FileText',
-  },
-  {
     id: 'data',
     name: { zh: '数据格式', en: 'Data Formats' },
     shortName: { zh: '数据格式', en: 'Data' },
@@ -63,11 +53,11 @@ export const CATEGORIES: CategoryMeta[] = [
   },
   {
     id: 'text',
-    name: { zh: '文本处理', en: 'Text Tools' },
-    shortName: { zh: '文本处理', en: 'Text' },
+    name: { zh: '文本与 Markdown', en: 'Text & Markdown' },
+    shortName: { zh: '文本与 Markdown', en: 'Text & MD' },
     description: {
-      zh: '去重、排序、大小写、字数统计、多行编辑与 HTML 清理。',
-      en: 'Dedupe, sort, change case, count words, edit multiline text and clean up HTML.',
+      zh: '去重、排序、大小写、字数统计、多行编辑与 HTML 清理，以及 Markdown 实时渲染导出。',
+      en: 'Dedupe, sort, change case, count words, edit multiline text, clean HTML, and render / export Markdown live.',
     },
     icon: 'Type',
   },];

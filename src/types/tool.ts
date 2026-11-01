@@ -1,6 +1,14 @@
-export type CategoryId = 'data' | 'encode' | 'dev' | 'text' | 'image' | 'markdown' | 'network';
+export type CategoryId = 'data' | 'encode' | 'dev' | 'text' | 'image' | 'network';
 
 export type Priority = 'P0' | 'P1' | 'P2';
+
+export interface SubFeatureMeta {
+  /** 对应工具箱 ?mode= 页签 id。 */
+  id: string;
+  name: L10n;
+  /** 额外搜索词（小写即可），命中时搜索直达该页签。 */
+  keywords?: string[];
+}
 
 export interface ToolMeta {
   id: string;
@@ -12,6 +20,8 @@ export interface ToolMeta {
   descriptionEn?: string;
   tags: string[];
   aliases?: string[];
+  /** 工具箱内可直达的页签（?mode= 寻址）。 */
+  subFeatures?: SubFeatureMeta[];
   icon: string;
   priority: Priority;
   featured?: boolean;

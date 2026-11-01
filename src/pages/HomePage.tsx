@@ -70,35 +70,30 @@ export function HomePage() {
   const favoriteTools = getToolsByIds(favorites, 8);
 
   return (
-    <div className="space-y-10">
-      <section className="hero-glow relative overflow-hidden rounded-[28px] border border-line bg-surface px-5 py-10 shadow-card sm:px-8 sm:py-14">
+    <div className="space-y-8">
+      <section className="hero-glow relative overflow-hidden rounded-[28px] border border-line bg-surface px-5 py-6 shadow-card sm:px-8 sm:py-8">
         <div className="pointer-events-none absolute inset-0 bg-dots opacity-30 [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]" />
         <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-strong">
-            <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-            {t({ zh: '本地优先处理 · 数据不上传', en: 'Local-first processing · no uploads' })}
-          </span>
-
-          <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight tracking-[0.01em] text-ink sm:text-[42px]">
+          <h1 className="mt-1 text-balance text-[26px] font-semibold leading-tight tracking-[0.01em] text-ink sm:text-[32px]">
             {t({ zh: '开发者在线工具箱', en: 'The Online Toolbox for Developers' })}
-            <span className="mt-2 block text-lg font-medium text-ink-2 sm:text-xl">
+            <span className="mt-1 block text-base font-medium text-ink-2 sm:text-lg">
               {/* 数字用等宽 + tabular-nums，让工具数量在标题里像读数一样对齐。 */}
               <span className="font-mono tabular-nums">{TOOLS.length}</span>
               {t({ zh: ' 个高频工具，打开即用', en: ' everyday tools, ready to use' })}
             </span>
           </h1>
 
-          <p className="mt-4 max-w-xl text-sm leading-6 text-ink-3">
+          <p className="mt-2 max-w-xl text-xs leading-5 text-ink-3">
             {t({
-              zh: 'JSON 格式化、格式转换、编码加密、时间戳、正则测试、Markdown 实时渲染与图片压缩，统一交互、无需登录、默认在浏览器本地完成。',
-              en: 'JSON formatting, format conversion, encoding and encryption, timestamps, regex testing, live Markdown and image compression — consistent UI, no sign-in, everything runs locally in your browser.',
+              zh: 'JSON、编码加密、时间戳、正则、Markdown 与图片处理，统一交互、无需登录、默认浏览器本地完成。',
+              en: 'JSON, encoding and encryption, timestamps, regex, Markdown and image tools — consistent UI, no sign-in, local-first.',
             })}
           </p>
 
           <button
             type="button"
             onClick={openSearch}
-            className="group mt-7 flex w-full max-w-2xl items-center gap-3 rounded-full border border-line bg-surface px-5 py-3.5 text-left shadow-float transition-all duration-500 ease-in-out hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-card-hover"
+            className="group mt-4 flex w-full max-w-2xl items-center gap-3 rounded-full border border-line bg-surface px-5 py-3 text-left shadow-float transition-all duration-500 ease-in-out hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-card-hover"
           >
             <Search className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
             <span className="min-w-0 flex-1 truncate text-sm text-ink-3">
@@ -113,7 +108,7 @@ export function HomePage() {
             </span>
           </button>
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <span className="text-[11px] text-ink-3">
               {t({ zh: '常用：', en: 'Popular:' })}
             </span>

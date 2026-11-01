@@ -26,10 +26,31 @@ export function Segmented<T extends string>({
   className,
   size = 'md',
 }: SegmentedProps<T>) {
+  const enabled = options.filter((option) => !option.disabled);
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
+    const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
+    if (!forward && !backward && event.key !== 'Home' && event.key !== 'End') return;
+    if (enabled.length === 0) return;
+    event.preventDefault();
+    const current = enabled.findIndex((option) => option.value === value);
+    let next: number;
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = enabled.length - 1;
+    else next = (Math.max(current, 0) + (forward ? 1 : -1) + enabled.length) % enabled.length;
+    onChange(enabled[next].value);
+    const tabs = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]:not([disabled])'),
+    );
+    tabs[next]?.focus();
+  };
+
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
+      onKeyDown={onKeyDown}
       className={cn(
         'inline-flex flex-wrap items-center gap-0.5 rounded-full border border-line bg-surface-2',
         size === 'sm' ? 'p-0.5' : 'p-1',
@@ -44,6 +65,7 @@ export function Segmented<T extends string>({
             type="button"
             role="tab"
             aria-selected={active}
+            tabIndex={active ? 0 : -1}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
             className={cn(

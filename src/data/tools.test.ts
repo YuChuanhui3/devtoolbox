@@ -8,6 +8,7 @@ import {
   getToolsByIds,
   hasSortPinyin,
   searchTools,
+  searchToolTargets,
   sortToolsForLocale,
   toolPath,
 } from './tools';
@@ -143,5 +144,47 @@ describe('新一批工具搜索直达', () => {
   ];
   test.each(cases)('“%s” 直达 %s', (query, id) => {
     expect(searchTools(query)[0]?.id).toBe(id);
+  });
+});
+
+describe('搜索直达子功能页签', () => {
+  test('“JWT” 命中加解密工具箱的 jwt 页签', () => {
+    const hits = searchToolTargets('JWT');
+    expect(hits.some((h) => h.tool.id === 'crypto-toolkit' && h.sub?.id === 'jwt')).toBe(true);
+  });
+
+  test('子页签跟随其工具箱、且每个工具箱最多带出 2 个', () => {
+    const hits = searchToolTargets('json');
+    const firstTool = hits[0]?.tool.id;
+    const subsOfFirst = hits.filter((h) => h.tool.id === firstTool && h.sub).length;
+    expect(subsOfFirst).toBeLessThanOrEqual(2);
+    expect(hits.some((h) => h.tool.id === firstTool && !h.sub)).toBe(true);
+  });
+
+  test.each([
+    ['磁力', 'link-parser-toolkit', 'torrent-magnet'],
+    ['子网', 'ip-toolkit', 'subnet'],
+    ['bcrypt', 'hash-toolkit', 'pwdhash'],
+    ['状态码', 'dev-reference', 'http-status'],
+    ['录屏', 'qr-transfer', 'salvage'],
+  ] as const)('“%s” 直达 %s 的 %s', (query, toolId, subId) => {
+    const hit = searchToolTargets(query).find((h) => h.sub?.id === subId);
+    expect(hit?.tool.id).toBe(toolId);
+  });
+
+  test('无子功能的工具只出裸条目；空查询受 limit 约束', () => {
+    expect(searchToolTargets('时间戳').every((h) => h.tool.id !== 'json-toolkit' || !h.sub || h.sub.id)).toBe(true);
+    expect(searchToolTargets('', 'zh', 100)).toHaveLength(TOOLS.length);
+    expect(searchToolTargets('')).toHaveLength(12);
+  });
+
+  test('每个 subFeatures id 都是合法页签寻址（与 LEGACY_TOOL_MODES 同构）', () => {
+    for (const tool of TOOLS) {
+      for (const sub of tool.subFeatures ?? []) {
+        expect(sub.id).toMatch(/^[a-z0-9-]+$/);
+        expect(sub.name.zh.length).toBeGreaterThan(0);
+        expect(sub.name.en.length).toBeGreaterThan(0);
+      }
+    }
   });
 });

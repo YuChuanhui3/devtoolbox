@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CornerDownLeft, Search, Sparkles } from 'lucide-react';
-import { FEATURED_TOOLS, getTool, searchTools, sortToolsForLocale, toolDescription, toolName, toolPath } from '@/data/tools';
+import { FEATURED_TOOLS, getTool, searchToolTargets, sortToolsForLocale, subFeatureName, toolDescription, toolName, toolPath } from '@/data/tools';
 import { getCategory } from '@/data/categories';
 import { useAppStore } from '@/store/appStore';
 import { Modal } from '@/components/ui/Modal';
@@ -11,7 +11,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { cn } from '@/lib/cn';
 import { toolChipTone } from '@/lib/toolTone';
 import { trackSearch } from '@/lib/analytics';
-import type { ToolMeta } from '@/types/tool';
+import type { SubFeatureMeta, ToolMeta } from '@/types/tool';
 
 interface SearchDialogProps {
   open: boolean;
@@ -20,6 +20,7 @@ interface SearchDialogProps {
 
 interface SearchEntry {
   tool: ToolMeta;
+  sub?: SubFeatureMeta;
   group: string;
 }
 
@@ -36,11 +37,11 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
   const addSearchHistory = useAppStore((state) => state.addSearchHistory);
   const clearSearchHistory = useAppStore((state) => state.clearSearchHistory);
 
-  const results = useMemo(() => (query.trim() ? searchTools(query, locale).slice(0, 12) : []), [query, locale]);
+  const results = useMemo(() => (query.trim() ? searchToolTargets(query, locale, 12) : []), [query, locale]);
 
   const entries = useMemo<SearchEntry[]>(() => {
     if (query.trim()) {
-      return results.map((tool) => ({ tool, group: t({ zh: '搜索结果', en: 'Search results' }) }));
+      return results.map((hit) => ({ tool: hit.tool, sub: hit.sub, group: t({ zh: '搜索结果', en: 'Search results' }) }));
     }
 
     const seen = new Set<string>();
@@ -83,12 +84,12 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
     node?.scrollIntoView({ block: 'nearest' });
   }, [activeIndex, open]);
 
-  const openTool = (tool: ToolMeta) => {
+  const openTool = (tool: ToolMeta, sub?: SubFeatureMeta) => {
     const keyword = query.trim();
-    addSearchHistory(keyword || toolName(tool, locale));
+    addSearchHistory(keyword || (sub ? subFeatureName(sub, locale) : toolName(tool, locale)));
     if (keyword && useAppStore.getState().analyticsEnabled) trackSearch();
     onClose();
-    navigate(toolPath(tool.id));
+    navigate(toolPath(tool.id) + (sub ? `?mode=${sub.id}` : ''));
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -101,7 +102,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
     } else if (event.key === 'Enter') {
       event.preventDefault();
       const selected = entries[activeIndex];
-      if (selected) openTool(selected.tool);
+      if (selected) openTool(selected.tool, selected.sub);
     }
   };
 
@@ -178,7 +179,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
             const category = getCategory(entry.tool.category);
 
             return (
-              <div key={entry.tool.id}>
+              <div key={`${entry.tool.id}${entry.sub ? `:${entry.sub.id}` : ''}`}>
                 {showGroup ? (
                   <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">
                     {entry.group}
@@ -188,7 +189,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
                   type="button"
                   data-search-index={index}
                   onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => openTool(entry.tool)}
+                  onClick={() => openTool(entry.tool, entry.sub)}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors duration-150',
                     activeIndex === index ? 'bg-accent-soft' : 'hover:bg-surface-2',
@@ -210,7 +211,9 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
                           activeIndex === index ? 'text-accent-strong' : 'text-ink',
                         )}
                       >
-                        {toolName(entry.tool, locale)}
+                        {entry.sub
+                          ? `${subFeatureName(entry.sub, locale)} · ${toolName(entry.tool, locale)}`
+                          : toolName(entry.tool, locale)}
                       </span>
                       <span className="shrink-0 text-[11px] text-ink-3">{category ? t(category.name) : null}</span>
                     </span>

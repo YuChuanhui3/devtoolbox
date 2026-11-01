@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { CATEGORIES, getCategory } from '@/data/categories';
 import { getToolsByCategory, sortToolsForLocale } from '@/data/tools';
@@ -10,6 +10,9 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { useSeo } from '@/hooks/useSeo';
 import { categorySeoDescription, categorySeoTitle } from '@/lib/seoTemplates';
 import { DEFAULT_CHIP } from '@/lib/toolTone';
+
+/** 分类合并后的旧链接落点（Markdown 已并入文本）。 */
+const LEGACY_CATEGORY_REDIRECTS: Record<string, string> = { markdown: 'text' };
 
 export function CategoryPage() {
   const { t, locale } = useI18n();
@@ -23,6 +26,8 @@ export function CategoryPage() {
   );
 
   if (!category) {
+    const legacyTarget = LEGACY_CATEGORY_REDIRECTS[categoryId];
+    if (legacyTarget) return <Navigate to={`/category/${legacyTarget}`} replace />;
     return (
       <EmptyState
         title={t({ zh: '分类不存在', en: 'Category not found' })}
