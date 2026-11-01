@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Download,
   Image as ImageIcon,
@@ -24,38 +24,19 @@ import { ImageDropzone } from '@/components/tool/ImageDropzone';
 import { InputPanel, OutputPanel, StatsBar } from '@/components/tool/EditorPanels';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
-import { ToolError, toToolError } from '@/lib/errors';
+import { useImageEncode } from '@/hooks/useImageEncode';
+import { useImageDecode } from '@/hooks/useImageDecode';
 import { formatBytes } from '@/lib/number';
 import { downloadBlob, safeFilename } from '@/lib/download';
-import { formatLabelForMime, loadImage, validateImageFile } from '@/lib/image';
+import { formatLabelForMime } from '@/lib/image';
 import {
   buildBase64Output,
   imageExtensionForMime,
   LARGE_BASE64_PREVIEW,
   LARGE_BASE64_THRESHOLD,
-  parseBase64Image,
-  readImageFile,
 } from '@/lib/imageBase64';
 
 type Mode = 'encode' | 'decode';
-
-interface EncodeSource {
-  file: File;
-  previewUrl: string;
-  base64: string;
-  mime: string;
-  width: number;
-  height: number;
-}
-
-interface DecodedImage {
-  base64: string;
-  bytes: Uint8Array;
-  dataUri: string;
-  mime: string;
-  width: number;
-  height: number;
-}
 
 function fileBaseName(name: string): string {
   return safeFilename(name.replace(/\.[^.]+$/, ''), 'image');
@@ -77,175 +58,16 @@ export default function ImageBase64Tool() {
   const [mode, setMode] = useState<Mode>('encode');
   const [includeDataUri, setIncludeDataUri] = useState(true);
   const [singleLine, setSingleLine] = useState(false);
-
-  const [source, setSource] = useState<EncodeSource | null>(null);
-  const [encodeError, setEncodeError] = useState<ToolError | null>(null);
-  const [encodeProgress, setEncodeProgress] = useState<number | null>(null);
   const [showFullOutput, setShowFullOutput] = useState(false);
-  const previewUrlRef = useRef<string | null>(null);
-  const encodeRequestRef = useRef(0);
 
-  const [base64Input, setBase64Input] = useState('');
-  const [decoded, setDecoded] = useState<DecodedImage | null>(null);
-  const [decodeError, setDecodeError] = useState<ToolError | null>(null);
-  const [decodeBusy, setDecodeBusy] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    };
-  }, []);
-
-  const handleFiles = useCallback(async (fileList: FileList | File[]) => {
-    const file = Array.from(fileList)[0];
-    if (!file) return;
-
-    const validation = validateImageFile(file);
-    if (validation) {
-      setEncodeError(validation);
-      return;
-    }
-
-    const requestId = encodeRequestRef.current + 1;
-    encodeRequestRef.current = requestId;
-    setEncodeError(null);
-    setEncodeProgress(0);
-    setShowFullOutput(false);
-
-    const previewUrl = URL.createObjectURL(file);
-    try {
-      const [read, image] = await Promise.all([
-        readImageFile(file, (percent) => {
-          if (encodeRequestRef.current === requestId) setEncodeProgress(percent);
-        }),
-        loadImage(file),
-      ]);
-      const width = image.width;
-      const height = image.height;
-      if (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap) {
-        image.close();
-      }
-      if (encodeRequestRef.current !== requestId) {
-        URL.revokeObjectURL(previewUrl);
-        return;
-      }
-
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = previewUrl;
-      setSource({
-        file,
-        previewUrl,
-        base64: read.base64,
-        mime: read.mime,
-        width,
-        height,
-      });
-      setEncodeProgress(null);
-    } catch (error) {
-      URL.revokeObjectURL(previewUrl);
-      if (encodeRequestRef.current !== requestId) return;
-      setEncodeError(toToolError(error));
-      setEncodeProgress(null);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    if (mode !== 'encode') return;
-    const handlePaste = (event: ClipboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      ) {
-        return;
-      }
-      const items = Array.from(event.clipboardData?.items ?? []);
-      const imageItem = items.find(
-        (item) => item.kind === 'file' && item.type.startsWith('image/'),
-      );
-      const file = imageItem?.getAsFile();
-      if (!file) return;
-      event.preventDefault();
-      void handleFiles([file]);
-    };
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [mode, handleFiles]);
-  useEffect(() => {
-    const raw = base64Input.trim();
-    if (!raw) {
-      setDecoded(null);
-      setDecodeError(null);
-      setDecodeBusy(false);
-      return;
-    }
-
-    let cancelled = false;
-    setDecodeBusy(true);
-    setDecodeError(null);
-
-    const timer = window.setTimeout(() => {
-      try {
-        const parsed = parseBase64Image(raw);
-        const image = new Image();
-        image.onload = () => {
-          if (cancelled) return;
-          setDecoded({
-            base64: parsed.base64,
-            bytes: parsed.bytes,
-            dataUri: parsed.dataUri,
-            mime: parsed.mime,
-            width: image.naturalWidth,
-            height: image.naturalHeight,
-          });
-          setDecodeBusy(false);
-        };
-        image.onerror = () => {
-          if (cancelled) return;
-          setDecoded(null);
-          setDecodeError(
-            new ToolError(
-              { zh: '图片预览失败', en: 'Image preview failed' },
-              {
-                zh: 'Base64 数据可能损坏，浏览器无法解码该图片。',
-                en: 'The Base64 data may be corrupted; the browser cannot decode this image.',
-              },
-            ),
-          );
-          setDecodeBusy(false);
-        };
-        image.src = parsed.dataUri;
-      } catch (error) {
-        if (cancelled) return;
-        setDecoded(null);
-        setDecodeError(toToolError(error));
-        setDecodeBusy(false);
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [base64Input]);
+  const encode = useImageEncode({ pasteEnabled: mode === 'encode' });
+  const decode = useImageDecode();
+  const { source } = encode;
+  const { decoded } = decode;
 
   const clearEncode = () => {
-    encodeRequestRef.current += 1;
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-    setSource(null);
-    setEncodeError(null);
-    setEncodeProgress(null);
+    encode.clear();
     setShowFullOutput(false);
-  };
-
-  const clearDecode = () => {
-    setBase64Input('');
-    setDecoded(null);
-    setDecodeError(null);
-    setDecodeBusy(false);
   };
 
   const output = useMemo(
@@ -318,7 +140,7 @@ export default function ImageBase64Tool() {
             <>
               <ClearButton
                 onClick={clearEncode}
-                disabled={!source && !encodeError && encodeProgress === null}
+                disabled={!source && !encode.error && encode.progress === null}
               />
               <CopyButton
                 text={output}
@@ -334,7 +156,7 @@ export default function ImageBase64Tool() {
             </>
           ) : (
             <>
-              <ClearButton onClick={clearDecode} disabled={!base64Input} />
+              <ClearButton onClick={decode.clear} disabled={!decode.input} />
               <CopyButton text={decoded?.dataUri ?? ''} label={t({ zh: '复制 Data URL', en: 'Copy Data URL' })} />
               <Button
                 variant="secondary"
@@ -350,11 +172,11 @@ export default function ImageBase64Tool() {
         </div>
       </ActionBar>
 
-      {mode === 'encode' && encodeError ? (
-        <ToolAlert tone="error" title={encodeError.localized} hint={encodeError.hint} />
+      {mode === 'encode' && encode.error ? (
+        <ToolAlert tone="error" title={encode.error.localized} hint={encode.error.hint} />
       ) : null}
-      {mode === 'decode' && decodeError ? (
-        <ToolAlert tone="error" title={decodeError.localized} hint={decodeError.hint} />
+      {mode === 'decode' && decode.error ? (
+        <ToolAlert tone="error" title={decode.error.localized} hint={decode.error.hint} />
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -367,7 +189,7 @@ export default function ImageBase64Tool() {
               bodyClassName="p-4"
             >
               <ImageDropzone
-                onFiles={(files) => void handleFiles(files)}
+                onFiles={(files) => void encode.handleFiles(files)}
                 multiple={false}
                 title={t({ zh: '拖拽图片到这里，或点击选择', en: 'Drop an image here, or click to choose' })}
                 hint={t({
@@ -376,19 +198,19 @@ export default function ImageBase64Tool() {
                 })}
               />
 
-              {encodeProgress !== null ? (
+              {encode.progress !== null ? (
                 <div className="mt-3">
                   <div className="flex items-center justify-between text-[11px] text-ink-3">
                     <span className="inline-flex items-center gap-1.5">
                       <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                       {t({ zh: '正在读取并编码', en: 'Reading and encoding' })}
                     </span>
-                    <span className="font-mono tabular-nums">{encodeProgress}%</span>
+                    <span className="font-mono tabular-nums">{encode.progress}%</span>
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
                     <div
                       className="h-full rounded-full bg-accent transition-all duration-300"
-                      style={{ width: `${encodeProgress}%` }}
+                      style={{ width: `${encode.progress}%` }}
                     />
                   </div>
                 </div>
@@ -478,25 +300,25 @@ export default function ImageBase64Tool() {
           <>
             <InputPanel
               label={t({ zh: 'Base64 输入', en: 'Base64 input' })}
-              value={base64Input}
-              onChange={setBase64Input}
+              value={decode.input}
+              onChange={decode.setInput}
               placeholder="data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."
               minHeight={360}
               footer={
                 <StatsBar
                   items={[
-                    { label: t({ zh: '字符', en: 'Chars' }), value: base64Input.length },
+                    { label: t({ zh: '字符', en: 'Chars' }), value: decode.input.length },
                     {
                       label: t({ zh: '行数', en: 'Lines' }),
-                      value: base64Input ? base64Input.split('\n').length : 0,
+                      value: decode.input ? decode.input.split('\n').length : 0,
                     },
                     {
                       label: t({ zh: '解析', en: 'Parse' }),
-                      value: decodeBusy
+                      value: decode.busy
                         ? t({ zh: '进行中', en: 'Running' })
                         : decoded
                           ? t({ zh: '成功', en: 'Success' })
-                          : decodeError
+                          : decode.error
                             ? t({ zh: '失败', en: 'Failed' })
                             : t({ zh: '等待输入', en: 'Waiting for input' }),
                     },
@@ -509,11 +331,11 @@ export default function ImageBase64Tool() {
               title={t({ zh: '图片预览', en: 'Image preview' })}
               subtitle={decoded ? `${decoded.width} × ${decoded.height}` : t({ zh: '粘贴后自动解析', en: 'Parsed automatically after paste' })}
               actions={
-                decodeBusy ? (
+                decode.busy ? (
                   <Loader2 className="h-4 w-4 animate-spin text-accent" aria-label={t({ zh: '正在解析', en: 'Parsing' })} />
                 ) : decoded ? (
                   <Badge tone="success">{t({ zh: '解析成功', en: 'Parsed' })}</Badge>
-                ) : decodeError ? (
+                ) : decode.error ? (
                   <Badge tone="danger">{t({ zh: '解析失败', en: 'Parse failed' })}</Badge>
                 ) : null
               }
@@ -544,7 +366,7 @@ export default function ImageBase64Tool() {
                     ]}
                   />
                 </div>
-              ) : decodeBusy ? (
+              ) : decode.busy ? (
                 <div
                   className="flex flex-col items-center justify-center gap-2 px-6 text-center"
                   style={{ minHeight: 360 }}
@@ -553,7 +375,7 @@ export default function ImageBase64Tool() {
                   <p className="text-sm font-medium text-ink">{t({ zh: '正在解析 Base64…', en: 'Parsing Base64…' })}</p>
                   <p className="text-xs text-ink-3">{t({ zh: '大图片可能需要几秒钟，请稍候。', en: 'Large images may take a few seconds. Please wait.' })}</p>
                 </div>
-              ) : decodeError ? (
+              ) : decode.error ? (
                 <div
                   className="flex flex-col items-center justify-center gap-2 px-6 text-center"
                   style={{ minHeight: 360 }}
