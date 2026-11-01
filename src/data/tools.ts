@@ -282,15 +282,15 @@ const RAW_TOOLS: ToolMeta[] = [
     id: 'code-format-toolkit',
     subFeatures: [
     { id: 'sql', name: { zh: 'SQL 格式化', en: 'SQL Format' }, keywords: ['sql', '美化sql'] },
-    { id: 'web', name: { zh: 'HTML/CSS/JS 格式化', en: 'Web Format' }, keywords: ['html', 'css', 'js', 'beautify', 'prettier'] },
+    { id: 'web', name: { zh: 'HTML/CSS/JS 等格式化', en: 'Web & Code Format' }, keywords: ['html', 'css', 'js', 'ts', 'typescript', 'json', 'yaml', 'markdown', 'beautify', 'prettier'] },
     ],
     name: '代码格式化工具箱',
     nameEn: 'Code Formatter Toolkit',
     category: 'dev',
-    description: '共享一份输入：SQL 语句格式化（MySQL/PostgreSQL 等方言），HTML、CSS、JavaScript 格式化与压缩，两类代码美化一键切换。',
-    descriptionEn: 'One shared input for two formatters: SQL statements (MySQL, PostgreSQL, and other dialects), and HTML, CSS, JavaScript formatting and minification.',
-    tags: ['sql', 'html', 'css', 'javascript', 'js', '格式化', '压缩', '美化'],
-    aliases: ['sql', 'sql美化', 'html格式化', 'css格式化', 'js格式化', '代码压缩', 'web formatter', 'sql格式化', '代码格式化'],
+    description: '共享一份输入：SQL 格式化，HTML/CSS/JS/TS/JSON/YAML/Markdown 格式化与压缩，HTML 还能实体转义、反转义与标签清理。',
+    descriptionEn: 'One shared input: SQL formatting, formatting and minification for HTML, CSS, JS, TS, JSON, YAML and Markdown, plus HTML entity escaping, unescaping and tag stripping.',
+    tags: ['sql', 'html', 'css', 'javascript', 'typescript', 'json', 'yaml', 'markdown', '格式化', '压缩', '美化', '实体', '转义'],
+    aliases: ['sql', 'sql美化', 'html格式化', 'css格式化', 'js格式化', 'ts格式化', 'typescript格式化', 'yaml格式化', 'markdown格式化', '代码压缩', 'web formatter', 'sql格式化', '代码格式化', 'html实体', 'html转义', 'html清理', 'html2text'],
     icon: 'FileCode2',
     priority: 'P1',
   },
@@ -428,31 +428,6 @@ const RAW_TOOLS: ToolMeta[] = [
     icon: 'ListOrdered',
     priority: 'P1',
   },
-  {
-    id: 'html-cleaner',
-    name: 'HTML 标签清理',
-    nameEn: 'HTML Tag Cleaner',
-    category: 'text',
-    description: '移除 HTML 标签与脚本，提取可读纯文本。',
-    descriptionEn: 'Strip HTML tags and scripts to extract readable plain text.',
-    tags: ['html', '清理', '纯文本'],
-    aliases: ['html2text', 'html清理'],
-    icon: 'Eraser',
-    priority: 'P1',
-  },
-  {
-    id: 'html-entities',
-    name: 'HTML 实体转义',
-    nameEn: 'HTML Entity Escaper',
-    category: 'text',
-    description: 'HTML 实体转义与反转义，支持中文转数字实体。',
-    descriptionEn: 'Escape and unescape HTML entities, including converting Chinese characters to numeric entities.',
-    tags: ['html', '实体', '转义'],
-    aliases: ['html entities', 'html转义'],
-    icon: 'Code',
-    priority: 'P1',
-  },
-
   {
     id: 'markdown-editor',
     name: 'Markdown 实时渲染',
@@ -822,6 +797,8 @@ export const LEGACY_TOOL_IDS: Record<string, string> = {
   'ua-parser': 'ua-toolkit',
   'sql-formatter': 'code-format-toolkit',
   'web-formatter': 'code-format-toolkit',
+  'html-entities': 'code-format-toolkit',
+  'html-cleaner': 'code-format-toolkit',
   'regex-tester': 'regex-toolkit',
   'regex-escape': 'regex-toolkit',
   radix: 'dev-calc-toolkit',
@@ -893,6 +870,8 @@ export const LEGACY_TOOL_MODES: Record<string, string> = {
   'ua-parser': 'parser',
   'sql-formatter': 'sql',
   'web-formatter': 'web',
+  'html-entities': 'web',
+  'html-cleaner': 'web',
   'http-status': 'http-status',
   'http-headers': 'http-headers',
   'http-methods': 'http-methods',
@@ -932,11 +911,18 @@ export const LEGACY_TOOL_MODES: Record<string, string> = {
   'cookie-viewer': 'cookie',
 };
 
-/** 旧链接解析：目标工具箱 + 应激活的页签。 */
-export const resolveToolTarget = (id: string): { toolId: string; mode?: string } => {
+/** 旧工具 ID → 工具箱页签内的子功能（`?sub=`），如 /tools/html-entities 直达 HTML 实体转义。 */
+export const LEGACY_TOOL_SUBS: Record<string, string> = {
+  'html-entities': 'entities',
+  'html-cleaner': 'cleaner',
+};
+
+/** 旧链接解析：目标工具箱 + 应激活的页签与页签内子功能。 */
+export const resolveToolTarget = (id: string): { toolId: string; mode?: string; sub?: string } => {
   const toolId = resolveToolId(id);
   const mode = LEGACY_TOOL_MODES[id];
-  return mode ? { toolId, mode } : { toolId };
+  const sub = LEGACY_TOOL_SUBS[id];
+  return mode || sub ? { toolId, mode, sub } : { toolId };
 };
 
 export const getTool = (id: string): ToolMeta | undefined => TOOL_MAP.get(resolveToolId(id));

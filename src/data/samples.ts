@@ -249,3 +249,30 @@ greet("DevToolbox");
 
 ![Markdown 示例图片](${MARKDOWN_SAMPLE_IMAGE})
 `;
+
+
+export const SAMPLE_FORMAT_TS = `interface User {
+    id:number
+    name: string
+    roles:Array<'admin'|'editor'>
+}
+export function greet(user:User){const [first,...rest]=user.roles
+return user.name+'('+first+')'+rest.length}
+`;
+
+export const SAMPLE_FORMAT_JSON = `{"toolkit":"devtoolbox","tools":[{"id":"json-toolkit","tags":["格式化","diff"]},{"id":"text-diff","tags":["对比"]}],"nested":{"deep":{"flag":true}}}`;
+
+export const SAMPLE_FORMAT_YAML = `tools:
+    - id: json-toolkit
+      tags: [格式化, diff]
+    -   id: text-diff
+        tags: [对比]
+meta:   {version: 1.0.0,   local: true}`;
+
+export const SAMPLE_FORMAT_MD = `#   代码格式化说明
+
+*   支持   HTML / CSS / JS
+*   新增 TypeScript / JSON / YAML / Markdown
+
+>   缩进、引号与尾随逗号都按 Prettier 默认规则归一。
+`;

@@ -7,6 +7,7 @@ import {
   getToolsByCategory,
   getToolsByIds,
   hasSortPinyin,
+  resolveToolTarget,
   searchTools,
   searchToolTargets,
   sortToolsForLocale,
@@ -147,8 +148,24 @@ describe('新一批工具搜索直达', () => {
   });
 });
 
-describe('搜索直达子功能页签', () => {
-  test('“JWT” 命中加解密工具箱的 jwt 页签', () => {
+describe('HTML 工具并入代码格式化工具箱', () => {
+  test('旧链接解析到 web 页签 + 对应子功能', () => {
+    expect(resolveToolTarget('html-entities')).toEqual({ toolId: 'code-format-toolkit', mode: 'web', sub: 'entities' });
+    expect(resolveToolTarget('html-cleaner')).toEqual({ toolId: 'code-format-toolkit', mode: 'web', sub: 'cleaner' });
+    expect(resolveToolTarget('sql-formatter')).toEqual({ toolId: 'code-format-toolkit', mode: 'sql' });
+  });
+
+  test('两个旧 ID 不再作为独立工具存在', () => {
+    expect(TOOLS.some((tool) => tool.id === 'html-entities' || tool.id === 'html-cleaner')).toBe(false);
+    expect(getTool('html-entities')?.id).toBe('code-format-toolkit');
+  });
+
+  test('“html转义” 能搜到格式化工具箱', () => {
+    expect(searchTools('html转义')[0]?.id).toBe('code-format-toolkit');
+  });
+});
+
+describe('搜索直达子功能页签', () => {  test('“JWT” 命中加解密工具箱的 jwt 页签', () => {
     const hits = searchToolTargets('JWT');
     expect(hits.some((h) => h.tool.id === 'crypto-toolkit' && h.sub?.id === 'jwt')).toBe(true);
   });

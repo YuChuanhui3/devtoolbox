@@ -79,6 +79,8 @@
 
 `src/data/routes.ts` 从 `TOOLS` 自动派生全部路由与「在线XX工具」关键词标题；构建时 `scripts/gen-sitemap.ts` 与 `scripts/render-routes.ts` 自动生成 sitemap 和静态壳。只要步骤 4 注册正确，SEO 自动生效。不要往 `routes.ts` 里硬编码单条工具。
 
+合并旧工具后，`scripts/render-routes.ts` 会为 `LEGACY_TOOL_IDS` 每个旧 ID 额外生成一个跳转壳（meta refresh + `location.replace`，带 `?mode=`/`?sub=`），否则 GitHub Pages 对旧深链直接返回 404（SPA 内的 `<Navigate>` 只在页面已加载时生效）。新增带页签内子功能的工具时，子功能寻址用 `?sub=`，并在 `LEGACY_TOOL_SUBS` 里登记旧 ID → 子功能。
+
 ### 步骤 7 — README 计数同步：`README.md`
 
 新增 N 个工具需同步以下位置（数字全部手改，无脚本）：

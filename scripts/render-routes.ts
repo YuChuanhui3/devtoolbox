@@ -7,7 +7,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ROUTES } from '@/data/routes';
 import { tl } from '@/i18n/locale';
-import { getTool, getToolsByCategory } from '@/data/tools';
+import {
+  LEGACY_TOOL_IDS,
+  getTool,
+  getToolsByCategory,
+  resolveToolTarget,
+} from '@/data/tools';
 import { getCategory } from '@/data/categories';
 import {
   categorySeoTitle,
@@ -137,3 +142,42 @@ for (const route of ROUTES) {
 }
 
 console.log(`[render-routes] wrote ${ROUTES.length} route shells under dist/ (base="${base}")`);
+
+/**
+ * 合并进工具箱的旧工具链接：SPA 内的 <Navigate> 只有在页面被加载时才生效，
+ * 而 GitHub Pages 对未知路径直接返回 404，所以为每个旧 ID 生成一个跳转壳。
+ */
+let redirects = 0;
+for (const legacyId of Object.keys(LEGACY_TOOL_IDS)) {
+  const target = resolveToolTarget(legacyId);
+  const tool = getTool(target.toolId);
+  if (!tool) continue;
+  const query = new URLSearchParams();
+  if (target.mode) query.set('mode', target.mode);
+  if (target.sub) query.set('sub', target.sub);
+  const suffix = query.toString();
+  const path = `/tools/${target.toolId}${suffix ? `?${suffix}` : ''}`;
+  const local = `${base}${path}`;
+  const canonical = `${origin}${base === '/' ? '' : base}${path}`;
+  const name = tl(tool.name, 'zh');
+  const doc = `<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>${esc(name)} · DevToolbox</title>
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href="${esc(canonical)}" />
+    <meta http-equiv="refresh" content="0; url=${esc(local)}" />
+    <script>location.replace(${JSON.stringify(local)});</script>
+  </head>
+  <body>
+    <p>该工具已合并进 <a href="${esc(local)}">${esc(name)}</a>。</p>
+  </body>
+</html>
+`;
+  const dir = join(dist, 'tools', legacyId);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'index.html'), doc);
+  redirects += 1;
+}
+console.log(`[render-routes] wrote ${redirects} legacy redirect shells under dist/`);

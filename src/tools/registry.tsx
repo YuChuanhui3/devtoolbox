@@ -36,8 +36,6 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'word-count': lazy(() => import('./WordCountTool')),
   'multi-line': lazy(() => import('./MultiLineTool')),
   'occurrence-count': lazy(() => import('./OccurrenceCountTool')),
-  'html-cleaner': lazy(() => import('./HtmlCleanerTool')),
-  'html-entities': lazy(() => import('./HtmlEntitiesTool')),
 
   // Markdown
   'markdown-editor': lazy(() => import('./MarkdownTool')),

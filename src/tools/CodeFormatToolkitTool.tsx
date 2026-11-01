@@ -42,7 +42,7 @@ export default function CodeFormatToolkitTool() {
             },
             {
               value: 'web',
-              label: t({ zh: 'HTML/CSS/JS 格式化', en: 'HTML/CSS/JS Format' }),
+              label: t({ zh: 'HTML/CSS/JS 等格式化', en: 'Web & Code Format' }),
               icon: <FileCode2 className="h-3.5 w-3.5" aria-hidden="true" />,
             },
           ]}

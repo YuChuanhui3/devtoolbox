@@ -75,7 +75,11 @@ export function ToolPage() {
 
   if (tool.id !== toolId) {
     const target = resolveToolTarget(toolId);
-    return <Navigate to={toolPath(target.toolId) + (target.mode ? `?mode=${target.mode}` : '')} replace />;
+    const query = new URLSearchParams();
+    if (target.mode) query.set('mode', target.mode);
+    if (target.sub) query.set('sub', target.sub);
+    const suffix = query.toString();
+    return <Navigate to={toolPath(target.toolId) + (suffix ? `?${suffix}` : '')} replace />;
   }
 
   const ToolComponent = TOOL_COMPONENTS[tool.id] as
