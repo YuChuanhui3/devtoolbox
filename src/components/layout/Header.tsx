@@ -7,7 +7,6 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Kbd } from '@/components/ui/Kbd';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitch } from './LanguageSwitch';
-import { cn } from '@/lib/cn';
 
 interface HeaderProps {
   onOpenMenu: () => void;

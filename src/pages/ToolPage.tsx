@@ -10,6 +10,7 @@ import { ToolSeoNote } from '@/components/tool/ToolSeoNote';
 import { ToolProvider } from '@/components/tool/ToolContext';
 import { DraftRestoreBanner } from '@/components/tool/DraftRestoreBanner';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useSeo } from '@/hooks/useSeo';
 import { toolSeoDescription, toolSeoKeywords, toolSeoTitle } from '@/lib/seoTemplates';
@@ -89,9 +90,11 @@ export function ToolPage() {
         <DraftRestoreBanner />
 
         {ToolComponent ? (
-          <Suspense fallback={<ToolSkeleton />}>
-            <ToolComponent />
-          </Suspense>
+          <ErrorBoundary resetKey={tool.id}>
+            <Suspense fallback={<ToolSkeleton />}>
+              <ToolComponent />
+            </Suspense>
+          </ErrorBoundary>
         ) : (
           <EmptyState
             title={t({ zh: '该工具正在开发中', en: 'This tool is under development' })}
