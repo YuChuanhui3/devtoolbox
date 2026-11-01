@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Download,
+  FileUp,
   Loader2,
   QrCode,
   ShieldCheck,
@@ -20,9 +22,10 @@ import {
 import { InputPanel, StatsBar } from '@/components/tool/EditorPanels';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
+import { toolPath } from '@/data/tools';
 import { SAMPLE_URL } from '@/data/samples';
 import { downloadBlob } from '@/lib/download';
-import { toToolError, type ToolError } from '@/lib/errors';
+import { ToolError, toToolError } from '@/lib/errors';
 import { formatBytes } from '@/lib/number';
 import {
   buildQrSvg,
@@ -51,6 +54,28 @@ export default function QrGeneratorTool() {
   const [input, setInput] = useState('');
   const [style, setStyle] = useState<QrStyle>(QR_DEFAULT_STYLE);
   const [pngBusy, setPngBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const loadFile = (file: File) => {
+    void file.arrayBuffer().then((buffer) => {
+      const bytes = new Uint8Array(buffer);
+      if (bytes.subarray(0, 512).includes(0)) {
+        toast.error(
+          t({
+            zh: '这是二进制文件，二维码生成器只编码文本；请改用「二维码跨网传输」分块发送',
+            en: 'This is a binary file; the QR generator only encodes text. Use "QR File Transfer" to send it in chunks',
+          }),
+        );
+        return;
+      }
+      try {
+        setInput(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+        toast.success(t({ zh: `已载入 ${file.name}`, en: `Loaded ${file.name}` }));
+      } catch {
+        toast.error(t({ zh: '文件不是合法的 UTF-8 文本', en: 'The file is not valid UTF-8 text' }));
+      }
+    });
+  };
 
   const result = useMemo<QrResult>(() => {
     if (!input.trim()) return { matrix: null, svg: '', error: null };
@@ -95,6 +120,19 @@ export default function QrGeneratorTool() {
     <div className="space-y-4">
       <ActionBar>
         <SampleButton onClick={() => setInput(SAMPLE_URL)} label={t({ zh: '示例链接', en: 'Sample link' })} />
+        <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
+          <FileUp className="h-3.5 w-3.5" aria-hidden="true" />
+          {t({ zh: '从文件载入', en: 'Load from file' })}
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          className="hidden"
+          onChange={(event) => {
+            if (event.target.files?.[0]) loadFile(event.target.files[0]);
+            event.target.value = '';
+          }}
+        />
         <ClearButton onClick={clear} disabled={!input && !error} />
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <DownloadButton
@@ -305,6 +343,13 @@ export default function QrGeneratorTool() {
                   en: 'Follow the hint above to shorten the content or change the error correction level, then retry.',
                 })}
               </p>
+              <Link
+                to={toolPath('qr-transfer')}
+                className="mt-1 inline-flex items-center gap-1 rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent hover:underline"
+              >
+                <QrCode className="h-3.5 w-3.5" aria-hidden="true" />
+                {t({ zh: '用「二维码跨网传输」分块发送', en: 'Send it in chunks with QR File Transfer' })}
+              </Link>
             </div>
           ) : (
             <div
@@ -327,8 +372,8 @@ export default function QrGeneratorTool() {
       <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-2/50 px-3.5 py-2.5 text-[11px] leading-5 text-ink-3">
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ok" aria-hidden="true" />
         {t({
-          zh: '二维码内容仅在本机浏览器内编码，不会上传服务器，也不会写入工具草稿。二维码容量有限，内容过长时请缩短文本或改用短链接。',
-          en: 'QR content is encoded only in your local browser, never uploaded or saved as a tool draft. Capacity is limited; shorten the text or use a short link when it is too long.',
+          zh: '二维码内容仅在本机浏览器内编码，不会上传服务器，也不会写入工具草稿。二维码容量有限（约 1.5 KB / 帧），内容过长时可用「二维码跨网传输」分块发送。',
+          en: 'QR content is encoded only in your local browser, never uploaded or saved as a tool draft. Capacity is limited (~1.5 KB per frame); use "QR File Transfer" to send longer content in chunks.',
         })}
       </div>
     </div>

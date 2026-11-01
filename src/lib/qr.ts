@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import type { QRCode as QrSymbol } from 'qrcode';
 import { ToolError } from './errors';
-import type { L10n } from '@/i18n/locale';
+import { tl, type L10n } from '@/i18n/locale';
 
 export type QrEcc = 'L' | 'M' | 'Q' | 'H';
 
@@ -54,6 +54,13 @@ export interface QrRect {
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
+const QR_CAPACITY_ERROR_MESSAGE: L10n = { zh: '内容超出二维码容量', en: 'Content exceeds the QR code capacity' };
+
+/** 判断 createQrMatrix 抛出的错误是否为容量不足（供自动搜索单帧最大字节数用）。 */
+export function isQrCapacityError(error: unknown): boolean {
+  return error instanceof ToolError && tl(error.localized, 'zh') === QR_CAPACITY_ERROR_MESSAGE.zh;
+}
+
 export function utf8ByteLength(text: string): number {
   return new TextEncoder().encode(text).length;
 }
@@ -89,7 +96,8 @@ export function createQrMatrix(text: string, ecc: QrEcc): QrMatrix {
   let symbol: QrSymbol;
   try {
     symbol = QRCode.create(text, { errorCorrectionLevel: ecc });
-  } catch {
+  } catch (error) {
+    if (error instanceof ToolError && tl(error.localized, 'zh') === QR_CAPACITY_ERROR_MESSAGE.zh) throw error;
     throw new ToolError(
       { zh: '内容超出二维码容量', en: 'Content exceeds the QR code capacity' },
       {
@@ -143,27 +151,29 @@ export function buildQrSvg(matrix: QrMatrix, style: QrStyle): string {
 export function qrRects(matrix: QrMatrix, size: number): QrRect[] {
   const normalizedSize = normalizeQrSize(size);
   const total = matrix.moduleCount + QR_MARGIN * 2;
-  const cell = normalizedSize / total;
+  // 模块必须等宽：分数 cell 取整后宽窄交替，V25+ 的码扫描器（zxing）直接检测不到图形
+  const cell = Math.max(1, Math.floor(normalizedSize / total));
+  const offset = Math.floor((normalizedSize - cell * total) / 2);
   const rects: QrRect[] = [];
 
   for (let row = 0; row < matrix.moduleCount; row += 1) {
-    const offset = row * matrix.moduleCount;
-    const y = Math.round((row + QR_MARGIN) * cell);
-    const bottom = Math.round((row + QR_MARGIN + 1) * cell);
-    const height = Math.max(1, bottom - y);
+    const offsetRow = row * matrix.moduleCount;
     let col = 0;
     while (col < matrix.moduleCount) {
-      if (!matrix.data[offset + col]) {
+      if (!matrix.data[offsetRow + col]) {
         col += 1;
         continue;
       }
       let run = 1;
-      while (col + run < matrix.moduleCount && matrix.data[offset + col + run]) {
+      while (col + run < matrix.moduleCount && matrix.data[offsetRow + col + run]) {
         run += 1;
       }
-      const x = Math.round((col + QR_MARGIN) * cell);
-      const right = Math.round((col + QR_MARGIN + run) * cell);
-      rects.push({ x, y, width: Math.max(1, right - x), height });
+      rects.push({
+        x: offset + (col + QR_MARGIN) * cell,
+        y: offset + (row + QR_MARGIN) * cell,
+        width: run * cell,
+        height: cell,
+      });
       col += run;
     }
   }

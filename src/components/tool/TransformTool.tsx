@@ -43,6 +43,11 @@ export interface TransformToolProps {
   helpText?: ReactNode;
   inputFooterExtra?: ReactNode;
   renderSummary?: (input: string, output: string) => ReactNode;
+  /** 工具箱共享输入：传入后输入框改为受控，由父组件持有文本。 */
+  value?: string;
+  onValueChange?: (value: string) => void;
+  /** 面板是否处于活动模式（keep-alive 多面板同挂载时门控 ⌘Enter），默认 true。 */
+  active?: boolean;
 }
 
 export function TransformTool({
@@ -68,13 +73,31 @@ export function TransformTool({
   helpText,
   inputFooterExtra,
   renderSummary,
+  value,
+  onValueChange,
+  active = true,
 }: TransformToolProps) {
-  const io = useToolIO();
+  const controlled = value !== undefined;
+  const io = useToolIO('', controlled ? { draftless: true } : undefined);
   const { t } = useI18n();
   const transformRef = useRef(transform);
   transformRef.current = transform;
+  const onValueChangeRef = useRef(onValueChange);
+  onValueChangeRef.current = onValueChange;
 
-  const debouncedInput = useDebouncedValue(io.input, 250);
+  const inputText = controlled ? value : io.input;
+
+  const changeInput = (next: string) => {
+    if (controlled) {
+      onValueChangeRef.current?.(next);
+      io.setError(null);
+      io.setNotice(null);
+    } else {
+      io.setInput(next);
+    }
+  };
+
+  const debouncedInput = useDebouncedValue(inputText, 250);
 
   useEffect(() => {
     if (!live) return;
@@ -115,17 +138,19 @@ export function TransformTool({
   }, [resetOutputKey, io.setOutput, io.setError]);
 
   const run = () => {
-    void io.run((input) => transformRef.current(input), { success: t(successMessage) });
+    void io.runWithValue((input) => transformRef.current(input), inputText, {
+      success: t(successMessage),
+    });
   };
 
-  useHotkey({ key: 'Enter', metaOrCtrl: true }, () => run());
+  useHotkey({ key: 'Enter', metaOrCtrl: true, enabled: active }, run);
 
   const highlighted = useMemo(
     () => (io.output && outputHighlight ? outputHighlight(io.output) : undefined),
     [io.output, outputHighlight],
   );
 
-  const inputStats = useMemo(() => countTextStats(io.input), [io.input]);
+  const inputStats = useMemo(() => countTextStats(inputText), [inputText]);
   const outputStats = useMemo(() => countTextStats(io.output), [io.output]);
 
   return (
@@ -142,7 +167,12 @@ export function TransformTool({
           <Button
             variant="secondary"
             onClick={() => {
-              io.swap();
+              if (controlled) {
+                changeInput(io.output);
+                io.setOutput(inputText);
+              } else {
+                io.swap();
+              }
               onSwap?.();
             }}
             disabled={!io.output}
@@ -159,15 +189,33 @@ export function TransformTool({
           <SampleButton
             onClick={() => {
               onSample?.();
-              io.reset(sample);
-              if (!live && autoRunSample) {
-                void io.runWithValue((input) => transformRef.current(input), sample, {
-                  success: t(successMessage),
-                });
+              if (controlled) {
+                changeInput(sample);
+                if (!live && autoRunSample) {
+                  void io.runWithValue((input) => transformRef.current(input), sample, {
+                    success: t(successMessage),
+                  });
+                }
+              } else {
+                io.reset(sample);
+                if (!live && autoRunSample) {
+                  void io.runWithValue((input) => transformRef.current(input), sample, {
+                    success: t(successMessage),
+                  });
+                }
               }
             }}
           />
-          <ClearButton onClick={io.clear} />
+          <ClearButton
+            onClick={() => {
+              if (controlled) {
+                changeInput('');
+                io.setOutput('');
+              } else {
+                io.clear();
+              }
+            }}
+          />
           <CopyButton text={io.output} label={t({ zh: '复制结果', en: 'Copy result' })} />
           <DownloadButton filename={outputFilename} content={io.output} mime={outputMime} />
         </div>
@@ -179,8 +227,8 @@ export function TransformTool({
       <div className="grid gap-4 lg:grid-cols-2">
         <InputPanel
           label={inputLabel}
-          value={io.input}
-          onChange={io.setInput}
+          value={inputText}
+          onChange={changeInput}
           placeholder={inputPlaceholder}
           footer={
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -218,7 +266,7 @@ export function TransformTool({
 
       {renderSummary ? (
         <div className="rounded-xl border border-line bg-surface-2/50 px-3.5 py-2.5">
-          {renderSummary(io.input, io.output)}
+          {renderSummary(inputText, io.output)}
         </div>
       ) : helpText ? (
         <p className="text-center text-[11px] leading-5 text-ink-3">{helpText}</p>

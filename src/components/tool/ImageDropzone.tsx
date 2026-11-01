@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ImagePlus, Upload } from 'lucide-react';
 import { IMAGE_ACCEPT } from '@/lib/image';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -10,6 +10,8 @@ interface ImageDropzoneProps {
   title?: Localized;
   hint?: Localized;
   multiple?: boolean;
+  accept?: string;
+  icon?: ReactNode;
 }
 
 export function ImageDropzone({
@@ -20,6 +22,8 @@ export function ImageDropzone({
     en: 'Or click to choose files · JPG / PNG / WebP / GIF / BMP supported, up to 20MB each',
   },
   multiple = true,
+  accept = IMAGE_ACCEPT,
+  icon,
 }: ImageDropzoneProps) {
   const { t } = useI18n();
   const resolvedTitle = t(title);
@@ -59,7 +63,7 @@ export function ImageDropzone({
       )}
     >
       <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface text-accent shadow-card">
-        {dragging ? <Upload className="h-5 w-5" aria-hidden="true" /> : <ImagePlus className="h-5 w-5" aria-hidden="true" />}
+        {dragging ? <Upload className="h-5 w-5" aria-hidden="true" /> : (icon ?? <ImagePlus className="h-5 w-5" aria-hidden="true" />)}
       </span>
       <p className="mt-3 text-sm font-medium text-ink">{resolvedTitle}</p>
       <p className="mt-1 text-[11px] text-ink-3">{t(hint)}</p>
@@ -67,12 +71,13 @@ export function ImageDropzone({
       <input
         ref={inputRef}
         type="file"
-        accept={IMAGE_ACCEPT}
+        accept={accept}
         multiple={multiple}
         className="hidden"
         onChange={(event) => {
+          // 必须快照：直接传活 FileList 的话，下面清空 input 会把它掏空
           if (event.target.files && event.target.files.length > 0) {
-            onFiles(event.target.files);
+            onFiles(Array.from(event.target.files));
           }
           event.target.value = '';
         }}

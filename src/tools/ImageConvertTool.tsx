@@ -13,7 +13,7 @@ import { useImageFiles } from '@/hooks/useImageFiles';
 import { useImageBatch } from '@/hooks/useImageBatch';
 import { useI18n } from '@/i18n/I18nProvider';
 import { formatBytes } from '@/lib/number';
-import { formatLabelForMime, replaceExtension } from '@/lib/image';
+import { formatLabelForMime, replaceExtension, compressImage } from '@/lib/image';
 import type { ImagePreviewState } from '@/types/image';
 
 type OutputMime = 'image/webp' | 'image/jpeg' | 'image/png';
@@ -50,7 +50,8 @@ export default function ImageConvertTool() {
 
   const convertAll = () =>
     batch.processAll(
-      () => ({ mime: target, quality: quality / 100, maxWidth: 0, background }),
+      (_file, bitmap) =>
+        compressImage(bitmap, { kind: 'direct', mime: target }, { quality: quality / 100, maxWidth: 0, background }),
       { success: t({ zh: '格式转换完成', en: 'Format converted' }) },
     );
 

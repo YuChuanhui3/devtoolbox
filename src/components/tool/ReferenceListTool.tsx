@@ -103,9 +103,9 @@ export function ReferenceListTool({ dataset }: { dataset: ReferenceDataset }) {
       ) : (
         <Panel bodyClassName="p-0">
           <ul className="divide-y divide-line">
-            {filtered.map((item) => (
+            {filtered.map((item, index) => (
               <li
-                key={item.key}
+                key={`${index}-${item.key}`}
                 className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-2/40"
               >
                 <span className="mt-0.5 inline-flex min-w-16 shrink-0 items-center justify-center rounded-lg bg-surface-2 px-2 py-1 font-mono text-[11px] font-semibold text-ink-2">

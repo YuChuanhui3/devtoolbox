@@ -89,52 +89,66 @@ export interface ProcessedImage {
   height: number;
 }
 
-export async function processImage(
+const CANVAS_UNSUPPORTED_ERROR = new ToolError(
+  {
+    zh: '当前浏览器不支持 Canvas 图片处理',
+    en: 'This browser does not support Canvas image processing',
+  },
+  {
+    zh: '请更换 Chrome / Edge / Safari 最新版本后重试。',
+    en: 'Please use the latest Chrome / Edge / Safari and try again.',
+  },
+);
+
+function createScaledCanvas(
   source: ImageBitmap | HTMLImageElement,
-  options: ProcessImageOptions,
-): Promise<ProcessedImage> {
-  const sourceWidth = source.width;
-  const sourceHeight = source.height;
-  const scale = options.maxWidth > 0 ? Math.min(1, options.maxWidth / sourceWidth) : 1;
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
+  maxWidth: number,
+  background: string | null,
+): { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; width: number; height: number } {
+  const scale = maxWidth > 0 ? Math.min(1, maxWidth / source.width) : 1;
+  const width = Math.max(1, Math.round(source.width * scale));
+  const height = Math.max(1, Math.round(source.height * scale));
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
 
   const context = canvas.getContext('2d');
-  if (!context) {
-    throw new ToolError(
-      {
-        zh: '当前浏览器不支持 Canvas 图片处理',
-        en: 'This browser does not support Canvas image processing',
-      },
-      {
-        zh: '请更换 Chrome / Edge / Safari 最新版本后重试。',
-        en: 'Please use the latest Chrome / Edge / Safari and try again.',
-      },
-    );
-  }
+  if (!context) throw CANVAS_UNSUPPORTED_ERROR;
 
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
 
-  if (options.mime === 'image/jpeg' || options.mime === 'image/bmp') {
-    context.fillStyle = options.background || '#ffffff';
+  if (background) {
+    context.fillStyle = background;
     context.fillRect(0, 0, width, height);
   }
 
   context.drawImage(source, 0, 0, width, height);
+  return { canvas, context, width, height };
+}
 
-  const blob = await new Promise<Blob | null>((resolve) => {
+function encodeCanvas(canvas: HTMLCanvasElement, mime: string, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => {
     canvas.toBlob(
       (result) => resolve(result),
-      options.mime,
-      Math.min(1, Math.max(0.05, options.quality)),
+      mime,
+      Math.min(1, Math.max(0.05, quality)),
     );
   });
+}
 
+export async function processImage(
+  source: ImageBitmap | HTMLImageElement,
+  options: ProcessImageOptions,
+): Promise<ProcessedImage> {
+  const { canvas, width, height } = createScaledCanvas(
+    source,
+    options.maxWidth,
+    options.mime === 'image/jpeg' || options.mime === 'image/bmp' ? options.background || '#ffffff' : null,
+  );
+
+  const blob = await encodeCanvas(canvas, options.mime, options.quality);
   if (!blob) {
     throw new ToolError(
       { zh: '图片处理失败', en: 'Image processing failed' },
@@ -146,6 +160,170 @@ export async function processImage(
   }
 
   return { blob, width, height };
+}
+
+let webpSupport: boolean | null = null;
+
+export function supportsWebp(): boolean {
+  if (webpSupport !== null) return webpSupport;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    webpSupport = canvas.toDataURL('image/webp').startsWith('data:image/webp');
+  } catch {
+    webpSupport = false;
+  }
+  return webpSupport;
+}
+
+/** 缩小采样检测 alpha 通道，决定是否允许无损 JPEG 候选。 */
+export function hasTransparency(source: ImageBitmap | HTMLImageElement): boolean {
+  const probeScale = Math.min(1, 128 / Math.max(source.width, source.height));
+  const width = Math.max(1, Math.round(source.width * probeScale));
+  const height = Math.max(1, Math.round(source.height * probeScale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) return true;
+  context.drawImage(source, 0, 0, width, height);
+  const { data } = context.getImageData(0, 0, width, height);
+  for (let offset = 3; offset < data.length; offset += 4) {
+    if (data[offset] < 255) return true;
+  }
+  return false;
+}
+
+export interface CompressSettings {
+  /** 0-1，质量模式使用。 */
+  quality: number;
+  maxWidth: number;
+  background: string;
+}
+
+export type CompressStrategy =
+  | { kind: 'direct'; mime: string }
+  | { kind: 'smart' }
+  | { kind: 'target'; targetBytes: number };
+
+export interface CompressOutcome {
+  blob: Blob;
+  width: number;
+  height: number;
+  mime: string;
+  /** 仅目标大小模式：是否达成目标体积。 */
+  targetMet?: boolean;
+}
+
+/** 试编多个候选格式取最小；透明图跳过 JPEG，不透明图仍以无损 PNG 作兜底候选。 */
+export async function compressSmart(
+  source: ImageBitmap | HTMLImageElement,
+  settings: CompressSettings,
+): Promise<CompressOutcome> {
+  const transparent = hasTransparency(source);
+  const { canvas, width, height } = createScaledCanvas(source, settings.maxWidth, null);
+
+  const candidates: Array<{ mime: string; blob: Blob | null }> = [];
+  if (supportsWebp()) {
+    candidates.push({ mime: 'image/webp', blob: await encodeCanvas(canvas, 'image/webp', settings.quality) });
+  }
+  if (!transparent) {
+    candidates.push({ mime: 'image/jpeg', blob: await encodeCanvas(canvas, 'image/jpeg', settings.quality) });
+  }
+  candidates.push({ mime: 'image/png', blob: await encodeCanvas(canvas, 'image/png', 1) });
+
+  const valid = candidates.filter((item): item is { mime: string; blob: Blob } => Boolean(item.blob));
+  if (valid.length === 0) {
+    throw new ToolError(
+      { zh: '图片处理失败', en: 'Image processing failed' },
+      {
+        zh: '浏览器无法生成任何候选格式。',
+        en: 'The browser could not encode any candidate format.',
+      },
+    );
+  }
+  const best = valid.reduce((a, b) => (b.blob.size < a.blob.size ? b : a));
+  return { blob: best.blob, width, height, mime: best.mime };
+}
+
+const TARGET_MIN_SCALE = 0.2;
+const TARGET_MIN_WIDTH = 320;
+const TARGET_SCALE_STEP = 0.8;
+const TARGET_SEARCH_STEPS = 7;
+
+/** 二分质量找「≤ 目标体积的最高质量」，必要时逐档降分辨率。 */
+export async function compressToTarget(
+  source: ImageBitmap | HTMLImageElement,
+  settings: CompressSettings,
+  targetBytes: number,
+): Promise<CompressOutcome> {
+  const transparent = hasTransparency(source);
+  const mime = supportsWebp() ? 'image/webp' : 'image/jpeg';
+  const baseWidth = settings.maxWidth > 0 ? Math.min(settings.maxWidth, source.width) : source.width;
+
+  let smallest: CompressOutcome | null = null;
+
+  for (let scale = 1; scale >= TARGET_MIN_SCALE; scale *= TARGET_SCALE_STEP) {
+    const maxWidth = Math.max(1, Math.round(baseWidth * scale));
+    const { canvas, width, height } = createScaledCanvas(
+      source,
+      maxWidth,
+      transparent || mime !== 'image/jpeg' ? null : settings.background || '#ffffff',
+    );
+
+    let lo = 0.05;
+    let hi = 0.95;
+    let best: Blob | null = null;
+    let lowest: Blob | null = null;
+
+    for (let step = 0; step < TARGET_SEARCH_STEPS; step += 1) {
+      const mid = (lo + hi) / 2;
+      const blob = await encodeCanvas(canvas, mime, mid);
+      if (!blob) break;
+      if (!lowest || blob.size < lowest.size) lowest = blob;
+      if (blob.size <= targetBytes) {
+        if (!best || blob.size > best.size) best = blob;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+
+    if (best) {
+      return { blob: best, width, height, mime, targetMet: true };
+    }
+    if (lowest && (!smallest || lowest.size < smallest.blob.size)) {
+      smallest = { blob: lowest, width, height, mime, targetMet: false };
+    }
+    if (width <= TARGET_MIN_WIDTH) break;
+  }
+
+  if (!smallest) {
+    throw new ToolError(
+      { zh: '图片处理失败', en: 'Image processing failed' },
+      {
+        zh: '浏览器无法编码目标格式。',
+        en: 'The browser could not encode the target format.',
+      },
+    );
+  }
+  return smallest;
+}
+
+export async function compressImage(
+  source: ImageBitmap | HTMLImageElement,
+  strategy: CompressStrategy,
+  settings: CompressSettings,
+): Promise<CompressOutcome> {
+  if (strategy.kind === 'direct') {
+    const processed = await processImage(source, { ...settings, mime: strategy.mime });
+    return { ...processed, mime: strategy.mime };
+  }
+  if (strategy.kind === 'smart') {
+    return compressSmart(source, settings);
+  }
+  return compressToTarget(source, settings, strategy.targetBytes);
 }
 
 export function mimeToExtension(mime: string): string {

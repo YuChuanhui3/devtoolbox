@@ -2,12 +2,12 @@
 
 [![Deploy to GitHub Pages](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml/badge.svg)](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-![Tools](https://img.shields.io/badge/tools-85-blue)
+![Tools](https://img.shields.io/badge/tools-42-blue)
 ![PRs%20Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 **Live site: <https://YuChuanhui3.github.io/devtoolbox/>**
 
-DevToolbox is a free, open-source online toolbox for developers: **85 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Everything runs 100% client-side — your text, JSON and images never leave your device. No account, no backend, no analytics scripts. The interface is fully bilingual (English / 中文) with instant switching.
+DevToolbox is a free, open-source online toolbox for developers: **42 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Everything runs 100% client-side — your text, JSON and images never leave your device. No account, no backend, no analytics scripts. The interface is fully bilingual (English / 中文) with instant switching.
 
 ## Why DevToolbox
 
@@ -17,15 +17,15 @@ DevToolbox is a free, open-source online toolbox for developers: **85 browser-ba
 - **Peer-to-peer LAN file transfer** — WebRTC DataChannel file/transfer between phone and desktop on the same Wi-Fi, no server in between.
 - **Built for daily use** — global search (`⌘/Ctrl + K`), favorites, recent tools, auto-saved drafts, light/dark/system theme, per-tool code splitting.
 
-## Tool Categories (85 tools)
+## Tool Categories (42 pages)
 
 | Category | Count | Representative tools |
 |---|---|---|
-| Encoding & Encryption 编码加密 | 16 | Base64/Base32/Base58 codec, URL encoder, MD5/SHA digest, AES & RSA encrypt/decrypt, JWT decoder, bcrypt/scrypt, hex, gzip, htpasswd, random password |
-| Developer Utilities 开发调试 | 29 | Timestamp converter, regex tester, UUID generator, code compare, cron parser, HTTP status codes & headers reference, port reference, color converter, SQL/HTML/JS formatter, CRC16/CRC32, self-signed cert, virtual bank card & multi-country identity generator |
+| Encoding & Encryption 编码加密 | 3 | Codec Toolkit (Base64/URL/Unicode/Hex/JS-escape/Base32-62/Gzip/Morse on one shared input), Hash & Password Toolkit (MD5/SHA, bcrypt/scrypt, htpasswd), Cipher Toolkit (AES, DES/3DES/RC4, RSA, JWT) |
+| Developer Utilities 开发调试 | 13 | Developer Reference handbook (status codes/headers/methods/ports/MIME/Linux/MQTT), Random Toolkit (UUID/number/password), Regex Toolkit, Link Parser Toolkit (vmess/thunder/magnet/Type7), Dev Calc Toolkit (radix/size/CRC/PPI), Code Formatter Toolkit, Identity Generator, plus timestamp, URL parser, color, cron, diff, SSL cert, HTTP simulator, curl-to-code |
 | Data Formats 数据格式 | 2 | JSON Toolkit (format/minify/validate + JSONPath query + Schema + structural diff + six-format converter JSON/XML/YAML/CSV/Properties/Query, all on one shared input), JSON to Java/TS/Go entities |
-| Network Tools 网络工具 | 25 | My IP lookup, IP info & DNS record query, curl to code, WebSocket tester, subnet mask calculator, robots.txt generator, shields badge, SEO checker, LAN file transfer (WebRTC), MQTT cheatsheet & examples |
-| Image Tools 图像处理 | 4 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator |
+| Network Tools 网络工具 | 10 | IP Toolkit (egress IP, geo lookup, subnet mask, IP↔number, random IP/MAC), Site Diagnosis Toolkit (DNS/NS/links/SEO/headers/WebCheck on one shared URL), UA Toolkit, Webmaster Toolkit (robots.txt + shields badge), Browser Toolkit (env info + cookies), curl to code, WebSocket tester, LAN file transfer (WebRTC) |
+| Image Tools 图像处理 | 5 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator, QR file transfer (air-gapped chunk send/receive) |
 | Text Tools 文本处理 | 8 | Word/character counter, case converter, line utils, dedupe, sort, occurrence counter, HTML sanitize & entity escape |
 | Markdown | 1 | Live Markdown editor with split view, syntax highlighting, DOMPurify-sanitized preview, export `.md` / `.html` |
 
@@ -64,15 +64,16 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 # 中文说明
 
-一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **85 个高频工具**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
+一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **42 个高频工具箱**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
 
 没有账号、没有后端、没有第三方统计脚本。文本、JSON、图片等内容默认在浏览器内处理，不会上传服务器；收藏、最近使用与草稿仅保存在本机 `localStorage`。
 
 ## 功能特性
 
 - **全局搜索**：`⌘ / Ctrl + K` 唤起，支持名称、别名、标签与描述搜索，键盘上下选择、Enter 打开。
-- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；85 个工具、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
+- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；42 个工具页、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
 - **工具分类**：编码加密、开发调试、Markdown、数据格式、图像处理、网络工具、文本处理七大分类，按名称拼音首字母排序。
+- **工具箱合并**：功能相似的工具已合并为工具箱页（顶部标签切换、共享输入、Keep-alive 不丢状态），42 个页面吸收原 70+ 独立工具，旧链接 `/tools/*` 自动重定向。
 - **收藏与最近使用**：收藏工具、记录最近访问，刷新后仍然保留。
 - **主题模式**：浅色 / 深色 / 跟随系统，首次绘制前应用主题，避免闪烁。
 - **统一工具页模板**：输入、参数、操作、结果、错误、相关工具保持一致交互。
@@ -87,13 +88,13 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 分类与分类内工具均按名称拼音首字母自动排序（详见 `src/data/tools.ts` 的派生排序），新增工具无需手工调整顺序。
 
-### 编码加密（16）
+### 编码加密（3）
 
-AES 加密解密、Base32/58/62/100 互转、Base64 编码解码、Bcrypt/Scrypt 哈希、DES/3DES/Rabbit/RC4、Gzip 压缩解压、Hex 文本互转、htpasswd 生成器、JS 字符串转义、JWT 解析、MD5 / SHA 摘要、莫斯密码互转、RSA/RSA2 公私钥、随机密码生成、Unicode 转换、URL 编码解码。
+编码解码工具箱（Base64、URL、Unicode、Hex、JS 转义、Base32/58/62/100、Gzip、莫斯电码，共享一份输入）、哈希与口令工具箱（MD5/SHA 摘要、Bcrypt/Scrypt、htpasswd）、加解密工具箱（AES、DES/3DES/Rabbit/RC4、RSA 密钥对与签名、JWT 解析）。
 
-### 开发调试（29）
+### 开发调试（13）
 
-常用端口查询、Cisco Type7 加解密、CRC16/CRC32 校验、Cron 表达式解析、代码对比、HTML/CSS/JS 格式化、HTTP Header 查询、HTTP 状态码、HTTP 请求方法、进制转换、Linux 命令速查、MIME Type 查询、屏幕 PPI 计算、时间戳转换、SQL 格式化、随机数生成、URL 地址解析、User-Agent 解析、UUID 生成、VMess/SS/SSR 链接解析、文件大小换算、迅雷/快车/旋风链接、虚拟地址生成器、虚拟银行卡生成器、颜色转换、正则表达式测试、正则转义、种子转磁力链接、自签名证书生成。
+开发速查手册（HTTP 状态码 / 请求头 / 方法 / 常用端口 / MIME / Linux 命令 / MQTT 七类合一）、随机生成工具箱（UUID / 随机数 / 密码）、正则工具箱（测试 + 转义）、链接解析工具箱（VMess/SS/SSR / 迅雷 / 种子磁力 / Cisco Type7）、开发换算计算工具箱（进制 / 文件大小 / CRC / PPI）、代码格式化工具箱（SQL + HTML/CSS/JS）、虚拟身份生成（银行卡 / 多国地址），以及时间戳转换、URL 地址解析、颜色转换、Cron 解析、文本对比、自签名证书、模拟 HTTP 请求、curl 转代码。
 
 ### Markdown（1）
 
@@ -103,13 +104,13 @@ Markdown 实时渲染：编辑 / 分栏 / 预览三种模式、同步滚动、�
 
 JSON 工具箱（格式化/压缩/校验 + JSONPath 查询 + Schema 校验生成 + JSON 结构化对比 + 六种格式互转（JSON/XML/YAML/CSV/Properties/Query），共享同一份输入）、JSON 转多语言实体类。
 
-### 图像处理（4）
+### 图像处理（5）
 
-二维码生成、图片 Base64 互转、图片压缩、图片格式转换。图片处理通过 Canvas 在本地完成，支持批量处理、前后对比、单张 / 批量下载。
+二维码生成、二维码跨网传输（把文本/小文件切成二维码帧序列播放或下载，另一端相机连续扫码 / 截图批量 / 录屏逐帧回收，内网外网隔空传 JSON）、图片 Base64 互转、图片压缩（质量 / 目标大小双模式，智能择优 WebP/JPG/PNG 输出最小结果）、图片格式转换。图片处理通过 Canvas 在本地完成，支持批量处理、并排 / 拖动对比线预览、单张 / 批量下载。
 
-### 网络工具（25）
+### 网络工具（10）
 
-常用 User-Agent 大全、Cookie 查询、curl 转代码、获取你的 IP、IP 信息查询、IP 地址随机生成、IP 定位周边信息、IP 转数字 / 数字转 IP、局域网文件互传、浏览器信息获取、MAC 地址生成、模拟 HTTP 请求、模拟 WebSocket 请求、robots.txt 生成器、Shield Badge 徽章生成、User-Agent 随机生成、网站 SEO 查询、网站内外链接查询、网站头信息查看、网页自动刷新、WebCheck 网络检查、域名 DNS 解析记录、域名服务器查询、子网掩码计算换算、MQTT 速查与示例。
+IP 与网络地址工具箱（出口 IP / 归属地 / 定位地图 / IP↔数字 / 子网掩码 / 随机 IP / MAC，共享一个 IP 输入）、网站诊断工具箱（DNS 记录 / NS 与注册 / 内外链 / SEO / 响应头 / WebCheck，共享一个 URL 输入）、UA 工具箱（随机生成 / 大全 / 解析）、站长工具（robots.txt + 徽章）、浏览器检测工具箱（环境信息 + Cookie），以及 curl 转代码、模拟 WebSocket 请求、网页自动刷新、局域网文件互传。
 
 在线查询类工具依赖公开 API（ipify、Cloudflare DoH、WebSocket 测试服务等），部分需经 CORS 代理转发，页面内已标注数据来源与限制；局域网文件互传为 WebRTC 点对点直连，数据不经过任何服务器。
 
@@ -164,7 +165,7 @@ src/
 ├── lib/                 # 纯函数与浏览器能力封装（JSON、编码、转换、图片等）
 ├── pages/               # 首页、全部工具、分类、收藏、最近、关于、隐私
 ├── store/               # Zustand 全局状态
-├── tools/               # 85 个工具组件，按工具独立分包
+├── tools/               # 42 个工具箱页组件，按工具独立分包
 └── workers/             # JSON 转代码 Web Worker
 ```
 

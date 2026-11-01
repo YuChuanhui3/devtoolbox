@@ -1,11 +1,12 @@
-import { useCallback, useState } from 'react';
-import { ArrowRight, Eye, Images, Loader2, Play, Trash2 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { ArrowRight, Eye, Images, Loader2, Play, Sparkles, Trash2 } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
+import { Segmented } from '@/components/ui/Segmented';
 import { ActionBar, DownloadButton } from '@/components/tool/ToolActions';
 import { ImageDropzone } from '@/components/tool/ImageDropzone';
 import { ImagePreviewModal } from '@/components/tool/ImagePreviewModal';
@@ -14,11 +15,13 @@ import { useImageFiles } from '@/hooks/useImageFiles';
 import { useImageBatch } from '@/hooks/useImageBatch';
 import { useI18n } from '@/i18n/I18nProvider';
 import { formatBytes } from '@/lib/number';
-import { replaceExtension } from '@/lib/image';
+import { compressImage, formatLabelForMime, replaceExtension } from '@/lib/image';
+import type { CompressStrategy } from '@/lib/image';
 import type { ImagePreviewState } from '@/types/image';
 import { cn } from '@/lib/cn';
 
-type OutputFormat = 'auto' | 'image/webp' | 'image/jpeg' | 'image/png';
+type OutputFormat = 'auto' | 'best' | 'image/webp' | 'image/jpeg' | 'image/png';
+type CompressMode = 'quality' | 'target';
 
 function resolveOutputMime(format: OutputFormat, inputType: string): string {
   if (format !== 'auto') return format;
@@ -37,7 +40,9 @@ export default function ImageCompressTool() {
   const { t } = useI18n();
   const files = useImageFiles();
 
+  const [mode, setMode] = useState<CompressMode>('quality');
   const [quality, setQuality] = useState(80);
+  const [targetKB, setTargetKB] = useState('200');
   const [maxWidth, setMaxWidth] = useState('1920');
   const [format, setFormat] = useState<OutputFormat>('auto');
   const [background, setBackground] = useState('#ffffff');
@@ -59,14 +64,26 @@ export default function ImageCompressTool() {
   const { results, isProcessing, progress, totalOriginal, totalResult } = batch;
   const savedRatio = totalOriginal > 0 && totalResult > 0 ? 1 - totalResult / totalOriginal : 0;
 
+  const targetBytes = useMemo(() => {
+    const kb = Number(targetKB);
+    return Number.isFinite(kb) && kb > 0 ? Math.round(kb * 1024) : 200 * 1024;
+  }, [targetKB]);
+
   const compressAll = () =>
     batch.processAll(
-      (file) => ({
-        mime: resolveOutputMime(format, file.type),
-        quality: quality / 100,
-        maxWidth: Number(maxWidth) > 0 ? Number(maxWidth) : 0,
-        background,
-      }),
+      (file, bitmap) => {
+        const strategy: CompressStrategy =
+          mode === 'target'
+            ? { kind: 'target', targetBytes }
+            : format === 'best'
+              ? { kind: 'smart' }
+              : { kind: 'direct', mime: resolveOutputMime(format, file.type) };
+        return compressImage(bitmap, strategy, {
+          quality: quality / 100,
+          maxWidth: Number(maxWidth) > 0 ? Number(maxWidth) : 0,
+          background,
+        });
+      },
       { success: t({ zh: '图片处理完成', en: 'Images processed' }) },
     );
 
@@ -92,24 +109,54 @@ export default function ImageCompressTool() {
       ) : null}
 
       <Panel title={t({ zh: '压缩参数', en: 'Compression settings' })} bodyClassName="space-y-4 p-4">
+        <Segmented<CompressMode>
+          value={mode}
+          onChange={setMode}
+          ariaLabel={t({ zh: '压缩模式', en: 'Compression mode' })}
+          size="sm"
+          options={[
+            { value: 'quality', label: t({ zh: '质量模式', en: 'Quality' }) },
+            { value: 'target', label: t({ zh: '目标大小模式', en: 'Target size' }) },
+          ]}
+        />
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <div className="flex items-center justify-between text-xs">
-              <label htmlFor="compress-quality" className="text-ink-3">
-                {t({ zh: '质量', en: 'Quality' })}
-              </label>
-              <span className="font-mono font-semibold text-accent-strong">{quality}</span>
+          {mode === 'quality' ? (
+            <div>
+              <div className="flex items-center justify-between text-xs">
+                <label htmlFor="compress-quality" className="text-ink-3">
+                  {t({ zh: '质量', en: 'Quality' })}
+                </label>
+                <span className="font-mono font-semibold text-accent-strong">{quality}</span>
+              </div>
+              <input
+                id="compress-quality"
+                type="range"
+                min={10}
+                max={100}
+                value={quality}
+                onChange={(event) => setQuality(Number(event.target.value))}
+                className="mt-2 w-full accent-[var(--accent)]"
+              />
             </div>
-            <input
-              id="compress-quality"
-              type="range"
-              min={10}
-              max={100}
-              value={quality}
-              onChange={(event) => setQuality(Number(event.target.value))}
-              className="mt-2 w-full accent-[var(--accent)]"
-            />
-          </div>
+          ) : (
+            <div>
+              <label htmlFor="compress-target" className="text-xs text-ink-3">
+                {t({ zh: '目标大小（KB）', en: 'Target size (KB)' })}
+              </label>
+              <Input
+                id="compress-target"
+                value={targetKB}
+                onChange={(event) => setTargetKB(event.target.value)}
+                placeholder="200"
+                inputMode="numeric"
+                className="mt-1.5 h-9"
+              />
+              <p className="mt-1 text-[11px] leading-4 text-ink-3">
+                {t({ zh: '自动搜索质量，必要时降分辨率', en: 'Searches quality, shrinks resolution if needed' })}
+              </p>
+            </div>
+          )}
 
           <div>
             <label htmlFor="compress-width" className="text-xs text-ink-3">
@@ -125,23 +172,39 @@ export default function ImageCompressTool() {
             />
           </div>
 
-          <div>
-            <label htmlFor="compress-format" className="text-xs text-ink-3">
-              {t({ zh: '输出格式', en: 'Output format' })}
-            </label>
-            <Select
-              id="compress-format"
-              value={format}
-              onChange={(event) => setFormat(event.target.value as OutputFormat)}
-              className="mt-1.5 h-9"
-              wrapperClassName="mt-1.5 w-full"
-            >
-              <option value="auto">{t({ zh: '自动（保持原格式）', en: 'Auto (keep original format)' })}</option>
-              <option value="image/webp">WebP</option>
-              <option value="image/jpeg">JPG</option>
-              <option value="image/png">PNG</option>
-            </Select>
-          </div>
+          {mode === 'quality' ? (
+            <div>
+              <label htmlFor="compress-format" className="text-xs text-ink-3">
+                {t({ zh: '输出格式', en: 'Output format' })}
+              </label>
+              <Select
+                id="compress-format"
+                value={format}
+                onChange={(event) => setFormat(event.target.value as OutputFormat)}
+                className="mt-1.5 h-9"
+                wrapperClassName="mt-1.5 w-full"
+              >
+                <option value="auto">{t({ zh: '自动（保持原格式）', en: 'Auto (keep original format)' })}</option>
+                <option value="best">
+                  {t({ zh: '智能择优（输出最小）', en: 'Smart pick (smallest output)' })}
+                </option>
+                <option value="image/webp">WebP</option>
+                <option value="image/jpeg">JPG</option>
+                <option value="image/png">PNG</option>
+              </Select>
+            </div>
+          ) : (
+            <div>
+              <span className="text-xs text-ink-3">{t({ zh: '输出格式', en: 'Output format' })}</span>
+              <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-ink">
+                <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
+                WebP / JPG
+              </p>
+              <p className="mt-1 text-[11px] leading-4 text-ink-3">
+                {t({ zh: '目标模式使用有损格式以达成体积', en: 'Target mode uses a lossy format to hit the size' })}
+              </p>
+            </div>
+          )}
 
           <div>
             <label htmlFor="compress-bg" className="text-xs text-ink-3">
@@ -235,6 +298,15 @@ export default function ImageCompressTool() {
                           <span>
                             {result.width} × {result.height}
                           </span>
+                          <Badge tone="accent">{formatLabelForMime(result.mime)}</Badge>
+                          {result.targetMet === false ? (
+                            <span className="text-warn">
+                              {t({
+                                zh: `未达目标，已缩至 ${formatBytes(result.size)}`,
+                                en: `Target missed, shrunk to ${formatBytes(result.size)}`,
+                              })}
+                            </span>
+                          ) : null}
                         </>
                       ) : (
                         <span>{isProcessing ? t({ zh: '等待处理', en: 'Queued' }) : t({ zh: '待压缩', en: 'Ready to compress' })}</span>
@@ -279,8 +351,8 @@ export default function ImageCompressTool() {
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({
-          zh: '压缩使用 Canvas 在本地完成，图片不会离开浏览器。PNG 格式会忽略质量参数，WebP 通常能获得更高压缩率。',
-          en: 'Compression runs locally with Canvas; images never leave the browser. PNG ignores the quality setting; WebP usually achieves a better ratio.',
+          zh: '压缩使用 Canvas 在本地完成，图片不会离开浏览器。智能择优会试编 WebP / JPG / PNG 取最小结果（透明图自动跳过 JPG）；目标大小模式会迭代质量、必要时降低分辨率。',
+          en: 'Compression runs locally with Canvas; images never leave the browser. Smart pick encodes WebP / JPG / PNG candidates and keeps the smallest (transparent images skip JPG); target-size mode searches quality and lowers resolution when needed.',
         })}
       </p>
 

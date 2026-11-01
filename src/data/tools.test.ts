@@ -48,7 +48,7 @@ describe('双语元数据', () => {
   });
 
   test('英文名与英文说明参与搜索', () => {
-    expect(searchTools('subnet mask')[0]?.id).toBe('subnet-mask');
+    expect(searchTools('subnet mask')[0]?.id).toBe('ip-toolkit');
     expect(searchTools('formatter').some((tool) => tool.id === 'json-toolkit')).toBe(true);
     expect(searchTools('QR', 'en')[0]?.id).toBe('qr-generator');
   });
@@ -65,7 +65,7 @@ describe('tool registry search', () => {
   });
 
   test('finds tools by name, alias and tag', () => {
-    expect(searchTools('base64')[0]?.id).toBe('base64');
+    expect(searchTools('base64编码')[0]?.id).toBe('codec-toolkit');
     expect(searchTools('jsonpath')[0]?.id).toBe('json-toolkit');
     expect(searchTools('二维码')[0]?.id).toBe('qr-generator');
     expect(searchTools('图片').some((tool) => tool.category === 'image')).toBe(true);
@@ -91,10 +91,10 @@ describe('JSON 工具箱合并', () => {
     expect(Object.keys(LEGACY_TOOL_IDS).every((id) => !dataToolIds.includes(id))).toBe(true);
   });
 
-  test('resolves all legacy data-format routes to the unified toolkit', () => {
-    for (const legacyId of Object.keys(LEGACY_TOOL_IDS)) {
-      expect(getTool(legacyId)?.id).toBe('json-toolkit');
-      expect(toolPath(legacyId)).toBe('/tools/json-toolkit');
+  test('resolves all legacy routes to their unified toolkit', () => {
+    for (const [legacyId, targetId] of Object.entries(LEGACY_TOOL_IDS)) {
+      expect(getTool(legacyId)?.id).toBe(targetId);
+      expect(toolPath(legacyId)).toBe(`/tools/${targetId}`);
     }
   });
 
@@ -118,28 +118,28 @@ describe('JSON 工具箱合并', () => {
 
 describe('新一批工具搜索直达', () => {
   const cases: Array<[string, string]> = [
-    ['htpasswd生成', 'htpasswd'],
-    ['子网掩码', 'subnet-mask'],
-    ['base32编码', 'base-codec'],
-    ['vmess解析', 'proxy-link'],
-    ['迅雷解密', 'thunder-url'],
-    ['bcrypt验证', 'pwdhash'],
-    ['莫斯密码', 'morse-codec'],
-    ['gzip压缩', 'gzip-codec'],
-    ['type7解密', 'type7-cisco'],
-    ['ppi计算', 'ppi-calc'],
-    ['种子转磁力', 'torrent-magnet'],
+    ['htpasswd生成', 'hash-toolkit'],
+    ['子网掩码', 'ip-toolkit'],
+    ['base32编码', 'codec-toolkit'],
+    ['vmess解析', 'link-parser-toolkit'],
+    ['迅雷解密', 'link-parser-toolkit'],
+    ['bcrypt验证', 'hash-toolkit'],
+    ['莫斯密码', 'codec-toolkit'],
+    ['gzip压缩', 'codec-toolkit'],
+    ['type7解密', 'link-parser-toolkit'],
+    ['ppi计算', 'dev-calc-toolkit'],
+    ['种子转磁力', 'link-parser-toolkit'],
     ['自签名证书', 'ssl-cert'],
-    ['rc4加密', 'symcipher'],
-    ['rsa密钥生成', 'rsa-codec'],
-    ['gravatar', 'hash'],
-    ['mysql密码', 'password-generator'],
-    ['escape解密', 'js-escape'],
-    ['unicode中文互转', 'unicode'],
-    ['GUID随机生成', 'uuid'],
-    ['utf8编码', 'url-codec'],
-    ['crc32计算', 'crc-calc'],
-    ['杀死端口进程', 'linux-commands'],
+    ['rc4加密', 'crypto-toolkit'],
+    ['rsa密钥生成', 'crypto-toolkit'],
+    ['gravatar', 'hash-toolkit'],
+    ['mysql密码', 'random-toolkit'],
+    ['escape解密', 'codec-toolkit'],
+    ['unicode中文互转', 'codec-toolkit'],
+    ['GUID随机生成', 'random-toolkit'],
+    ['utf8编码', 'codec-toolkit'],
+    ['crc32计算', 'dev-calc-toolkit'],
+    ['杀死端口进程', 'dev-reference'],
   ];
   test.each(cases)('“%s” 直达 %s', (query, id) => {
     expect(searchTools(query)[0]?.id).toBe(id);

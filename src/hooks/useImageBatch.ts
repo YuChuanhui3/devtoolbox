@@ -3,8 +3,8 @@ import { useToast } from '@/components/ui/Toast';
 import { downloadAll } from '@/lib/download';
 import { ToolError, toToolError } from '@/lib/errors';
 import { tl } from '@/i18n/locale';
-import { loadImage, mimeToExtension, processImage } from '@/lib/image';
-import type { ProcessImageOptions } from '@/lib/image';
+import { loadImage, mimeToExtension } from '@/lib/image';
+import type { CompressOutcome } from '@/lib/image';
 import type { ImageFileItem } from '@/hooks/useImageFiles';
 import type { ImagePreviewState, ProcessedImageResult } from '@/types/image';
 
@@ -26,7 +26,7 @@ export interface ImageBatch {
   totalOriginal: number;
   totalResult: number;
   processAll: (
-    resolveOptions: (file: File) => ProcessImageOptions,
+    handle: (file: File, bitmap: ImageBitmap | HTMLImageElement) => Promise<CompressOutcome>,
     messages: { success: string },
   ) => Promise<void>;
   removeItem: (id: string) => void;
@@ -69,7 +69,7 @@ export function useImageBatch({
 
   const processAll = useCallback(
     async (
-      resolveOptions: (file: File) => ProcessImageOptions,
+      handle: (file: File, bitmap: ImageBitmap | HTMLImageElement) => Promise<CompressOutcome>,
       messages: { success: string },
     ) => {
       if (items.length === 0 || isProcessing) return;
@@ -84,8 +84,7 @@ export function useImageBatch({
         const item = items[index];
         try {
           const bitmap = await loadImage(item.file);
-          const options = resolveOptions(item.file);
-          const processed = await processImage(bitmap, options);
+          const outcome = await handle(item.file, bitmap);
 
           const originalWidth = bitmap.width;
           const originalHeight = bitmap.height;
@@ -95,15 +94,16 @@ export function useImageBatch({
 
           const result: ProcessedImageResult = {
             id: item.id,
-            blob: processed.blob,
-            url: URL.createObjectURL(processed.blob),
-            width: processed.width,
-            height: processed.height,
+            blob: outcome.blob,
+            url: URL.createObjectURL(outcome.blob),
+            width: outcome.width,
+            height: outcome.height,
             originalWidth,
             originalHeight,
-            mime: options.mime,
-            extension: mimeToExtension(options.mime),
-            size: processed.blob.size,
+            mime: outcome.mime,
+            extension: mimeToExtension(outcome.mime),
+            size: outcome.blob.size,
+            targetMet: outcome.targetMet,
           };
           setResults((current) => ({ ...current, [item.id]: result }));
         } catch (error) {

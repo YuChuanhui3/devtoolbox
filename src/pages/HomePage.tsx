@@ -14,10 +14,10 @@ import { DEFAULT_CHIP } from '@/lib/toolTone';
 
 const QUICK_TAGS: Array<{ label: L10n; toolId: string }> = [
   { label: { zh: 'JSON', en: 'JSON' }, toolId: 'json-toolkit' },
-  { label: { zh: 'Base64', en: 'Base64' }, toolId: 'base64' },
+  { label: { zh: 'Base64', en: 'Base64' }, toolId: 'codec-toolkit' },
   { label: { zh: '时间戳', en: 'Timestamp' }, toolId: 'timestamp' },
-  { label: { zh: 'UUID', en: 'UUID' }, toolId: 'uuid' },
-  { label: { zh: '正则', en: 'Regex' }, toolId: 'regex-tester' },
+  { label: { zh: 'UUID', en: 'UUID' }, toolId: 'random-toolkit' },
+  { label: { zh: '正则', en: 'Regex' }, toolId: 'regex-toolkit' },
   { label: { zh: 'Markdown', en: 'Markdown' }, toolId: 'markdown-editor' },
   { label: { zh: '图片压缩', en: 'Compress' }, toolId: 'image-compress' },
 ];

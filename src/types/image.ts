@@ -9,6 +9,8 @@ export interface ProcessedImageResult {
   mime: string;
   extension: string;
   size: number;
+  /** 目标大小模式：是否达成目标体积。 */
+  targetMet?: boolean;
 }
 
 export interface ImagePreviewState {

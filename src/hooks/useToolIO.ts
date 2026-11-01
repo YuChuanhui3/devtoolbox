@@ -5,6 +5,8 @@ import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useAppStore } from '@/store/appStore';
 
+const NOOP = () => {};
+
 export interface RunOptions {
   success?: string;
   /** 失败时保留上一次结果，默认清空以避免展示过期结果。 */
@@ -35,16 +37,22 @@ export interface ToolIO {
   reset: (value?: string) => void;
 }
 
-export function useToolIO(initialInput = ''): ToolIO {
+export interface ToolIOOptions {
+  /** 工具箱共享输入面板：输入由父组件持有，本实例不恢复初值、不回写草稿。 */
+  draftless?: boolean;
+}
+
+export function useToolIO(initialInput = '', options: ToolIOOptions = {}): ToolIO {
+  const { draftless = false } = options;
   const toolContext = useToolContext();
-  const restoredInput = toolContext?.initialInput ?? '';
+  const restoredInput = draftless ? '' : toolContext?.initialInput ?? '';
   const [input, setInputState] = useState(() => restoredInput || initialInput);
   const [output, setOutput] = useState('');
   const [error, setError] = useState<ToolError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
-  const { markDirty: markDraftDirty } = useDraftAutosave(
+  const { markDirty: markDraftDirtyReal } = useDraftAutosave(
     () => input || null,
     [input],
     () => {
@@ -54,6 +62,7 @@ export function useToolIO(initialInput = ''): ToolIO {
       setNotice(null);
     },
   );
+  const markDraftDirty = draftless ? NOOP : markDraftDirtyReal;
 
   const setInput = useCallback(
     (value: string) => {
