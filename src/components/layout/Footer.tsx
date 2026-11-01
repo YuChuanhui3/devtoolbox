@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Braces, Heart, ShieldCheck } from 'lucide-react';
+import { Braces, Github, Heart, ShieldCheck } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
-import { APP_VERSION } from '@/lib/appInfo';
+import { APP_VERSION, REPO_URL } from '@/lib/appInfo';
 
 interface FooterProps {
   onShowShortcuts: () => void;
@@ -45,6 +45,15 @@ export function Footer({ onShowShortcuts }: FooterProps) {
           >
             {t({ zh: '快捷键', en: 'Shortcuts' })}
           </button>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-accent-strong"
+          >
+            <Github className="h-3.5 w-3.5" aria-hidden="true" />
+            GitHub
+          </a>
           <span className="inline-flex items-center gap-1 text-ink-3">
             <ShieldCheck className="h-3.5 w-3.5 text-ok" aria-hidden="true" />
             {t({ zh: '本地处理', en: 'Local processing' })}

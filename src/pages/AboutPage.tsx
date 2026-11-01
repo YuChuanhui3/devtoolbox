@@ -3,6 +3,7 @@ import {
   Braces,
   ClipboardCopy,
   Cpu,
+  Github,
   Keyboard,
   Layers,
   ShieldCheck,
@@ -17,7 +18,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import type { L10n } from '@/i18n/locale';
 import { useSeo } from '@/hooks/useSeo';
 import { copyText } from '@/lib/clipboard';
-import { APP_VERSION } from '@/lib/appInfo';
+import { APP_VERSION, REPO_URL } from '@/lib/appInfo';
 
 const FEATURES: Array<{ icon: typeof Zap; title: L10n; description: L10n }> = [
   {
@@ -178,6 +179,15 @@ export function AboutPage() {
             </span>
           ))}
         </div>
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong hover:underline"
+        >
+          <Github className="h-4 w-4" aria-hidden="true" />
+          {t({ zh: '在 GitHub 查看源码与提交记录', en: 'Source code and commits on GitHub' })}
+        </a>
       </section>
 
       <section className="card-surface p-5">

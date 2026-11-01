@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "homepage": "https://YuChuanhui3.github.io/devtoolbox/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YuChuanhui3/devtoolbox.git"
+  },
   "license": "MIT",
   "description": "开发者在线工具箱 · 纯前端、本地优先的一站式工具站",
   "scripts": {

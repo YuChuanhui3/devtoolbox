@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Braces, Keyboard, Menu, Search, Settings2 } from 'lucide-react';
+import { Braces, Github, Keyboard, Menu, Search, Settings2 } from 'lucide-react';
 import { useSearch } from '@/components/search/SearchProvider';
 import { useHotkey } from '@/hooks/useHotkey';
 import { useI18n } from '@/i18n/I18nProvider';
 import { IconButton } from '@/components/ui/IconButton';
 import { Kbd } from '@/components/ui/Kbd';
+import { REPO_URL } from '@/lib/appInfo';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitch } from './LanguageSwitch';
 
@@ -73,6 +74,17 @@ export function Header({ onOpenMenu, onOpenSettings, onShowShortcuts }: HeaderPr
               <Keyboard className="h-4.5 w-4.5" aria-hidden="true" />
             </IconButton>
           </span>
+
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label={t({ zh: '在 GitHub 查看源码', en: 'View source on GitHub' })}
+            title={t({ zh: '在 GitHub 查看源码', en: 'View source on GitHub' })}
+            className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors duration-300 ease-in-out hover:bg-surface-2 hover:text-ink sm:inline-flex"
+          >
+            <Github className="h-4.5 w-4.5" aria-hidden="true" />
+          </a>
 
           <LanguageSwitch />
 
