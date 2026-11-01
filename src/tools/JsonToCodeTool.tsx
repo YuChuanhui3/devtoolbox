@@ -1,10 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, FileCode2, Loader2, RefreshCw, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Checkbox } from '@/components/ui/Checkbox';
-import { Input } from '@/components/ui/Input';
 import { Panel } from '@/components/ui/Panel';
-import { Select } from '@/components/ui/Select';
 import { InputPanel, StatsBar } from '@/components/tool/EditorPanels';
 import {
   ActionBar,
@@ -17,51 +14,27 @@ import {
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useToolIO } from '@/hooks/useToolIO';
+import { useCodeGenWorker } from '@/hooks/useCodeGenWorker';
 import {
-  CODE_LANGUAGES,
   DEFAULT_CODE_GEN_OPTIONS,
   getCodeFilename,
   getLanguageMeta,
-  sanitizeRootName,
   type CodeGenOptions,
-  type CodeGenRequest,
-  type CodeGenResponse,
-  type CodeLanguage,
 } from '@/lib/codegen';
 import { cn } from '@/lib/cn';
 import { useI18n } from '@/i18n/I18nProvider';
-import type { L10n, Localized } from '@/i18n/locale';
+import type { Localized } from '@/i18n/locale';
 import { countTextStats } from '@/lib/text';
 import { SAMPLE_JSON_TO_CODE } from '@/data/samples';
+import { CodeGenOptionsPanel, NAMING_LABELS } from '@/tools/json-to-code/CodeGenOptionsPanel';
 
 const DEBOUNCE_DELAY = 300;
 const SKELETON_DELAY = 200;
 const OUTPUT_LINE_NUMBER_LIMIT = 1000;
 
-interface GenerationError {
-  message: Localized;
-  hint?: Localized;
-  line?: number;
-  column?: number;
-  source?: string;
-}
-
-interface PendingRequest {
-  id: number;
-  language: CodeLanguage;
-  json: string;
-}
-
 function getLineAt(text: string, line: number): string {
   return text.split('\n')[line - 1] ?? '';
 }
-
-const NAMING_LABELS: Record<CodeGenOptions['naming'], L10n> = {
-  camel: { zh: '小驼峰', en: 'camelCase' },
-  pascal: { zh: '大驼峰', en: 'PascalCase' },
-  snake: { zh: '下划线', en: 'snake_case' },
-  preserve: { zh: '保持原样', en: 'Keep as-is' },
-};
 
 function CodeSkeleton() {
   const { t } = useI18n();
@@ -84,129 +57,22 @@ export default function JsonToCodeTool() {
   const { t } = useI18n();
   const io = useToolIO();
   const [options, setOptions] = useState<CodeGenOptions>(DEFAULT_CODE_GEN_OPTIONS);
-  const [code, setCode] = useState('');
-  const [codeLanguage, setCodeLanguage] = useState<CodeLanguage | null>(null);
-  const [nodeCount, setNodeCount] = useState(0);
-  const [durationMs, setDurationMs] = useState<number | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [genError, setGenError] = useState<GenerationError | null>(null);
   const [languagePulse, setLanguagePulse] = useState(false);
+  const {
+    code,
+    codeLanguage,
+    nodeCount,
+    durationMs,
+    isGenerating,
+    genError,
+    requestGeneration,
+    invalidate,
+    resetOutput,
+  } = useCodeGenWorker();
 
-  const workerRef = useRef<Worker | null>(null);
-  const requestIdRef = useRef(0);
-  const pendingRef = useRef<PendingRequest | null>(null);
-  const lastRequestKeyRef = useRef('');
   const previousLanguageRef = useRef(options.language);
-
   const debouncedInput = useDebouncedValue(io.input, DEBOUNCE_DELAY);
 
-  const requestGeneration = useCallback(
-    (json: string, nextOptions: CodeGenOptions, force = false) => {
-      const worker = workerRef.current;
-      const key = `${JSON.stringify(nextOptions)}::${json}`;
-
-      if (!json.trim()) {
-        requestIdRef.current += 1;
-        pendingRef.current = null;
-        lastRequestKeyRef.current = '';
-        setIsGenerating(false);
-        setCode('');
-        setCodeLanguage(null);
-        setNodeCount(0);
-        setDurationMs(null);
-        setGenError(null);
-        return;
-      }
-
-      if (!worker) return;
-      if (!force && key === lastRequestKeyRef.current) return;
-
-      lastRequestKeyRef.current = key;
-      const id = requestIdRef.current + 1;
-      requestIdRef.current = id;
-      pendingRef.current = { id, language: nextOptions.language, json };
-      setIsGenerating(true);
-      setGenError(null);
-
-      const request: CodeGenRequest = { id, json, options: nextOptions };
-      worker.postMessage(request);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (typeof Worker === 'undefined') {
-      setGenError({
-        message: {
-          zh: '当前环境不支持 Web Worker，无法生成代码。',
-          en: 'Web Workers are not available in this environment, so code cannot be generated.',
-        },
-        hint: {
-          zh: '请使用最新版 Chrome、Edge、Firefox 或 Safari，并确认未禁用 JavaScript。',
-          en: 'Use the latest Chrome, Edge, Firefox, or Safari and make sure JavaScript is enabled.',
-        },
-      });
-      return;
-    }
-
-    let worker: Worker;
-    try {
-      worker = new Worker(new URL('../workers/jsonToCode.worker.ts', import.meta.url), {
-        type: 'module',
-      });
-    } catch {
-      setGenError({
-        message: { zh: '代码生成线程启动失败。', en: 'Failed to start the code generation worker.' },
-        hint: { zh: '请刷新页面后重试，或更换最新版浏览器。', en: 'Reload the page and retry, or use a current browser.' },
-      });
-      return;
-    }
-
-    worker.onmessage = (event: MessageEvent<CodeGenResponse>) => {
-      const response = event.data;
-      const pending = pendingRef.current;
-      if (!pending || pending.id !== response.id) return;
-
-      pendingRef.current = null;
-      setIsGenerating(false);
-      setDurationMs(response.durationMs);
-      setNodeCount(response.nodeCount);
-
-      if (response.ok) {
-        setCode(response.code);
-        setCodeLanguage(pending.language);
-        setGenError(null);
-      } else {
-        setCode('');
-        setCodeLanguage(pending.language);
-        setGenError({ ...response.error, source: pending.json });
-      }
-    };
-
-    worker.onerror = () => {
-      const pending = pendingRef.current;
-      pendingRef.current = null;
-      lastRequestKeyRef.current = '';
-      setIsGenerating(false);
-      setCode('');
-      setGenError({
-        message: { zh: '代码生成线程异常。', en: 'The code generation worker failed.' },
-        hint: {
-          zh: '请刷新页面后重试；如果问题持续出现，请尝试更换浏览器。',
-          en: 'Reload the page and retry; switch browsers if the problem persists.',
-        },
-        source: pending?.json,
-      });
-    };
-
-    workerRef.current = worker;
-    return () => {
-      worker.terminate();
-      workerRef.current = null;
-      pendingRef.current = null;
-      lastRequestKeyRef.current = '';
-    };
-  }, []);
 
   useEffect(() => {
     requestGeneration(debouncedInput, options);
@@ -227,7 +93,6 @@ export default function JsonToCodeTool() {
   const hasInput = io.input.trim().length > 0;
   const displayCode = codeLanguage === options.language ? code : '';
   const languageMeta = getLanguageMeta(options.language);
-  const rootName = sanitizeRootName(options.rootName);
   const filename = getCodeFilename(options.rootName, options.language);
 
   const isStaleLanguage = codeLanguage !== null && codeLanguage !== options.language;
@@ -266,19 +131,8 @@ export default function JsonToCodeTool() {
           ? { zh: 'JSON 格式合法', en: 'Valid JSON' }
           : { zh: '等待生成', en: 'Waiting to generate' };
 
-  const resetOutput = () => {
-    setCode('');
-    setCodeLanguage(null);
-    setNodeCount(0);
-    setDurationMs(null);
-    setGenError(null);
-  };
-
   const handleClear = () => {
-    requestIdRef.current += 1;
-    pendingRef.current = null;
-    lastRequestKeyRef.current = '';
-    setIsGenerating(false);
+    invalidate();
     resetOutput();
     io.clear();
   };
@@ -293,80 +147,7 @@ export default function JsonToCodeTool() {
 
   return (
     <div className="space-y-4">
-      <Panel
-        title={t({ zh: '生成参数', en: 'Generation settings' })}
-        subtitle={t({
-          zh: '全部转换在本地 Web Worker 中完成，JSON 内容不会上传',
-          en: 'All generation runs in a local Web Worker; your JSON is never uploaded',
-        })}
-      >
-        <div className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[220px_160px_minmax(200px,1fr)_auto]">
-          <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-ink-2">
-            {t({ zh: '目标语言', en: 'Target language' })}
-            <Select
-              value={options.language}
-              onChange={(event) => updateOptions({ language: event.target.value as CodeLanguage })}
-              aria-label={t({ zh: '目标语言', en: 'Target language' })}
-            >
-              {CODE_LANGUAGES.map((language) => (
-                <option key={language.value} value={language.value}>
-                  {language.label}
-                </option>
-              ))}
-            </Select>
-          </label>
-
-          <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-ink-2">
-            {t({ zh: '命名风格', en: 'Naming style' })}
-            <Select
-              value={options.naming}
-              onChange={(event) =>
-                updateOptions({ naming: event.target.value as CodeGenOptions['naming'] })
-              }
-              aria-label={t({ zh: '命名风格', en: 'Naming style' })}
-            >
-              <option value="camel">{t(NAMING_LABELS.camel)}</option>
-              <option value="pascal">{t(NAMING_LABELS.pascal)}</option>
-              <option value="snake">{t(NAMING_LABELS.snake)}</option>
-              <option value="preserve">{t(NAMING_LABELS.preserve)}</option>
-            </Select>
-          </label>
-
-          <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-ink-2">
-            {t({ zh: '根节点名称', en: 'Root name' })}
-            <Input
-              value={options.rootName}
-              onChange={(event) => updateOptions({ rootName: event.target.value })}
-              aria-label={t({ zh: '根节点名称', en: 'Root name' })}
-              placeholder="RootData"
-              maxLength={64}
-              mono
-            />
-          </label>
-
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pb-2.5">
-            <Checkbox
-              checked={options.comments}
-              onChange={(checked) => updateOptions({ comments: checked })}
-              label={t({ zh: '生成字段注释', en: 'Generate field comments' })}
-              className="text-xs"
-            />
-            <Checkbox
-              checked={options.handleNull}
-              onChange={(checked) => updateOptions({ handleNull: checked })}
-              label={t({ zh: '处理 null / 可选字段', en: 'Handle null / optional fields' })}
-              className="text-xs"
-            />
-          </div>
-        </div>
-
-        <p className="mt-3 border-t border-line pt-3 text-[11px] text-ink-3">
-          {t({ zh: '类名将生成为 ', en: 'Class name: ' })}
-          <span className="font-mono text-ink-2">{rootName}</span>
-          {t({ zh: '，下载文件名为 ', en: ', download filename: ' })}
-          <span className="font-mono text-ink-2">{filename}</span>
-        </p>
-      </Panel>
+      <CodeGenOptionsPanel options={options} onChange={updateOptions} />
 
       <ActionBar>
         <span className="inline-flex items-center gap-1.5 px-1 text-xs text-ink-3" aria-live="polite">
