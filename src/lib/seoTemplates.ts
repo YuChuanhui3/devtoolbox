@@ -3,11 +3,15 @@ import type { CategoryMeta, ToolMeta } from '@/types/tool';
 
 const dropPeriod = (value: string): string => value.replace(/[。.]$/, '');
 
-/** 工具页关键词化标题：在线{名}工具 / Online {nameEn} Tool。 */
-export const toolSeoTitle = (tool: ToolMeta): L10n => ({
-  zh: /工具$/.test(tool.name) ? `在线${tool.name}` : `在线${tool.name}工具`,
-  en: `Online ${tool.nameEn ?? tool.name} Tool`,
-});
+/** 工具页关键词化标题：在线{名}工具 / Online {nameEn} Tool。名称自带工具/工具箱后缀时不再重复拼接。 */
+export const toolSeoTitle = (tool: ToolMeta): L10n => {
+  const name = tool.name;
+  const nameEn = tool.nameEn ?? tool.name;
+  return {
+    zh: /工具(箱)?$/.test(name) ? `在线${name}` : `在线${name}工具`,
+    en: /(?:tool|tools|toolkit)$/i.test(nameEn.trim()) ? `Online ${nameEn}` : `Online ${nameEn} Tool`,
+  };
+};
 
 export const toolSeoDescription = (tool: ToolMeta): L10n => ({
   zh: `${toolSeoTitle(tool).zh}：${dropPeriod(tool.description)}。纯浏览器本地处理，数据不上传，无需注册。`,
