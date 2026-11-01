@@ -2,6 +2,7 @@ import { FileType, GitBranch, Heading, Hash, Plug, Radio, Terminal } from 'lucid
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { HeadersPanel } from './dev-reference/HeadersPanel';
 import { LinuxPanel } from './dev-reference/LinuxPanel';
 import { MethodsPanel } from './dev-reference/MethodsPanel';
@@ -70,27 +71,27 @@ export default function DevReferenceTool() {
         />
       </div>
 
-      <div className={mode === 'http-status' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'http-status'}>
         <StatusPanel active={mode === 'http-status'} />
-      </div>
-      <div className={mode === 'http-headers' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'http-headers'}>
         <HeadersPanel active={mode === 'http-headers'} />
-      </div>
-      <div className={mode === 'http-methods' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'http-methods'}>
         <MethodsPanel active={mode === 'http-methods'} />
-      </div>
-      <div className={mode === 'ports' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'ports'}>
         <PortsPanel active={mode === 'ports'} />
-      </div>
-      <div className={mode === 'mime-type' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'mime-type'}>
         <MimePanel active={mode === 'mime-type'} />
-      </div>
-      <div className={mode === 'linux-commands' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'linux-commands'}>
         <LinuxPanel active={mode === 'linux-commands'} />
-      </div>
-      <div className={mode === 'mqtt' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'mqtt'}>
         <MqttPanel active={mode === 'mqtt'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

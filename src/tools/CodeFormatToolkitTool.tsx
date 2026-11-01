@@ -5,6 +5,7 @@ import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { SqlPanel } from './code-format-toolkit/SqlPanel';
 import { WebPanel } from './code-format-toolkit/WebPanel';
 
@@ -49,12 +50,12 @@ export default function CodeFormatToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'sql' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'sql'}>
         <SqlPanel value={inputState} onValueChange={setInput} active={mode === 'sql'} />
-      </div>
-      <div className={mode === 'web' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'web'}>
         <WebPanel value={inputState} onValueChange={setInput} active={mode === 'web'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

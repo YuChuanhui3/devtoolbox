@@ -2,6 +2,7 @@ import { Binary, HardDrive, Monitor, ScanLine } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { CrcPanel } from './dev-calc-toolkit/CrcPanel';
 import { FileSizePanel } from './dev-calc-toolkit/FileSizePanel';
 import { PpiPanel } from './dev-calc-toolkit/PpiPanel';
@@ -45,18 +46,18 @@ export default function DevCalcToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'radix' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'radix'}>
         <RadixPanel active={mode === 'radix'} />
-      </div>
-      <div className={mode === 'file-size' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'file-size'}>
         <FileSizePanel active={mode === 'file-size'} />
-      </div>
-      <div className={mode === 'crc' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'crc'}>
         <CrcPanel active={mode === 'crc'} />
-      </div>
-      <div className={mode === 'ppi' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'ppi'}>
         <PpiPanel active={mode === 'ppi'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

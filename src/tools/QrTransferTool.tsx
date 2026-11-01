@@ -2,6 +2,7 @@ import { Camera, Film, QrCode, Send, ShieldCheck } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useDqxSession } from '@/hooks/useDqxSession';
 import { ReceivePanel } from './qr-transfer/ReceivePanel';
 import { SalvagePanel } from './qr-transfer/SalvagePanel';
@@ -29,15 +30,15 @@ export default function QrTransferTool() {
         />
       </div>
 
-      <div className={mode === 'send' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'send'}>
         <SendPanel active={mode === 'send'} />
-      </div>
-      <div className={mode === 'receive' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'receive'}>
         <ReceivePanel active={mode === 'receive'} session={session} />
-      </div>
-      <div className={mode === 'salvage' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'salvage'}>
         <SalvagePanel active={mode === 'salvage'} session={session} />
-      </div>
+      </LazyPanel>
 
       <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-2/50 px-3.5 py-2.5 text-[11px] leading-5 text-ink-3">
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ok" aria-hidden="true" />

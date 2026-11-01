@@ -6,6 +6,7 @@ import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { DnsPanel } from './site-diagnosis-toolkit/DnsPanel';
 import { HeadersPanel } from './site-diagnosis-toolkit/HeadersPanel';
 import { LinksPanel } from './site-diagnosis-toolkit/LinksPanel';
@@ -91,24 +92,24 @@ export default function SiteDiagnosisToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'dns' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'dns'}>
         <DnsPanel {...panelProps} active={mode === 'dns'} />
-      </div>
-      <div className={mode === 'ns' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'ns'}>
         <NsPanel {...panelProps} active={mode === 'ns'} />
-      </div>
-      <div className={mode === 'links' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'links'}>
         <LinksPanel {...panelProps} active={mode === 'links'} />
-      </div>
-      <div className={mode === 'seo' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'seo'}>
         <SeoPanel {...panelProps} active={mode === 'seo'} />
-      </div>
-      <div className={mode === 'headers' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'headers'}>
         <HeadersPanel {...panelProps} active={mode === 'headers'} />
-      </div>
-      <div className={mode === 'webcheck' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'webcheck'}>
         <WebcheckPanel {...panelProps} active={mode === 'webcheck'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

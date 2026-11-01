@@ -2,6 +2,7 @@ import { Regex, Shield } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { EscapePanel } from './regex-toolkit/EscapePanel';
 import { TesterPanel } from './regex-toolkit/TesterPanel';
 
@@ -33,12 +34,12 @@ export default function RegexToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'tester' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'tester'}>
         <TesterPanel active={mode === 'tester'} />
-      </div>
-      <div className={mode === 'escape' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'escape'}>
         <EscapePanel active={mode === 'escape'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

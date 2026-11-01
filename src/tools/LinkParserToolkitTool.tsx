@@ -2,6 +2,7 @@ import { Globe, Lock, Magnet, Zap } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { ProxyLinkPanel } from './link-parser-toolkit/ProxyLinkPanel';
 import { ThunderUrlPanel } from './link-parser-toolkit/ThunderUrlPanel';
 import { TorrentMagnetPanel } from './link-parser-toolkit/TorrentMagnetPanel';
@@ -45,18 +46,18 @@ export default function LinkParserToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'proxy-link' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'proxy-link'}>
         <ProxyLinkPanel active={mode === 'proxy-link'} />
-      </div>
-      <div className={mode === 'thunder-url' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'thunder-url'}>
         <ThunderUrlPanel active={mode === 'thunder-url'} />
-      </div>
-      <div className={mode === 'torrent-magnet' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'torrent-magnet'}>
         <TorrentMagnetPanel active={mode === 'torrent-magnet'} />
-      </div>
-      <div className={mode === 'type-7' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'type-7'}>
         <Type7Panel active={mode === 'type-7'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

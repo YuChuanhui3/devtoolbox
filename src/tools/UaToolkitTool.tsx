@@ -5,6 +5,7 @@ import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { RandomUaPanel } from './ua-toolkit/RandomUaPanel';
 import { UaCollectionPanel } from './ua-toolkit/UaCollectionPanel';
 import { UaParserPanel } from './ua-toolkit/UaParserPanel';
@@ -55,15 +56,15 @@ export default function UaToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'random' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'random'}>
         <RandomUaPanel active={mode === 'random'} />
-      </div>
-      <div className={mode === 'collection' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'collection'}>
         <UaCollectionPanel active={mode === 'collection'} />
-      </div>
-      <div className={mode === 'parser' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'parser'}>
         <UaParserPanel uaText={uaTextState} onUaText={setUaText} active={mode === 'parser'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

@@ -2,6 +2,7 @@ import { CreditCard, MapPin } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { AddressPanel } from './identity-toolkit/AddressPanel';
 import { CardPanel } from './identity-toolkit/CardPanel';
 
@@ -33,12 +34,12 @@ export default function IdentityToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'card' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'card'}>
         <CardPanel active={mode === 'card'} />
-      </div>
-      <div className={mode === 'address' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'address'}>
         <AddressPanel active={mode === 'address'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

@@ -2,6 +2,7 @@ import { BadgeCheck, Bot } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { BadgePanel } from './webmaster-toolkit/BadgePanel';
 import { RobotsPanel } from './webmaster-toolkit/RobotsPanel';
 
@@ -33,12 +34,12 @@ export default function WebmasterToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'robots' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'robots'}>
         <RobotsPanel active={mode === 'robots'} />
-      </div>
-      <div className={mode === 'badge' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'badge'}>
         <BadgePanel active={mode === 'badge'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

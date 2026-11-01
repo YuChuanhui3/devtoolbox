@@ -2,6 +2,7 @@ import { Cookie, MonitorSmartphone } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { BrowserInfoPanel } from './browser-toolkit/BrowserInfoPanel';
 import { CookiePanel } from './browser-toolkit/CookiePanel';
 
@@ -33,12 +34,12 @@ export default function BrowserToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'info' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'info'}>
         <BrowserInfoPanel active={mode === 'info'} />
-      </div>
-      <div className={mode === 'cookie' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'cookie'}>
         <CookiePanel active={mode === 'cookie'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

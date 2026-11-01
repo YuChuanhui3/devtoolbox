@@ -6,6 +6,7 @@ import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { GeneratorsPanel } from './ip-toolkit/GeneratorsPanel';
 import { IpInfoPanel } from './ip-toolkit/IpInfoPanel';
 import { IpNumberPanel } from './ip-toolkit/IpNumberPanel';
@@ -91,24 +92,24 @@ export default function IpToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'query' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'query'}>
         <IpInfoPanel {...panelProps} active={mode === 'query'} />
-      </div>
-      <div className={mode === 'number' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'number'}>
         <IpNumberPanel {...panelProps} active={mode === 'number'} />
-      </div>
-      <div className={mode === 'subnet' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'subnet'}>
         <SubnetPanel {...panelProps} active={mode === 'subnet'} />
-      </div>
-      <div className={mode === 'my' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'my'}>
         <MyIpPanel active={mode === 'my'} />
-      </div>
-      <div className={mode === 'nearby' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'nearby'}>
         <NearbyPanel active={mode === 'nearby'} />
-      </div>
-      <div className={mode === 'generators' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'generators'}>
         <GeneratorsPanel active={mode === 'generators'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

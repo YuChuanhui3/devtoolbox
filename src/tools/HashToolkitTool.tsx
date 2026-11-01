@@ -2,6 +2,7 @@ import { Fingerprint, Hash, KeyRound } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { HashPanel } from './hash-toolkit/HashPanel';
 import { HtpasswdPanel } from './hash-toolkit/HtpasswdPanel';
 import { PwdHashPanel } from './hash-toolkit/PwdHashPanel';
@@ -39,15 +40,15 @@ export default function HashToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'hash' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'hash'}>
         <HashPanel active={mode === 'hash'} />
-      </div>
-      <div className={mode === 'pwdhash' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'pwdhash'}>
         <PwdHashPanel active={mode === 'pwdhash'} />
-      </div>
-      <div className={mode === 'htpasswd' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'htpasswd'}>
         <HtpasswdPanel active={mode === 'htpasswd'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

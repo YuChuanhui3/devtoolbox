@@ -2,6 +2,7 @@ import { FileKey2, KeyRound, Lock, LockKeyhole } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { AesPanel } from './crypto-toolkit/AesPanel';
 import { JwtPanel } from './crypto-toolkit/JwtPanel';
 import { RsaPanel } from './crypto-toolkit/RsaPanel';
@@ -45,18 +46,18 @@ export default function CryptoToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'aes' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'aes'}>
         <AesPanel active={mode === 'aes'} />
-      </div>
-      <div className={mode === 'symcipher' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'symcipher'}>
         <SymCipherPanel active={mode === 'symcipher'} />
-      </div>
-      <div className={mode === 'rsa' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'rsa'}>
         <RsaPanel active={mode === 'rsa'} />
-      </div>
-      <div className={mode === 'jwt' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'jwt'}>
         <JwtPanel active={mode === 'jwt'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

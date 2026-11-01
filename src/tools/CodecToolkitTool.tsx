@@ -4,6 +4,7 @@ import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { Base64Panel } from './codec-toolkit/Base64Panel';
 import { BaseCodecPanel } from './codec-toolkit/BaseCodecPanel';
 import { GzipCodecPanel } from './codec-toolkit/GzipCodecPanel';
@@ -52,30 +53,30 @@ export default function CodecToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'base64' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'base64'}>
         <Base64Panel value={inputState} onValueChange={setInput} active={mode === 'base64'} />
-      </div>
-      <div className={mode === 'url' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'url'}>
         <UrlCodecPanel value={inputState} onValueChange={setInput} active={mode === 'url'} />
-      </div>
-      <div className={mode === 'unicode' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'unicode'}>
         <UnicodePanel value={inputState} onValueChange={setInput} active={mode === 'unicode'} />
-      </div>
-      <div className={mode === 'hex' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'hex'}>
         <HexTextPanel value={inputState} onValueChange={setInput} active={mode === 'hex'} />
-      </div>
-      <div className={mode === 'js-escape' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'js-escape'}>
         <JsEscapePanel value={inputState} onValueChange={setInput} active={mode === 'js-escape'} />
-      </div>
-      <div className={mode === 'base-n' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'base-n'}>
         <BaseCodecPanel value={inputState} onValueChange={setInput} active={mode === 'base-n'} />
-      </div>
-      <div className={mode === 'gzip' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'gzip'}>
         <GzipCodecPanel value={inputState} onValueChange={setInput} active={mode === 'gzip'} />
-      </div>
-      <div className={mode === 'morse' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'morse'}>
         <MorseCodecPanel value={inputState} onValueChange={setInput} active={mode === 'morse'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

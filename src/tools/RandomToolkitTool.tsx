@@ -2,6 +2,7 @@ import { Dices, Fingerprint, Hash } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { PasswordPanel } from './random-toolkit/PasswordPanel';
 import { RandomNumberPanel } from './random-toolkit/RandomNumberPanel';
 import { UuidPanel } from './random-toolkit/UuidPanel';
@@ -39,15 +40,15 @@ export default function RandomToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'uuid' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'uuid'}>
         <UuidPanel active={mode === 'uuid'} />
-      </div>
-      <div className={mode === 'number' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'number'}>
         <RandomNumberPanel active={mode === 'number'} />
-      </div>
-      <div className={mode === 'password' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'password'}>
         <PasswordPanel active={mode === 'password'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({

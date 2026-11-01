@@ -5,6 +5,7 @@ import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
+import { LazyPanel } from '@/components/tool/LazyPanel';
 import { ConverterPanel } from './json-toolkit/ConverterPanel';
 import { DiffPanel } from './json-toolkit/DiffPanel';
 import { FormatPanel } from './json-toolkit/FormatPanel';
@@ -104,26 +105,26 @@ export default function JsonToolkitTool() {
         />
       </div>
 
-      <div className={mode === 'format' ? 'contents' : 'hidden'}>
+      <LazyPanel active={mode === 'format'}>
         <FormatPanel {...panelProps} active={mode === 'format'} />
-      </div>
-      <div className={mode === 'path' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'path'}>
         <JsonPathPanel {...panelProps} active={mode === 'path'} />
-      </div>
-      <div className={mode === 'schema' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'schema'}>
         <SchemaPanel {...panelProps} active={mode === 'schema'} />
-      </div>
-      <div className={mode === 'diff' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'diff'}>
         <DiffPanel
           {...panelProps}
           active={mode === 'diff'}
           right={diffRightState}
           setRight={setDiffRight}
         />
-      </div>
-      <div className={mode === 'convert' ? 'contents' : 'hidden'}>
+      </LazyPanel>
+      <LazyPanel active={mode === 'convert'}>
         <ConverterPanel {...panelProps} active={mode === 'convert'} />
-      </div>
+      </LazyPanel>
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({
