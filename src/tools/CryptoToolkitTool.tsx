@@ -1,5 +1,5 @@
 import { FileKey2, KeyRound, Lock, LockKeyhole } from 'lucide-react';
-import { Segmented } from '@/components/ui/Segmented';
+import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { LazyPanel } from '@/components/tool/LazyPanel';
@@ -16,8 +16,7 @@ export default function CryptoToolkitTool() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-center">
-        <Segmented<CryptoToolkitMode>
+      <ToolkitTabs<CryptoToolkitMode>
           value={mode}
           onChange={setMode}
           ariaLabel={t({ zh: '加解密工具箱模式', en: 'Crypto toolkit mode' })}
@@ -43,8 +42,7 @@ export default function CryptoToolkitTool() {
               icon: <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />,
             },
           ]}
-        />
-      </div>
+      />
 
       <LazyPanel active={mode === 'aes'}>
         <AesPanel active={mode === 'aes'} />

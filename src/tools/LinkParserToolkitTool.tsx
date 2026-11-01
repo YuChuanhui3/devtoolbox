@@ -1,5 +1,5 @@
 import { Globe, Lock, Magnet, Zap } from 'lucide-react';
-import { Segmented } from '@/components/ui/Segmented';
+import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { LazyPanel } from '@/components/tool/LazyPanel';
@@ -16,8 +16,7 @@ export default function LinkParserToolkitTool() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-center">
-        <Segmented<LinkParserMode>
+      <ToolkitTabs<LinkParserMode>
           value={mode}
           onChange={setMode}
           ariaLabel={t({ zh: '链接解析类型', en: 'Link parser type' })}
@@ -43,8 +42,7 @@ export default function LinkParserToolkitTool() {
               icon: <Lock className="h-3.5 w-3.5" aria-hidden="true" />,
             },
           ]}
-        />
-      </div>
+      />
 
       <LazyPanel active={mode === 'proxy-link'}>
         <ProxyLinkPanel active={mode === 'proxy-link'} />

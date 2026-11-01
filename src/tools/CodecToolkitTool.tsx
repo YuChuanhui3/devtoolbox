@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Segmented } from '@/components/ui/Segmented';
+import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -35,8 +35,7 @@ export default function CodecToolkitTool() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-center">
-        <Segmented<CodecMode>
+      <ToolkitTabs<CodecMode>
           value={mode}
           onChange={setMode}
           ariaLabel={t({ zh: '编解码类型', en: 'Codec type' })}
@@ -50,8 +49,7 @@ export default function CodecToolkitTool() {
             { value: 'gzip', label: 'Gzip' },
             { value: 'morse', label: t({ zh: '莫尔斯', en: 'Morse' }) },
           ]}
-        />
-      </div>
+      />
 
       <LazyPanel active={mode === 'base64'}>
         <Base64Panel value={inputState} onValueChange={setInput} active={mode === 'base64'} />

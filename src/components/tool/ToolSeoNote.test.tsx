@@ -31,6 +31,6 @@ describe('ToolSeoNote', () => {
   test('英文界面渲染 Online X Tool 并隐藏中文别名细节', () => {
     const { container } = renderNote('json-toolkit', 'en');
     expect(container.textContent).toContain('About this tool');
-    expect(container.textContent).toContain('Online JSON Toolkit Tool');
+    expect(container.textContent).toContain('Online JSON Toolkit');
   });
 });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Globe, Hash, MapPin, Network, ScanEye, Shuffle, Waypoints } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
-import { Segmented } from '@/components/ui/Segmented';
+import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -52,8 +52,7 @@ export default function IpToolkitTool() {
         />
       </div>
 
-      <div className="flex justify-center">
-        <Segmented<IpToolkitMode>
+      <ToolkitTabs<IpToolkitMode>
           value={mode}
           onChange={setMode}
           ariaLabel={t({ zh: 'IP 工具箱模式', en: 'IP toolkit mode' })}
@@ -89,8 +88,7 @@ export default function IpToolkitTool() {
               icon: <Shuffle className="h-3.5 w-3.5" aria-hidden="true" />,
             },
           ]}
-        />
-      </div>
+      />
 
       <LazyPanel active={mode === 'query'}>
         <IpInfoPanel {...panelProps} active={mode === 'query'} />

@@ -1,5 +1,5 @@
 import { BadgeCheck, Bot } from 'lucide-react';
-import { Segmented } from '@/components/ui/Segmented';
+import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { LazyPanel } from '@/components/tool/LazyPanel';
@@ -14,8 +14,7 @@ export default function WebmasterToolkitTool() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-center">
-        <Segmented<WebmasterMode>
+      <ToolkitTabs<WebmasterMode>
           value={mode}
           onChange={setMode}
           ariaLabel={t({ zh: '站长工具类型', en: 'Webmaster tool type' })}
@@ -31,8 +30,7 @@ export default function WebmasterToolkitTool() {
               icon: <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />,
             },
           ]}
-        />
-      </div>
+      />
 
       <LazyPanel active={mode === 'robots'}>
         <RobotsPanel active={mode === 'robots'} />
