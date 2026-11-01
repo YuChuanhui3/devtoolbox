@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Camera, Film, QrCode, Send, ShieldCheck } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { useDqxSession } from '@/hooks/useDqxSession';
 import { ReceivePanel } from './qr-transfer/ReceivePanel';
 import { SalvagePanel } from './qr-transfer/SalvagePanel';
@@ -11,7 +11,7 @@ type TransferMode = 'send' | 'receive' | 'salvage';
 
 export default function QrTransferTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<TransferMode>('send');
+  const [mode, setMode] = useToolkitMode<TransferMode>(['send', 'receive', 'salvage'], 'send');
   const session = useDqxSession();
 
   return (

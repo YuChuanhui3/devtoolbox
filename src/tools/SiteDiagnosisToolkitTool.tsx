@@ -5,6 +5,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { DnsPanel } from './site-diagnosis-toolkit/DnsPanel';
 import { HeadersPanel } from './site-diagnosis-toolkit/HeadersPanel';
 import { LinksPanel } from './site-diagnosis-toolkit/LinksPanel';
@@ -17,7 +18,7 @@ type SiteDiagnosisMode = 'dns' | 'ns' | 'links' | 'seo' | 'headers' | 'webcheck'
 export default function SiteDiagnosisToolkitTool() {
   const { t } = useI18n();
   const toolContext = useToolContext();
-  const [mode, setMode] = useState<SiteDiagnosisMode>('dns');
+  const [mode, setMode] = useToolkitMode<SiteDiagnosisMode>(['dns', 'ns', 'links', 'seo', 'headers', 'webcheck'], 'dns');
   const [urlTextState, setUrlTextState] = useState(() => toolContext?.initialInput ?? '');
 
   const { markDirty } = useDraftAutosave(

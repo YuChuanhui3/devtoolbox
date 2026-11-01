@@ -16,14 +16,17 @@ export function DqxResult({ view, payload }: DqxResultProps) {
   const { t } = useI18n();
   const [text, setText] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [restored, setRestored] = useState<Uint8Array | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setText(null);
     setNote(null);
+    setRestored(null);
     inflatePayloadBytes(payload)
       .then((inflated) => {
         if (cancelled) return;
+        setRestored(inflated);
         try {
           setText(new TextDecoder('utf-8', { fatal: true }).decode(inflated));
         } catch {
@@ -45,8 +48,10 @@ export function DqxResult({ view, payload }: DqxResultProps) {
 
   const fileName = safeFilename(view.meta?.fileName ?? `dqx-${view.sid}.bin`, `dqx-${view.sid}.bin`);
   const looksCompressed = payload.length >= 2 && payload[0] === 0x1f && payload[1] === 0x8b;
-  const downloadName = text !== null ? fileName : looksCompressed ? `${fileName}.gz` : fileName;
-  const blob = new Blob([payload.slice().buffer as ArrayBuffer], { type: 'application/octet-stream' });
+  // 下载内容必须与文件名匹配：能还原就下还原文件，还原不了才下压缩载荷并标 .gz。
+  const downloadBytes = restored ?? payload;
+  const downloadName = restored || !looksCompressed ? fileName : `${fileName}.gz`;
+  const blob = new Blob([downloadBytes.slice().buffer as ArrayBuffer], { type: 'application/octet-stream' });
 
   return (
     <div className="space-y-3 rounded-xl border border-ok/30 bg-ok-soft/40 p-4">
@@ -95,10 +100,13 @@ export function SessionProgress({ view, mismatch }: { view: SessionView; mismatc
             })}
           </span>
         </div>
-      ) : view.missing.length > 0 ? (
+      ) : view.missingCount > 0 ? (
         <p className="text-[11px] text-ink-3">
           {t({ zh: '还缺帧：', en: 'Missing frames: ' })}
-          <span className="font-mono">{view.missing.slice(0, 24).join(', ')}{view.missing.length > 24 ? '…' : ''}</span>
+          <span className="font-mono">{view.missing.join(', ')}</span>
+          {view.missingCount > view.missing.length
+            ? t({ zh: `…（共缺 ${view.missingCount} 帧）`, en: `… (${view.missingCount} frames missing)` })
+            : null}
         </p>
       ) : null}
     </div>

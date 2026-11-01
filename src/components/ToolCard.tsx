@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { getCategory } from '@/data/categories';
 import { toolDescription, toolName, toolPath } from '@/data/tools';
-import { useAppStore } from '@/store/appStore';
+import { isFavoriteTool, useAppStore } from '@/store/appStore';
 import { useToast } from '@/components/ui/Toast';
 import { useI18n } from '@/i18n/I18nProvider';
 import { ToolIcon } from '@/components/ui/ToolIcon';
@@ -18,7 +18,7 @@ interface ToolCardProps {
 }
 
 export function ToolCard({ tool, showCategory = false, className }: ToolCardProps) {
-  const isFavorite = useAppStore((state) => state.favorites.includes(tool.id));
+  const isFavorite = useAppStore((state) => isFavoriteTool(state.favorites, tool.id));
   const toggleFavorite = useAppStore((state) => state.toggleFavorite);
   const toast = useToast();
   const { t, locale } = useI18n();

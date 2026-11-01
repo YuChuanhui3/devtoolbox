@@ -21,8 +21,8 @@ const MODE_LABEL: Partial<Record<FetchMode, L10n>> = {
 };
 const MODE_NOTE: Record<FetchMode, L10n> = {
   direct: { zh: '受目标站点 CORS 限制，仅部分站点可用', en: 'Limited by the target\'s CORS policy; works only on some sites' },
-  corsproxy: { zh: '公共 CORS 代理，透传响应但可能有速率限制', en: 'Public CORS proxy; passes responses through but may be rate-limited' },
-  allorigins: { zh: '公共抓取代理，可返回状态与内容', en: 'Public fetch proxy; returns status and content' },
+  corsproxy: { zh: '公共 CORS 代理：请求 URL 会暴露给代理方，仅调试用、可能限速', en: 'Public CORS proxy: the request URL is exposed to the proxy operator; debugging only, may be rate-limited' },
+  allorigins: { zh: '公共抓取代理：URL 会暴露给代理方，可返回状态与内容', en: 'Public fetch proxy: the URL is exposed to the proxy operator; returns status and content' },
 };
 
 interface HeaderRow {
@@ -32,7 +32,7 @@ interface HeaderRow {
 
 export default function HttpSimulatorTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<FetchMode>('corsproxy');
+  const [mode, setMode] = useState<FetchMode>('direct');
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('https://api.github.com/zen');
   const [headers, setHeaders] = useState<HeaderRow[]>([]);

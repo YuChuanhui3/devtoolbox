@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Dices, Fingerprint, Hash } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { PasswordPanel } from './random-toolkit/PasswordPanel';
 import { RandomNumberPanel } from './random-toolkit/RandomNumberPanel';
 import { UuidPanel } from './random-toolkit/UuidPanel';
@@ -10,7 +10,7 @@ type RandomToolkitMode = 'uuid' | 'number' | 'password';
 
 export default function RandomToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<RandomToolkitMode>('uuid');
+  const [mode, setMode] = useToolkitMode<RandomToolkitMode>(['uuid', 'number', 'password'], 'uuid');
 
   return (
     <div className="space-y-4">

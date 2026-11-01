@@ -2,7 +2,7 @@ import { Suspense, useEffect, type ComponentType, type LazyExoticComponent } fro
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Blocks } from 'lucide-react';
 import { TOOL_COMPONENTS } from '@/tools/registry';
-import { getTool, toolPath } from '@/data/tools';
+import { getTool, resolveToolTarget, toolPath } from '@/data/tools';
 import { useAppStore } from '@/store/appStore';
 import { ToolHeader } from '@/components/tool/ToolHeader';
 import { RelatedTools } from '@/components/tool/RelatedTools';
@@ -73,7 +73,8 @@ export function ToolPage() {
   }
 
   if (tool.id !== toolId) {
-    return <Navigate to={toolPath(tool.id)} replace />;
+    const target = resolveToolTarget(toolId);
+    return <Navigate to={toolPath(target.toolId) + (target.mode ? `?mode=${target.mode}` : '')} replace />;
   }
 
   const ToolComponent = TOOL_COMPONENTS[tool.id] as

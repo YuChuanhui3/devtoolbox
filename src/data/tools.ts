@@ -757,6 +757,89 @@ export const LEGACY_TOOL_IDS: Record<string, string> = {
 
 export const resolveToolId = (id: string): string => LEGACY_TOOL_IDS[id] ?? id;
 
+/** 旧工具 ID → 合并后工具箱内的页签 mode，保证 /tools/jwt-decoder 直达 JWT 页签。 */
+export const LEGACY_TOOL_MODES: Record<string, string> = {
+  'json-formatter': 'format',
+  'json-query': 'path',
+  jsonpath: 'path',
+  'json-schema': 'schema',
+  'json-diff': 'diff',
+  'yaml-to-json': 'convert',
+  'xml-to-json': 'convert',
+  'csv-to-json': 'convert',
+  'json-to-yaml': 'convert',
+  'json-to-xml': 'convert',
+  'json-to-csv': 'convert',
+  'yaml-properties': 'convert',
+  'format-converter': 'convert',
+  base64: 'base64',
+  'url-codec': 'url',
+  unicode: 'unicode',
+  'hex-text': 'hex',
+  'js-escape': 'js-escape',
+  'base-codec': 'base-n',
+  'gzip-codec': 'gzip',
+  'morse-codec': 'morse',
+  hash: 'hash',
+  pwdhash: 'pwdhash',
+  htpasswd: 'htpasswd',
+  aes: 'aes',
+  symcipher: 'symcipher',
+  'rsa-codec': 'rsa',
+  'jwt-decoder': 'jwt',
+  'virtual-card': 'card',
+  'virtual-address': 'address',
+  'random-ua': 'random',
+  'ua-collection': 'collection',
+  'ua-parser': 'parser',
+  'sql-formatter': 'sql',
+  'web-formatter': 'web',
+  'http-status': 'http-status',
+  'http-headers': 'http-headers',
+  'http-methods': 'http-methods',
+  ports: 'ports',
+  'mime-type': 'mime-type',
+  'regex-tester': 'tester',
+  'regex-escape': 'escape',
+  radix: 'radix',
+  'file-size': 'file-size',
+  'crc-calc': 'crc',
+  'ppi-calc': 'ppi',
+  'my-ip': 'my',
+  'ip-info': 'query',
+  'ip-nearby': 'nearby',
+  'ip-number': 'number',
+  'subnet-mask': 'subnet',
+  'random-ip': 'generators',
+  'mac-address': 'generators',
+  'linux-commands': 'linux-commands',
+  'mqtt-cheatsheet': 'mqtt',
+  'dns-records': 'dns',
+  'ns-lookup': 'ns',
+  'site-links': 'links',
+  'seo-check': 'seo',
+  'resp-headers': 'headers',
+  webcheck: 'webcheck',
+  uuid: 'uuid',
+  'random-number': 'number',
+  'password-generator': 'password',
+  'proxy-link': 'proxy-link',
+  'thunder-url': 'thunder-url',
+  'torrent-magnet': 'torrent-magnet',
+  'type7-cisco': 'type-7',
+  'shield-badge': 'badge',
+  'robots-generator': 'robots',
+  'browser-info': 'info',
+  'cookie-viewer': 'cookie',
+};
+
+/** 旧链接解析：目标工具箱 + 应激活的页签。 */
+export const resolveToolTarget = (id: string): { toolId: string; mode?: string } => {
+  const toolId = resolveToolId(id);
+  const mode = LEGACY_TOOL_MODES[id];
+  return mode ? { toolId, mode } : { toolId };
+};
+
 export const getTool = (id: string): ToolMeta | undefined => TOOL_MAP.get(resolveToolId(id));
 
 export const getToolsByIds = (ids: readonly string[], limit = Number.POSITIVE_INFINITY): ToolMeta[] => {

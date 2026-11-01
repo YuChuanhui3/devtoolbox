@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Fingerprint, Hash, KeyRound } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { HashPanel } from './hash-toolkit/HashPanel';
 import { HtpasswdPanel } from './hash-toolkit/HtpasswdPanel';
 import { PwdHashPanel } from './hash-toolkit/PwdHashPanel';
@@ -10,7 +10,7 @@ type HashToolkitMode = 'hash' | 'pwdhash' | 'htpasswd';
 
 export default function HashToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<HashToolkitMode>('hash');
+  const [mode, setMode] = useToolkitMode<HashToolkitMode>(['hash', 'pwdhash', 'htpasswd'], 'hash');
 
   return (
     <div className="space-y-4">

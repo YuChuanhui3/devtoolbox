@@ -5,6 +5,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { GeneratorsPanel } from './ip-toolkit/GeneratorsPanel';
 import { IpInfoPanel } from './ip-toolkit/IpInfoPanel';
 import { IpNumberPanel } from './ip-toolkit/IpNumberPanel';
@@ -17,7 +18,7 @@ type IpToolkitMode = 'query' | 'number' | 'subnet' | 'my' | 'nearby' | 'generato
 export default function IpToolkitTool() {
   const { t } = useI18n();
   const toolContext = useToolContext();
-  const [mode, setMode] = useState<IpToolkitMode>('query');
+  const [mode, setMode] = useToolkitMode<IpToolkitMode>(['query', 'number', 'subnet', 'my', 'nearby', 'generators'], 'query');
   const [ipTextState, setIpTextState] = useState(() => toolContext?.initialInput ?? '');
 
   const { markDirty } = useDraftAutosave(

@@ -4,6 +4,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { RandomUaPanel } from './ua-toolkit/RandomUaPanel';
 import { UaCollectionPanel } from './ua-toolkit/UaCollectionPanel';
 import { UaParserPanel } from './ua-toolkit/UaParserPanel';
@@ -13,7 +14,7 @@ type UaToolkitMode = 'random' | 'collection' | 'parser';
 export default function UaToolkitTool() {
   const { t } = useI18n();
   const toolContext = useToolContext();
-  const [mode, setMode] = useState<UaToolkitMode>('random');
+  const [mode, setMode] = useToolkitMode<UaToolkitMode>(['random', 'collection', 'parser'], 'random');
   const [uaTextState, setUaTextState] = useState(() => toolContext?.initialInput ?? '');
 
   const { markDirty } = useDraftAutosave(

@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { FileKey2, KeyRound, Lock, LockKeyhole } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { AesPanel } from './crypto-toolkit/AesPanel';
 import { JwtPanel } from './crypto-toolkit/JwtPanel';
 import { RsaPanel } from './crypto-toolkit/RsaPanel';
@@ -11,7 +11,7 @@ type CryptoToolkitMode = 'aes' | 'symcipher' | 'rsa' | 'jwt';
 
 export default function CryptoToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<CryptoToolkitMode>('aes');
+  const [mode, setMode] = useToolkitMode<CryptoToolkitMode>(['aes', 'symcipher', 'rsa', 'jwt'], 'aes');
 
   return (
     <div className="space-y-4">

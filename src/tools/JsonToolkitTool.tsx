@@ -4,6 +4,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { ConverterPanel } from './json-toolkit/ConverterPanel';
 import { DiffPanel } from './json-toolkit/DiffPanel';
 import { FormatPanel } from './json-toolkit/FormatPanel';
@@ -38,7 +39,7 @@ export default function JsonToolkitTool() {
   const { t } = useI18n();
   const toolContext = useToolContext();
   const [restored] = useState(() => readDraft(toolContext?.initialInput ?? ''));
-  const [mode, setMode] = useState<ToolkitMode>('format');
+  const [mode, setMode] = useToolkitMode<ToolkitMode>(['format', 'path', 'schema', 'diff', 'convert'], 'format');
   const [inputState, setInputState] = useState(restored.input);
   const [diffRightState, setDiffRightState] = useState(restored.diffRight);
 

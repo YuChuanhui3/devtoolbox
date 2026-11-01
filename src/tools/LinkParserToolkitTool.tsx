@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Globe, Lock, Magnet, Zap } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { ProxyLinkPanel } from './link-parser-toolkit/ProxyLinkPanel';
 import { ThunderUrlPanel } from './link-parser-toolkit/ThunderUrlPanel';
 import { TorrentMagnetPanel } from './link-parser-toolkit/TorrentMagnetPanel';
@@ -11,7 +11,7 @@ type LinkParserMode = 'proxy-link' | 'thunder-url' | 'torrent-magnet' | 'type-7'
 
 export default function LinkParserToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<LinkParserMode>('proxy-link');
+  const [mode, setMode] = useToolkitMode<LinkParserMode>(['proxy-link', 'thunder-url', 'torrent-magnet', 'type-7'], 'proxy-link');
 
   return (
     <div className="space-y-4">

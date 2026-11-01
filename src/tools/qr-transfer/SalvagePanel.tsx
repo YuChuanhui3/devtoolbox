@@ -213,7 +213,7 @@ export function SalvagePanel({ active, session }: SalvagePanelProps) {
   };
 
   const sessions = session.sessions;
-  const complete = sessions.find((view) => view.missing.length === 0);
+  const complete = sessions.find((view) => view.missingCount === 0);
   const completePayload =
     session.event?.kind === 'complete' && session.event.session.sid === complete?.sid ? session.event.payload : null;
 

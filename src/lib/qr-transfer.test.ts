@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bytesToBase64 } from './base64';
 import {
+  DQX_LIMITS,
   FrameAssembler,
   crc32OfPayload,
   encodeFrame,
@@ -158,6 +159,49 @@ describe('payload helpers', () => {
   it('passes raw non-gzip payloads through', async () => {
     const payload = bytes('plain text');
     expect(await inflatePayloadBytes(payload)).toBe(payload);
+  });
+});
+
+describe('resource limits', () => {
+  it('rejects frames declaring too many parts or oversized payloads', () => {
+    expect(parseFrame(encodeFrame('abc123', 0, DQX_LIMITS.maxTotalFrames + 1, bytes('aaa')))).toBeNull();
+    const fat = 'A'.repeat(10924); // 解码后 8193 字节，刚好超过单帧上限
+    expect(parseFrame(`DQX1:abc123::0of2:${fat}`)).toBeNull();
+  });
+
+  it('ignores new sessions past the session cap', () => {
+    const assembler = new FrameAssembler();
+    for (let i = 0; i < DQX_LIMITS.maxSessions; i += 1) {
+      assembler.push(encodeFrame(`s${i.toString(36).padStart(5, '0')}`, 0, 2, bytes('aaa')));
+    }
+    const event = assembler.push(encodeFrame('zzzzzz', 0, 2, bytes('bbb')));
+    expect(event).toEqual({ kind: 'ignored', reason: 'overflow' });
+    expect(assembler.has('zzzzzz')).toBe(false);
+  });
+
+  it('caps a session at the byte limit', () => {
+    const assembler = new FrameAssembler();
+    const chunk = new Uint8Array(10 * 1024 * 1024);
+    assembler.push({ sid: 'cap123', index: 0, total: 3, data: chunk });
+    assembler.push({ sid: 'cap123', index: 1, total: 3, data: chunk });
+    const overflowing = assembler.push({ sid: 'cap123', index: 2, total: 3, data: chunk });
+    expect(overflowing).toEqual({ kind: 'ignored', reason: 'overflow' });
+    expect(assembler.view('cap123')!.received).toBe(2);
+  });
+
+  it('bounds the missing-frame preview but counts them all', () => {
+    const assembler = new FrameAssembler();
+    const total = 300;
+    assembler.push(encodeFrame('ms1234', total - 1, total, bytes('xyz'), undefined, crc32OfPayload(new Uint8Array(0))));
+    const view = assembler.view('ms1234')!;
+    expect(view.missing.length).toBe(DQX_LIMITS.missingPreview);
+    expect(view.missingCount).toBe(total - 1);
+  });
+
+  it('aborts inflating a decompression bomb', async () => {
+    const bomb = new Uint8Array(DQX_LIMITS.maxInflatedBytes + 1024); // 全零，压缩后极小
+    const compressed = await gzipBytes(bomb);
+    await expect(inflatePayloadBytes(compressed)).rejects.toThrow();
   });
 });
 

@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Binary, HardDrive, Monitor, ScanLine } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { CrcPanel } from './dev-calc-toolkit/CrcPanel';
 import { FileSizePanel } from './dev-calc-toolkit/FileSizePanel';
 import { PpiPanel } from './dev-calc-toolkit/PpiPanel';
@@ -11,7 +11,7 @@ type DevCalcMode = 'radix' | 'file-size' | 'crc' | 'ppi';
 
 export default function DevCalcToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<DevCalcMode>('radix');
+  const [mode, setMode] = useToolkitMode<DevCalcMode>(['radix', 'file-size', 'crc', 'ppi'], 'radix');
 
   return (
     <div className="space-y-4">

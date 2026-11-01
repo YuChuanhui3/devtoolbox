@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ToolError, toToolError } from '@/lib/errors';
 import { trackToolExecution } from '@/lib/analytics';
 import { useToolContext } from '@/components/tool/ToolContext';
@@ -64,6 +64,9 @@ export function useToolIO(initialInput = '', options: ToolIOOptions = {}): ToolI
   );
   const markDraftDirty = draftless ? NOOP : markDraftDirtyReal;
 
+  // 异步 run 的失效令牌：clear/reset/swap 或新一轮 run 之后，迟到的旧结果不得回写。
+  const runSeqRef = useRef(0);
+
   const setInput = useCallback(
     (value: string) => {
       markDraftDirty();
@@ -81,6 +84,8 @@ export function useToolIO(initialInput = '', options: ToolIOOptions = {}): ToolI
       options?: RunOptions,
     ) => {
       if (isRunning) return false;
+      const seq = runSeqRef.current + 1;
+      runSeqRef.current = seq;
       setIsRunning(true);
       setError(null);
       setNotice(null);
@@ -90,13 +95,16 @@ export function useToolIO(initialInput = '', options: ToolIOOptions = {}): ToolI
 
       try {
         const result = await handler(value);
+        if (runSeqRef.current !== seq) return false; // 结果已失效（用户清空/重置/重新运行），不回写
         setOutput(result);
         if (options?.success) setNotice(options.success);
         if (track()) trackToolExecution(toolId!, true);
         return true;
       } catch (caught) {
-        setError(toToolError(caught));
-        if (!options?.keepOutputOnError) setOutput('');
+        if (runSeqRef.current === seq) {
+          setError(toToolError(caught));
+          if (!options?.keepOutputOnError) setOutput('');
+        }
         if (track()) trackToolExecution(toolId!, false);
         return false;
       } finally {
@@ -122,6 +130,7 @@ export function useToolIO(initialInput = '', options: ToolIOOptions = {}): ToolI
   );
 
   const swap = useCallback(() => {
+    runSeqRef.current += 1;
     markDraftDirty();
     setInputState(output);
     setOutput(input);
@@ -130,6 +139,7 @@ export function useToolIO(initialInput = '', options: ToolIOOptions = {}): ToolI
   }, [input, output, markDraftDirty]);
 
   const clear = useCallback(() => {
+    runSeqRef.current += 1;
     markDraftDirty();
     setInputState('');
     setOutput('');
@@ -139,6 +149,7 @@ export function useToolIO(initialInput = '', options: ToolIOOptions = {}): ToolI
 
   const reset = useCallback(
     (value = '') => {
+      runSeqRef.current += 1;
       markDraftDirty();
       setInputState(value);
       setOutput('');

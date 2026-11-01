@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { BadgeCheck, Bot } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { BadgePanel } from './webmaster-toolkit/BadgePanel';
 import { RobotsPanel } from './webmaster-toolkit/RobotsPanel';
 
@@ -9,7 +9,7 @@ type WebmasterMode = 'robots' | 'badge';
 
 export default function WebmasterToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<WebmasterMode>('robots');
+  const [mode, setMode] = useToolkitMode<WebmasterMode>(['robots', 'badge'], 'robots');
 
   return (
     <div className="space-y-4">

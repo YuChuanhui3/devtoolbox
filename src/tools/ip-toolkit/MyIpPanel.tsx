@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
@@ -41,12 +41,13 @@ function IpRow({ label, result, hint }: { label: string; result: EchoResult | nu
   );
 }
 
-/** active 仅为工具箱面板统一签名（本面板为即时查询，无热键需要门控）。 */
-export function MyIpPanel({ active: _active }: IpActivePanelProps) {
+/** 面板常驻挂载（保留输入），故仅在首次切到本 tab 时自动查询一次。 */
+export function MyIpPanel({ active }: IpActivePanelProps) {
   const { t } = useI18n();
   const [ipv4, setIpv4] = useState<EchoResult | null>(null);
   const [ipv6, setIpv6] = useState<EchoResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const startedRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,8 +60,10 @@ export function MyIpPanel({ active: _active }: IpActivePanelProps) {
   }, []);
 
   useEffect(() => {
+    if (!active || startedRef.current) return;
+    startedRef.current = true;
     void load();
-  }, [load]);
+  }, [active, load]);
 
   return (
     <div className="space-y-4">

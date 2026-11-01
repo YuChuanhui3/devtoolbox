@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Clock, Star, Trash2 } from 'lucide-react';
 import { getCategory } from '@/data/categories';
 import { getTool, toolDescription, toolName, toolPath } from '@/data/tools';
-import { useAppStore } from '@/store/appStore';
+import { isFavoriteTool, useAppStore } from '@/store/appStore';
 import { ToolIcon } from '@/components/ui/ToolIcon';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -135,7 +135,7 @@ export function RecentPage() {
         <ul className="card-surface divide-y divide-line overflow-hidden">
           {rows.map(({ entry, tool }, index) => {
             const category = getCategory(tool.category);
-            const isFavorite = favorites.includes(tool.id);
+            const isFavorite = isFavoriteTool(favorites, tool.id);
 
             return (
               <li key={tool.id} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2/60">

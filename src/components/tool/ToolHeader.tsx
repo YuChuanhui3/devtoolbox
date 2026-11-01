@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Link as LinkIcon, Star } from 'lucide-react';
 import { getCategory } from '@/data/categories';
 import { toolDescription, toolName } from '@/data/tools';
-import { useAppStore } from '@/store/appStore';
+import { isFavoriteTool, useAppStore } from '@/store/appStore';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -14,7 +14,7 @@ import { toolChipTone } from '@/lib/toolTone';
 import type { ToolMeta } from '@/types/tool';
 
 export function ToolHeader({ tool }: { tool: ToolMeta }) {
-  const isFavorite = useAppStore((state) => state.favorites.includes(tool.id));
+  const isFavorite = useAppStore((state) => isFavoriteTool(state.favorites, tool.id));
   const toggleFavorite = useAppStore((state) => state.toggleFavorite);
   const toast = useToast();
   const { t, locale } = useI18n();

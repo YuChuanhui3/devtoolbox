@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Cookie, MonitorSmartphone } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { BrowserInfoPanel } from './browser-toolkit/BrowserInfoPanel';
 import { CookiePanel } from './browser-toolkit/CookiePanel';
 
@@ -9,7 +9,7 @@ type BrowserToolkitMode = 'info' | 'cookie';
 
 export default function BrowserToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<BrowserToolkitMode>('info');
+  const [mode, setMode] = useToolkitMode<BrowserToolkitMode>(['info', 'cookie'], 'info');
 
   return (
     <div className="space-y-4">

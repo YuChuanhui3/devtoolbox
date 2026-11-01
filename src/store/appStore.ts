@@ -9,6 +9,10 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export const MAX_RECENT = 20;
 export const MAX_SEARCH_HISTORY = 10;
 
+/** 统一收藏判定：容忍 localStorage 里残留的旧 ID，避免收藏页有项、星标不亮。 */
+export const isFavoriteTool = (favorites: readonly string[], toolId: string): boolean =>
+  favorites.some((id) => resolveToolId(id) === toolId);
+
 interface AppState {
   themeMode: ThemeMode;
   locale: Locale;
@@ -122,18 +126,16 @@ export const useAppStore = create<AppState>()(
         if (version < 3 && state.locale === undefined) {
           state.locale = detectLocale();
         }
-        if (version < 2) {
-          const favorites = [...new Set((state.favorites ?? []).map(resolveToolId))];
-          const recent = (state.recent ?? []).reduce<RecentEntry[]>((list, entry) => {
-            const toolId = resolveToolId(entry.toolId);
-            if (!list.some((item) => item.toolId === toolId)) {
-              list.push({ ...entry, toolId });
-            }
-            return list;
-          }, []);
-
-          return { ...state, favorites, recent: recent.slice(0, MAX_RECENT) };
-        }
+        // 幂等规范化：任何版本都可能残留合并前的旧 ID（工具整合发生在 v3 之后），
+        // 每次启动都去重归一，而不是只在 <2 时迁移。
+        state.favorites = [...new Set((state.favorites ?? []).map(resolveToolId))];
+        state.recent = (state.recent ?? []).reduce<RecentEntry[]>((list, entry) => {
+          const toolId = resolveToolId(entry.toolId);
+          if (!list.some((item) => item.toolId === toolId)) {
+            list.push({ ...entry, toolId });
+          }
+          return list;
+        }, []).slice(0, MAX_RECENT);
         return state;
       },
       storage: createJSONStorage(() => localStorage),

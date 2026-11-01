@@ -3,6 +3,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { Base64Panel } from './codec-toolkit/Base64Panel';
 import { BaseCodecPanel } from './codec-toolkit/BaseCodecPanel';
 import { GzipCodecPanel } from './codec-toolkit/GzipCodecPanel';
@@ -17,7 +18,7 @@ type CodecMode = 'base64' | 'url' | 'unicode' | 'hex' | 'js-escape' | 'base-n' |
 export default function CodecToolkitTool() {
   const { t } = useI18n();
   const toolContext = useToolContext();
-  const [mode, setMode] = useState<CodecMode>('base64');
+  const [mode, setMode] = useToolkitMode<CodecMode>(['base64', 'url', 'unicode', 'hex', 'js-escape', 'base-n', 'gzip', 'morse'], 'base64');
   const [inputState, setInputState] = useState(() => toolContext?.initialInput ?? '');
 
   const { markDirty } = useDraftAutosave(

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -10,13 +10,14 @@ import { toToolError } from '@/lib/errors';
 import { queryIpWho, type IpWhoResult } from '@/tools/shared/ipInfoQuery';
 import type { IpActivePanelProps } from './types';
 
-/** active 仅为工具箱面板统一签名（本面板为即时查询，无热键需要门控）。 */
-export function NearbyPanel({ active: _active }: IpActivePanelProps) {
+/** 面板常驻挂载（保留输入），故仅在首次切到本 tab 时自动查询本地 IP 一次。 */
+export function NearbyPanel({ active }: IpActivePanelProps) {
   const { t } = useI18n();
   const [ipInput, setIpInput] = useState('');
   const [data, setData] = useState<IpWhoResult | null>(null);
   const [error, setError] = useState<Localized | null>(null);
   const [loading, setLoading] = useState(false);
+  const startedRef = useRef(false);
 
   const lookup = useCallback(async (ip: string) => {
     setLoading(true);
@@ -32,8 +33,10 @@ export function NearbyPanel({ active: _active }: IpActivePanelProps) {
   }, []);
 
   useEffect(() => {
+    if (!active || startedRef.current) return;
+    startedRef.current = true;
     void lookup('');
-  }, [lookup]);
+  }, [active, lookup]);
 
   const lat = data?.latitude ?? 0;
   const lng = data?.longitude ?? 0;

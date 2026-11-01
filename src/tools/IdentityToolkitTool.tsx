@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { CreditCard, MapPin } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { AddressPanel } from './identity-toolkit/AddressPanel';
 import { CardPanel } from './identity-toolkit/CardPanel';
 
@@ -9,7 +9,7 @@ type IdentityToolkitMode = 'card' | 'address';
 
 export default function IdentityToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<IdentityToolkitMode>('card');
+  const [mode, setMode] = useToolkitMode<IdentityToolkitMode>(['card', 'address'], 'card');
 
   return (
     <div className="space-y-4">

@@ -25,9 +25,22 @@ export function useDraftAutosave(
   serializeRef.current = serialize;
   const onDiscardRef = useRef(onDiscard);
   onDiscardRef.current = onDiscard;
+  const contextRef = useRef(toolContext);
+  contextRef.current = toolContext;
 
   const markDirty = useCallback(() => {
     dirtyRef.current = true;
+  }, []);
+
+  const writeNow = useCallback(() => {
+    const context = contextRef.current;
+    if (!context?.draftEnabled || !dirtyRef.current) return;
+    const snapshot = serializeRef.current();
+    if (snapshot === null) {
+      removeToolDraft(context.tool.id);
+    } else {
+      saveToolDraft(context.tool.id, snapshot);
+    }
   }, []);
 
   useEffect(() => {
@@ -44,6 +57,16 @@ export function useDraftAutosave(
 
     return () => window.clearTimeout(timer);
   }, [toolContext, ...deps]);
+
+  // 节流窗口内离开页面/切换工具会丢最后一次编辑：卸载和 pagehide 时立即补写。
+  useEffect(() => {
+    const onHide = () => writeNow();
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      writeNow();
+    };
+  }, [writeNow]);
 
   const discardToken = toolContext?.draftDiscardToken ?? 0;
   const previousDiscardToken = useRef(discardToken);

@@ -94,7 +94,7 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
   };
 
   const sessions = session.sessions;
-  const complete = sessions.find((view) => view.missing.length === 0);
+  const complete = sessions.find((view) => view.missingCount === 0);
   const completePayload =
     lastEvent?.kind === 'complete' && lastEvent.session.sid === complete?.sid ? lastEvent.payload : null;
 

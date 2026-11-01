@@ -11,6 +11,22 @@ import { CRC_PRESETS, crcHex } from './crc';
  */
 export const DQX_PREFIX = 'DQX1:';
 
+/** 接收端资源上限：恶意/错读的帧文本不能撑爆内存或阻塞主线程。 */
+export const DQX_LIMITS = {
+  /** 单会话最大帧数（1KB/帧约合 2MB 载荷）。 */
+  maxTotalFrames: 2000,
+  /** 单帧 Base64 解码后的最大字节数。 */
+  maxFrameBytes: 8192,
+  /** 同时保留的会话数，超过后新 sid 直接忽略。 */
+  maxSessions: 16,
+  /** 单会话累计载荷字节上限。 */
+  maxSessionBytes: 24 * 1024 * 1024,
+  /** gzip 解压输出上限，防解压炸弹。 */
+  maxInflatedBytes: 32 * 1024 * 1024,
+  /** 缺帧列表最多枚举并展示多少项。 */
+  missingPreview: 64,
+};
+
 const CRC32_SPEC = CRC_PRESETS.find((preset) => preset.width === 32)!;
 
 export interface DqxFrameMeta {
@@ -102,7 +118,7 @@ export function parseFrame(text: string): DqxFrame | null {
   if (!position) return null;
   const index = Number(position[1]);
   const total = Number(position[2]);
-  if (!Number.isFinite(total) || total < 1 || index < 0 || index >= total) return null;
+  if (!Number.isFinite(total) || total < 1 || total > DQX_LIMITS.maxTotalFrames || index < 0 || index >= total) return null;
   // 发送端把切块长度对齐到 3 的倍数：非末帧的 Base64 必无 padding。出现 '=' 说明帧被错读，丢弃。
   if (index !== total - 1 && parts[4].includes('=')) return null;
   let data: Uint8Array | null;
@@ -111,7 +127,7 @@ export function parseFrame(text: string): DqxFrame | null {
   } catch {
     return null;
   }
-  if (!data) return null;
+  if (!data || data.length > DQX_LIMITS.maxFrameBytes) return null;
   const frame: DqxFrame = { sid, index, total, data };
   const meta = decodeMetaSegment(parts[2]);
   if (meta) frame.meta = meta;
@@ -125,19 +141,29 @@ export interface SessionView {
   sid: string;
   total: number;
   received: number;
+  /** 缺帧序号，最多列 missingPreview 项；总数用 missingCount。 */
   missing: number[];
+  missingCount: number;
   meta?: DqxFrameMeta;
   crcExpected?: string;
 }
 
 export type AssembleEvent =
-  | { kind: 'ignored'; reason: 'not-dqx' | 'duplicate' | 'conflict' }
+  | { kind: 'ignored'; reason: 'not-dqx' | 'duplicate' | 'conflict' | 'overflow' }
   | { kind: 'progress'; session: SessionView }
   | { kind: 'complete'; session: SessionView; payload: Uint8Array }
   | { kind: 'mismatch'; session: SessionView; crcActual: string };
 
+interface SessionState {
+  total: number;
+  frames: Map<number, Uint8Array>;
+  bytes: number;
+  meta?: DqxFrameMeta;
+  crcExpected?: string;
+}
+
 export class FrameAssembler {
-  private sessions = new Map<string, { total: number; frames: Map<number, Uint8Array>; meta?: DqxFrameMeta; crcExpected?: string }>();
+  private sessions = new Map<string, SessionState>();
 
   /** 记录每 sid 首帧声明的总帧数，冲突帧直接忽略。 */
   push(textOrFrame: string | DqxFrame | null): AssembleEvent {
@@ -147,7 +173,8 @@ export class FrameAssembler {
 
     let session = this.sessions.get(frame.sid);
     if (!session) {
-      session = { total: frame.total, frames: new Map() };
+      if (this.sessions.size >= DQX_LIMITS.maxSessions) return { kind: 'ignored', reason: 'overflow' };
+      session = { total: frame.total, frames: new Map(), bytes: 0 };
       this.sessions.set(frame.sid, session);
     }
     if (session.total !== frame.total) return { kind: 'ignored', reason: 'conflict' };
@@ -158,7 +185,11 @@ export class FrameAssembler {
       }
       return { kind: 'ignored', reason: 'duplicate' };
     }
+    if (session.bytes + frame.data.length > DQX_LIMITS.maxSessionBytes) {
+      return { kind: 'ignored', reason: 'overflow' };
+    }
     session.frames.set(frame.index, frame.data);
+    session.bytes += frame.data.length;
     if (frame.meta) session.meta = frame.meta;
     if (frame.crc) session.crcExpected = frame.crc;
 
@@ -176,14 +207,19 @@ export class FrameAssembler {
     const session = this.sessions.get(sid);
     if (!session) return null;
     const missing: number[] = [];
+    let missingCount = 0;
     for (let i = 0; i < session.total; i += 1) {
-      if (!session.frames.has(i)) missing.push(i);
+      if (!session.frames.has(i)) {
+        missingCount += 1;
+        if (missing.length < DQX_LIMITS.missingPreview) missing.push(i);
+      }
     }
     return {
       sid,
       total: session.total,
       received: session.frames.size,
       missing,
+      missingCount,
       meta: session.meta,
       crcExpected: session.crcExpected,
     };
@@ -242,7 +278,7 @@ export async function inflatePayloadBytes(bytes: Uint8Array): Promise<Uint8Array
       { zh: '请直接下载原始文件查看。', en: 'Download the raw file to inspect it instead.' },
     );
   }
-  const buffer = await transformBytes(bytes.slice(), new Ctor('gzip'));
+  const buffer = await transformBytes(bytes.slice(), new Ctor('gzip'), DQX_LIMITS.maxInflatedBytes);
   return new Uint8Array(buffer);
 }
 
@@ -258,14 +294,41 @@ export async function gzipBytes(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(buffer);
 }
 
-async function transformBytes(bytes: Uint8Array, transformer: TransformStream<Uint8Array, Uint8Array>): Promise<ArrayBuffer> {
+async function transformBytes(
+  bytes: Uint8Array,
+  transformer: TransformStream<Uint8Array, Uint8Array>,
+  maxBytes?: number,
+): Promise<ArrayBuffer> {
   const source = new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(bytes);
       controller.close();
     },
   });
-  return new Response(source.pipeThrough(transformer)).arrayBuffer();
+  if (maxBytes === undefined) return new Response(source.pipeThrough(transformer)).arrayBuffer();
+  const reader = source.pipeThrough(transformer).getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw new ToolError(
+        { zh: '解压结果超过上限，已中止', en: 'Inflated output exceeds the limit; aborted' },
+        { zh: '这可能是解压炸弹，请下载原始载荷自行处理。', en: 'This may be a decompression bomb; download the raw payload instead.' },
+      );
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out.buffer;
 }
 
 export function textToGzipPayload(text: string): Promise<Uint8Array> {

@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { FileType, GitBranch, Heading, Hash, Plug, Radio, Terminal } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { HeadersPanel } from './dev-reference/HeadersPanel';
 import { LinuxPanel } from './dev-reference/LinuxPanel';
 import { MethodsPanel } from './dev-reference/MethodsPanel';
@@ -21,7 +21,7 @@ type DevReferenceMode =
 
 export default function DevReferenceTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<DevReferenceMode>('http-status');
+  const [mode, setMode] = useToolkitMode<DevReferenceMode>(['http-status', 'http-headers', 'http-methods', 'ports', 'mime-type', 'linux-commands', 'mqtt'], 'http-status');
 
   return (
     <div className="space-y-4">

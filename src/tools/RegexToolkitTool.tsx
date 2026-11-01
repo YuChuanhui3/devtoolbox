@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Regex, Shield } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { EscapePanel } from './regex-toolkit/EscapePanel';
 import { TesterPanel } from './regex-toolkit/TesterPanel';
 
@@ -9,7 +9,7 @@ type RegexToolkitMode = 'tester' | 'escape';
 
 export default function RegexToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<RegexToolkitMode>('tester');
+  const [mode, setMode] = useToolkitMode<RegexToolkitMode>(['tester', 'escape'], 'tester');
 
   return (
     <div className="space-y-4">
