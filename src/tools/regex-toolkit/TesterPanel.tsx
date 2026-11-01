@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Regex, SearchCode } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
 import { Input } from '@/components/ui/Input';
@@ -13,21 +13,36 @@ import { SAMPLE_REGEX_PATTERN, SAMPLE_REGEX_TEXT } from '@/data/samples';
 import { escapeHtml } from '@/lib/text';
 import { errorHint } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import {
+  MAX_REGEX_MATCHES,
+  REGEX_MATCH_DEADLINE_MS,
+  type RawRegexMatch,
+  type RegexMatchOutcome,
+} from '@/lib/regexMatch';
 
-interface RegexMatch {
-  value: string;
-  index: number;
-  groups: string[];
-  namedGroups?: Record<string, string>;
-}
-
-interface RegexAnalysis {
-  matches: RegexMatch[];
+interface PanelAnalysis {
+  matches: RawRegexMatch[];
   error: Localized | null;
   hint?: Localized;
-  highlightHtml: string;
+  truncated: boolean;
+  timedOut: boolean;
   effectiveFlags: string;
 }
+
+// worker 内部每轮都有 deadline，但灾难性回溯会卡在单次 exec 里，
+// 只能靠主线程到点 terminate()，所以留一点余量。
+const REGEX_KILL_MS = REGEX_MATCH_DEADLINE_MS + 600;
+const REGEX_DEBOUNCE_MS = 180;
+
+const withG = (flags: string) => (flags.includes('g') ? flags : `${flags}g`);
+
+const IDLE_ANALYSIS: PanelAnalysis = {
+  matches: [],
+  error: null,
+  truncated: false,
+  timedOut: false,
+  effectiveFlags: 'g',
+};
 
 function friendlyRegexError(error: unknown): { message: L10n; hint?: Localized } {
   const raw = error instanceof Error ? error.message : '';
@@ -54,44 +69,38 @@ function friendlyRegexError(error: unknown): { message: L10n; hint?: Localized }
   return { message: { zh: '正则表达式语法错误', en: 'Regex syntax error' }, hint: errorHint(error, raw) };
 }
 
-function analyze(pattern: string, flags: string, text: string): RegexAnalysis {
-  const effectiveFlags = flags.includes('g') ? flags : `${flags}g`;
-
-  if (!pattern) {
-    return { matches: [], error: null, highlightHtml: escapeHtml(text), effectiveFlags };
-  }
-
-  try {
-    const regex = new RegExp(pattern, effectiveFlags);
-    const matches = Array.from(text.matchAll(regex)).map((match) => ({
-      value: match[0],
-      index: match.index ?? 0,
-      groups: match.slice(1).map((group) => group ?? ''),
-      namedGroups: match.groups ? { ...match.groups } as Record<string, string> : undefined,
-    }));
-
-    let cursor = 0;
-    let html = '';
-    for (const match of matches) {
-      html += escapeHtml(text.slice(cursor, match.index));
-      if (match.value) {
-        html += `<mark class="rounded-lg bg-accent-soft px-0.5 text-accent-strong">${escapeHtml(match.value)}</mark>`;
-      }
-      cursor = match.index + match.value.length;
-    }
-    html += escapeHtml(text.slice(cursor));
-
-    return { matches, error: null, highlightHtml: html, effectiveFlags };
-  } catch (error) {
-    const friendly = friendlyRegexError(error);
+function formatOutcome(outcome: RegexMatchOutcome): PanelAnalysis {
+  if (outcome.error) {
+    const friendly = friendlyRegexError(new Error(outcome.error));
     return {
       matches: [],
       error: friendly.message,
       hint: friendly.hint,
-      highlightHtml: escapeHtml(text),
-      effectiveFlags,
+      truncated: false,
+      timedOut: outcome.timedOut,
+      effectiveFlags: outcome.effectiveFlags,
     };
   }
+  return {
+    matches: outcome.matches,
+    error: null,
+    truncated: outcome.truncated,
+    timedOut: outcome.timedOut,
+    effectiveFlags: outcome.effectiveFlags,
+  };
+}
+
+function buildHighlight(text: string, matches: RawRegexMatch[]): string {
+  let cursor = 0;
+  let html = '';
+  for (const match of matches) {
+    html += escapeHtml(text.slice(cursor, match.index));
+    if (match.value) {
+      html += `<mark class="rounded-lg bg-accent-soft px-0.5 text-accent-strong">${escapeHtml(match.value)}</mark>`;
+    }
+    cursor = match.index + match.value.length;
+  }
+  return html + escapeHtml(text.slice(cursor));
 }
 
 export function TesterPanel({ active: _active }: { active: boolean }) {
@@ -99,8 +108,65 @@ export function TesterPanel({ active: _active }: { active: boolean }) {
   const [pattern, setPattern] = useState(SAMPLE_REGEX_PATTERN);
   const [flags, setFlags] = useState('g');
   const [text, setText] = useState(SAMPLE_REGEX_TEXT);
+  const [analysis, setAnalysis] = useState<PanelAnalysis>(IDLE_ANALYSIS);
+  const [pending, setPending] = useState(true);
 
-  const analysis = useMemo(() => analyze(pattern, flags, text), [pattern, flags, text]);
+  const workerRef = useRef<Worker | null>(null);
+  const seqRef = useRef(0);
+  const killTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const seq = seqRef.current + 1;
+    seqRef.current = seq;
+
+    if (!pattern || !text) {
+      setPending(false);
+      setAnalysis({ ...IDLE_ANALYSIS, effectiveFlags: withG(flags) });
+      return;
+    }
+
+    setPending(true);
+    const debounce = window.setTimeout(() => {
+      if (!workerRef.current) {
+        const worker = new Worker(
+          new URL('../../lib/regex-match.worker.ts', import.meta.url),
+          { type: 'module' },
+        );
+        worker.onmessage = (event: MessageEvent<{ seq: number; outcome: RegexMatchOutcome }>) => {
+          if (event.data.seq !== seqRef.current) return;
+          if (killTimerRef.current !== null) {
+            window.clearTimeout(killTimerRef.current);
+            killTimerRef.current = null;
+          }
+          setPending(false);
+          setAnalysis(formatOutcome(event.data.outcome));
+        };
+        workerRef.current = worker;
+      }
+      workerRef.current.postMessage({ seq, pattern, flags, text });
+      killTimerRef.current = window.setTimeout(() => {
+        workerRef.current?.terminate();
+        workerRef.current = null;
+        killTimerRef.current = null;
+        setPending(false);
+        setAnalysis({ ...IDLE_ANALYSIS, effectiveFlags: withG(flags), timedOut: true });
+      }, REGEX_KILL_MS);
+    }, REGEX_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(debounce);
+  }, [pattern, flags, text]);
+
+  // 卸载时回收 worker 与剩余定时器；不依赖 effect 清理链，避免 StrictMode 双挂载误杀。
+  useEffect(
+    () => () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+      if (killTimerRef.current !== null) window.clearTimeout(killTimerRef.current);
+    },
+    [],
+  );
+
+  const highlightHtml = useMemo(() => buildHighlight(text, analysis.matches), [text, analysis.matches]);
 
   const toggleFlag = (flag: string) => {
     setFlags((current) =>
@@ -121,6 +187,9 @@ export function TesterPanel({ active: _active }: { active: boolean }) {
         <Badge tone={analysis.matches.length > 0 ? 'accent' : 'neutral'}>
           {t({ zh: `${analysis.matches.length} 处匹配`, en: `${analysis.matches.length} matches` })}
         </Badge>
+        {analysis.truncated ? (
+          <Badge tone="warning">{t({ zh: `已达 ${MAX_REGEX_MATCHES} 条上限`, en: `capped at ${MAX_REGEX_MATCHES}` })}</Badge>
+        ) : null}
         <span className="hidden text-[11px] text-ink-3 sm:inline">
           /{pattern || '…'}/{analysis.effectiveFlags}
         </span>
@@ -212,6 +281,19 @@ export function TesterPanel({ active: _active }: { active: boolean }) {
       </Panel>
 
       {analysis.error ? <ToolAlert tone="error" title={analysis.error} hint={analysis.hint} /> : null}
+      {analysis.timedOut && !analysis.error ? (
+        <ToolAlert
+          tone="warning"
+          title={{
+            zh: `匹配超时（${REGEX_MATCH_DEADLINE_MS} 毫秒），已中止`,
+            en: `Match timed out after ${REGEX_MATCH_DEADLINE_MS} ms and was aborted`,
+          }}
+          hint={{
+            zh: '可能是灾难性回溯：给嵌套量词加上明确边界，或缩小测试文本范围。',
+            en: 'Likely catastrophic backtracking: bound the nested quantifiers or shrink the test text.',
+          }}
+        />
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <InputPanel
@@ -233,7 +315,13 @@ export function TesterPanel({ active: _active }: { active: boolean }) {
         >
           {analysis.matches.length === 0 ? (
             <div className="flex min-h-[200px] items-center justify-center px-4 text-xs text-ink-3">
-              {analysis.error ? t({ zh: '请先修正正则表达式', en: 'Fix the regex first' }) : t({ zh: '当前没有匹配结果', en: 'No matches right now' })}
+              {pending
+                ? t({ zh: '后台匹配中…', en: 'Matching in the background…' })
+                : analysis.error
+                  ? t({ zh: '请先修正正则表达式', en: 'Fix the regex first' })
+                  : analysis.timedOut
+                    ? t({ zh: '匹配已中止', en: 'Match aborted' })
+                    : t({ zh: '当前没有匹配结果', en: 'No matches right now' })}
             </div>
           ) : (
             <ul className="code-scroll max-h-[360px] divide-y divide-line overflow-auto">
@@ -287,7 +375,7 @@ export function TesterPanel({ active: _active }: { active: boolean }) {
         {text ? (
           <pre
             className="code-scroll max-h-[260px] overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-6 text-ink"
-            dangerouslySetInnerHTML={{ __html: analysis.highlightHtml }}
+            dangerouslySetInnerHTML={{ __html: highlightHtml }}
           />
         ) : (
           <div className="flex min-h-[120px] items-center justify-center text-xs text-ink-3">
