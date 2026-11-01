@@ -24,9 +24,11 @@ import {
   convertFormat,
   FORMAT_ORDER,
   FORMATS,
+  PARSABLE_FORMATS,
   type ConvertOptions,
   type FormatId,
 } from '@/lib/formats';
+import { BatchFiles } from './BatchFiles';
 import { countTextStats } from '@/lib/text';
 import type { ToolkitPanelProps } from './types';
 
@@ -92,7 +94,10 @@ export function ConverterPanel({ input, setInput }: ToolkitPanelProps) {
   const updateQueryFlag = (key: keyof QueryFlags) => (value: boolean) =>
     setQueryFlags((current) => ({ ...current, [key]: value }));
 
-  const formatChoices = FORMAT_ORDER.map((id) => ({ value: id, label: FORMATS[id].label }));
+  const choice = (id: FormatId) => ({ value: id, label: FORMATS[id].label });
+  const fromChoices = PARSABLE_FORMATS.map(choice);
+  const toChoices = FORMAT_ORDER.map(choice);
+  const canSwap = FORMATS[to].canParse !== false;
 
   const showIndent = to === 'json' || to === 'yaml';
   const showSortKeys = to === 'json' || to === 'yaml' || to === 'properties';
@@ -130,7 +135,7 @@ export function ConverterPanel({ input, setInput }: ToolkitPanelProps) {
             onChange={setFrom}
             ariaLabel={t({ zh: '输入格式', en: 'Input format' })}
             size="sm"
-            options={formatChoices}
+            options={fromChoices}
           />
         </div>
         <div className="my-1.5 flex items-center gap-2 pl-[4.5rem] text-ink-3">
@@ -146,7 +151,7 @@ export function ConverterPanel({ input, setInput }: ToolkitPanelProps) {
             onChange={setTo}
             ariaLabel={t({ zh: '输出格式', en: 'Output format' })}
             size="sm"
-            options={formatChoices}
+            options={toChoices}
           />
         </div>
       </div>
@@ -160,7 +165,7 @@ export function ConverterPanel({ input, setInput }: ToolkitPanelProps) {
 
         <span className="mx-1 hidden h-4 w-px bg-line sm:block" />
 
-        <Button variant="secondary" size="sm" onClick={handleSwap} disabled={!io.output}>
+        <Button variant="secondary" size="sm" onClick={handleSwap} disabled={!io.output || !canSwap}>
           <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
           {t({ zh: '交换方向', en: 'Swap direction' })}
         </Button>
@@ -177,9 +182,9 @@ export function ConverterPanel({ input, setInput }: ToolkitPanelProps) {
             ]}
           />
         ) : null}
-        {to === 'xml' ? (
+        {to === 'xml' || to === 'sql' ? (
           <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-3">
-            {t({ zh: '根节点', en: 'Root tag' })}
+            {to === 'sql' ? t({ zh: '表名', en: 'Table' }) : t({ zh: '根节点', en: 'Root tag' })}
             <Input
               value={rootName}
               onChange={(event) => setRootName(event.target.value)}
@@ -300,10 +305,12 @@ export function ConverterPanel({ input, setInput }: ToolkitPanelProps) {
         />
       </div>
 
+      <BatchFiles to={to} options={options} />
+
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({
-          zh: '六种格式任意方向互转，输入即实时转换。XML 只按标签名建立层级、忽略属性；转 CSV 需要数组数据；同格式转换即格式化与规范化。',
-          en: 'Convert freely among the six formats in any direction with live output. XML builds hierarchy from tag names only and ignores attributes; CSV output requires array data; same-format conversion formats and normalizes.',
+          zh: '九种格式互转，输入即实时转换；文件批量转换沿用上方目标格式与选项。XML 只按标签名建立层级、忽略属性；转 CSV / Markdown 表格 / SQL INSERT 需要对象数组；SQL 只能生成、不能反解。',
+          en: 'Convert among nine formats with live output; batch file conversion reuses the target format and options above. XML builds hierarchy from tag names only and ignores attributes; CSV / Markdown table / SQL INSERT output needs an array of objects; SQL is generated only, never parsed back.',
         })}
       </p>
     </div>

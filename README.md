@@ -23,7 +23,7 @@ DevToolbox is a free, open-source online toolbox for developers: **34 browser-ba
 |---|---|---|
 | Encoding & Encryption 编码加密 | 3 | Codec Toolkit (Base64/URL/Unicode/Hex/JS-escape/Base32-62/Gzip/Morse on one shared input), Hash & Password Toolkit (MD5/SHA, bcrypt/scrypt, htpasswd), Cipher Toolkit (AES, DES/3DES/RC4, RSA, JWT) |
 | Developer Utilities 开发调试 | 12 | Developer Reference handbook (status codes/headers/methods/ports/MIME/Linux/MQTT), Random Toolkit (UUID/number/password), Regex Toolkit, Link Parser Toolkit (vmess/thunder/magnet/Type7), Dev Calc Toolkit (radix/size/CRC/PPI), Code Formatter Toolkit, Identity Generator, plus timestamp, URL parser, color, cron, diff, SSL cert, HTTP simulator, curl-to-code, text & code diff toolkit |
-| Data Formats 数据格式 | 2 | JSON Toolkit (format/minify/validate + JSONPath query + Schema + structural diff + six-format converter JSON/XML/YAML/CSV/Properties/Query, all on one shared input), JSON to Java/TS/Go entities |
+| Data Formats 数据格式 | 2 | JSON Toolkit (format/minify/validate + JSONPath query + Schema + structural diff + nine-format converter JSON/XML/YAML/CSV/NDJSON/Markdown/SQL/Properties/Query with batch file conversion, all on one shared input), JSON to Java/TS/Go entities |
 | Network Tools 网络工具 | 10 | IP Toolkit (egress IP, geo lookup, subnet mask, IP↔number, random IP/MAC), Site Diagnosis Toolkit (DNS/NS/links/SEO/headers/WebCheck on one shared URL), UA Toolkit, Webmaster Toolkit (robots.txt + shields badge), Browser Toolkit (env info + cookies), curl to code, WebSocket tester, File Transfer Toolkit (LAN WebRTC drop, phone-as-QR-scanner, air-gapped QR send / receive / salvage) |
 | Image Tools 图像处理 | 4 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator |
 | Text Tools 文本处理 | 1 | Text Toolkit: counter, occurrence ranking, sort, dedupe, case converter, multi-line processor, diff |
@@ -102,7 +102,7 @@ Markdown 实时渲染：编辑 / 分栏 / 预览三种模式、同步滚动、�
 
 ### 数据格式（2）
 
-JSON 工具箱（格式化/压缩/校验 + JSONPath 查询 + Schema 校验生成 + JSON 结构化对比 + 六种格式互转（JSON/XML/YAML/CSV/Properties/Query），共享同一份输入）、JSON 转多语言实体类。
+JSON 工具箱（格式化/压缩/校验 + JSONPath 查询 + Schema 校验生成 + JSON 结构化对比 + 九种格式互转（JSON/XML/YAML/CSV/NDJSON/Markdown 表格/SQL INSERT/Properties/Query），共享同一份输入，并可拖入文件批量转换后逐个或打包下载）、JSON 转多语言实体类。
 
 ### 图像处理（4）
 

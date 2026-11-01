@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { convertFormat, DEFAULT_CONVERT_OPTIONS, FORMATS, type ConvertOptions } from './formats';
+import {
+  convertFormat,
+  DEFAULT_CONVERT_OPTIONS,
+  detectFormat,
+  FORMATS,
+  sniffFormat,
+  type ConvertOptions,
+} from './formats';
 
 const opts = (overrides: Partial<ConvertOptions> = {}): ConvertOptions => ({
   ...DEFAULT_CONVERT_OPTIONS,
@@ -123,5 +130,53 @@ describe('cross-format pipelines', () => {
 
   test('same-format conversion normalizes', () => {
     expect(convertFormat('{"b":1,"a":2}', 'json', 'json', opts())).toBe('{\n  "b": 1,\n  "a": 2\n}');
+  });
+});
+
+describe('NDJSON / Markdown / SQL', () => {
+  test('NDJSON parses line by line and reports the bad line', () => {
+    expect(FORMATS.ndjson.parse('{"a":1}\n{"a":2}', opts())).toEqual([{ a: 1 }, { a: 2 }]);
+    expect(() => FORMATS.ndjson.parse('{"a":1}\n{oops}', opts())).toThrow(/第 2 行/);
+  });
+
+  test('NDJSON serializes arrays one record per line', () => {
+    expect(FORMATS.ndjson.serialize([{ a: 1 }, { b: 'x' }], opts())).toBe('{"a":1}\n{"b":"x"}');
+  });
+
+  test('Markdown table parses into objects and renders back', () => {
+    const value = FORMATS.markdown.parse('| name | age |\n| --- | --- |\n| a | 1 |\n| b | 2 |', opts());
+    expect(value).toEqual([{ name: 'a', age: '1' }, { name: 'b', age: '2' }]);
+    expect(FORMATS.markdown.serialize([{ name: 'a', age: 1 }], opts())).toBe('| name | age |\n| --- | --- |\n| a | 1 |');
+  });
+
+  test('Markdown cells escape pipes, newlines and nested values', () => {
+    const out = FORMATS.markdown.serialize([{ text: 'a|b\nc', nested: { k: 1 } }], opts());
+    expect(out).toContain('a\\|b<br>c');
+    expect(out).toContain('{"k":1}');
+  });
+
+  test('Markdown parse needs a separator row', () => {
+    expect(() => FORMATS.markdown.parse('| a | b |\n| 1 | 2 |', opts())).toThrow(/没有找到 Markdown 表格/);
+  });
+
+  test('SQL builds one INSERT with escaped literals and NULLs', () => {
+    const sql = FORMATS.sql.serialize([{ name: "o'brien", age: 3 }, { name: null }], opts({ rootName: 'users' }));
+    expect(sql).toContain('INSERT INTO `users` (`name`, `age`) VALUES');
+    expect(sql).toContain("('o''brien', 3)");
+    expect(sql).toContain('(NULL, NULL)');
+  });
+
+  test('SQL is output only', () => {
+    expect(FORMATS.sql.canParse).toBe(false);
+    expect(() => FORMATS.sql.parse('select 1', opts())).toThrow(/不支持从 SQL 文本解析/);
+  });
+
+  test('file extension and content sniffing pick the source format', () => {
+    expect(detectFormat('users.csv')).toBe('csv');
+    expect(detectFormat('notes.txt')).toBe('text');
+    expect(detectFormat('mystery')).toBe('text');
+    expect(sniffFormat('[1,2]')).toBe('json');
+    expect(sniffFormat('{"a":1}\n{"a":2}')).toBe('ndjson');
+    expect(sniffFormat('a,\nb,')).toBe('csv');
   });
 });

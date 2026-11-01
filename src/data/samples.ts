@@ -89,6 +89,20 @@ c,3,Beijing`;
 
 export const SAMPLE_QUERY = 'name=qwen&age=3&from=hangzhou&tag=ai&tag=tools';
 
+export const SAMPLE_NDJSON = `{"name":"a","age":1,"city":"Hangzhou"}
+{"name":"b","age":2,"city":"Shanghai"}
+{"name":"c","age":3,"city":"Beijing"}`;
+
+export const SAMPLE_MARKDOWN_TABLE = `| name | age | city |
+| --- | --- | --- |
+| a | 1 | Hangzhou |
+| b | 2 | Shanghai |`;
+
+export const SAMPLE_SQL_INSERT = `INSERT INTO \`users\` (\`name\`, \`age\`) VALUES
+  ('a', 1),
+  ('b', 2);`;
+
+
 export const SAMPLE_JSONPATH_INPUT = `{
   "data": {
     "list": [
