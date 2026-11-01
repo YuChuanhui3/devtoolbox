@@ -153,8 +153,13 @@ export default function ImageConvertTool() {
         </ActionBar>
 
         {isProcessing ? (
-          <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
-            <div className="h-full rounded-full bg-accent transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="flex items-center gap-3">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
+              <div className="h-full rounded-full bg-accent transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+            <Button variant="ghost" size="sm" onClick={batch.cancel}>
+              {t({ zh: '取消', en: 'Cancel' })}
+            </Button>
           </div>
         ) : null}
       </Panel>

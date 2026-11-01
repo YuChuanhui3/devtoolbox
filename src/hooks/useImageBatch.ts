@@ -3,6 +3,7 @@ import { useToast } from '@/components/ui/Toast';
 import { downloadAll } from '@/lib/download';
 import { ToolError, toToolError } from '@/lib/errors';
 import { tl } from '@/i18n/locale';
+import { useI18n } from '@/i18n/I18nProvider';
 import { loadImage, mimeToExtension } from '@/lib/image';
 import type { CompressOutcome } from '@/lib/image';
 import type { ImageFileItem } from '@/hooks/useImageFiles';
@@ -29,6 +30,7 @@ export interface ImageBatch {
     handle: (file: File, bitmap: ImageBitmap | HTMLImageElement) => Promise<CompressOutcome>,
     messages: { success: string },
   ) => Promise<void>;
+  cancel: () => void;
   removeItem: (id: string) => void;
   clearAll: () => void;
   downloadAllResults: () => Promise<void>;
@@ -49,6 +51,7 @@ export function useImageBatch({
   resultFilename,
 }: ImageBatchConfig): ImageBatch {
   const toast = useToast();
+  const { t } = useI18n();
   const [results, setResults] = useState<Record<string, ProcessedImageResult>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -59,7 +62,16 @@ export function useImageBatch({
     Object.values(resultsRef.current).forEach((result) => URL.revokeObjectURL(result.url));
   }, []);
 
-  useEffect(() => revokeAll, [revokeAll]);
+  const mountedRef = useRef(true);
+  const cancelledRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      revokeAll();
+    };
+  }, [revokeAll]);
 
   const totalOriginal = items.reduce((sum, item) => sum + item.file.size, 0);
   const totalResult = useMemo(
@@ -74,23 +86,24 @@ export function useImageBatch({
     ) => {
       if (items.length === 0 || isProcessing) return;
 
+      cancelledRef.current = false;
       revokeAll();
       setResults({});
       setIsProcessing(true);
       setProgress(0);
       setError(null);
 
-      for (let index = 0; index < items.length; index += 1) {
-        const item = items[index];
-        try {
-          const bitmap = await loadImage(item.file);
-          const outcome = await handle(item.file, bitmap);
+      let failures = 0;
 
-          const originalWidth = bitmap.width;
-          const originalHeight = bitmap.height;
-          if (typeof ImageBitmap !== 'undefined' && bitmap instanceof ImageBitmap) {
-            bitmap.close();
-          }
+      for (let index = 0; index < items.length; index += 1) {
+        if (cancelledRef.current || !mountedRef.current) break;
+        const item = items[index];
+        let bitmap: ImageBitmap | HTMLImageElement | null = null;
+        try {
+          bitmap = await loadImage(item.file);
+          if (cancelledRef.current || !mountedRef.current) break;
+          const outcome = await handle(item.file, bitmap);
+          if (cancelledRef.current || !mountedRef.current) break;
 
           const result: ProcessedImageResult = {
             id: item.id,
@@ -98,8 +111,8 @@ export function useImageBatch({
             url: URL.createObjectURL(outcome.blob),
             width: outcome.width,
             height: outcome.height,
-            originalWidth,
-            originalHeight,
+            originalWidth: bitmap.width,
+            originalHeight: bitmap.height,
             mime: outcome.mime,
             extension: mimeToExtension(outcome.mime),
             size: outcome.blob.size,
@@ -107,6 +120,8 @@ export function useImageBatch({
           };
           setResults((current) => ({ ...current, [item.id]: result }));
         } catch (error) {
+          if (cancelledRef.current || !mountedRef.current) break;
+          failures += 1;
           const toolError = toToolError(error);
           // 批处理要指明是哪个文件失败；底层 ToolError 的 hint（如 Canvas 不支持）不能丢。
           setError(
@@ -118,15 +133,31 @@ export function useImageBatch({
               toolError.hint,
             ),
           );
+        } finally {
+          // 解码位图是这批里最贵的资源，无论成败都要释放。
+          if (typeof ImageBitmap !== 'undefined' && bitmap instanceof ImageBitmap) {
+            bitmap.close();
+          }
         }
         setProgress(Math.round(((index + 1) / items.length) * 100));
       }
 
+      if (!mountedRef.current) return;
       setIsProcessing(false);
-      toast.success(messages.success);
+      if (cancelledRef.current) {
+        toast.info(t({ zh: '已取消处理', en: 'Processing cancelled' }));
+      } else if (failures === 0) {
+        toast.success(messages.success);
+      } else {
+        toast.error(t({ zh: `处理完成，${failures} 个文件失败`, en: `Finished with ${failures} failed files` }));
+      }
     },
-    [items, isProcessing, revokeAll, setError, toast],
+    [items, isProcessing, revokeAll, setError, toast, t],
   );
+
+  const cancel = useCallback(() => {
+    cancelledRef.current = true;
+  }, []);
 
   const removeItem = useCallback(
     (id: string) => {
@@ -162,8 +193,8 @@ export function useImageBatch({
 
     if (payload.length === 0) return;
     await downloadAll(payload);
-    toast.success(`已开始下载 ${payload.length} 张图片`);
-  }, [items, results, resultFilename, toast]);
+    toast.success(t({ zh: `已开始下载 ${payload.length} 张图片`, en: `Downloading ${payload.length} images` }));
+  }, [items, results, resultFilename, toast, t]);
 
   const buildPreview = useCallback(
     (item: ImageFileItem, result: ProcessedImageResult): ImagePreviewState => ({
@@ -190,6 +221,7 @@ export function useImageBatch({
     totalOriginal,
     totalResult,
     processAll,
+    cancel,
     removeItem,
     clearAll,
     downloadAllResults,

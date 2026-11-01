@@ -47,11 +47,32 @@ export function validateImageFile(file: File): ToolError | null {
   return null;
 }
 
+// 20MB 的 PNG 解码后可能是上亿像素（≈GB 级内存），文件大小挡不住，按像素再设一道闸。
+export const MAX_DECODED_PIXELS = 50_000_000;
+
+function assertPixelBudget(source: { width: number; height: number; close?: () => void }, name: string) {
+  if (source.width * source.height <= MAX_DECODED_PIXELS) return;
+  if (typeof source.close === 'function') source.close();
+  throw new ToolError(
+    {
+      zh: `${name} 解码后约 ${Math.round((source.width * source.height) / 1_000_000)} 百万像素，超过 5000 万像素上限`,
+      en: `${name} decodes to ~${Math.round((source.width * source.height) / 1_000_000)} megapixels, above the 50MP limit`,
+    },
+    {
+      zh: '请先用其他工具把图片缩小到约 7000×7000 像素以内。',
+      en: 'Downscale the image to roughly 7000×7000 pixels first.',
+    },
+  );
+}
+
 export async function loadImage(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === 'function') {
     try {
-      return await createImageBitmap(file, { imageOrientation: 'from-image' });
-    } catch {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      assertPixelBudget(bitmap, file.name);
+      return bitmap;
+    } catch (error) {
+      if (error instanceof ToolError) throw error;
       /* 回退到 HTMLImageElement */
     }
   }
@@ -63,9 +84,11 @@ export async function loadImage(file: File): Promise<ImageBitmap | HTMLImageElem
     await image.decode();
     // 解码完成后位图已在内存中，Object URL 可以立即释放。
     URL.revokeObjectURL(url);
+    assertPixelBudget(image, file.name);
     return image;
-  } catch {
+  } catch (error) {
     URL.revokeObjectURL(url);
+    if (error instanceof ToolError) throw error;
     throw new ToolError(
       { zh: '图片读取失败', en: 'Image load failed' },
       {
