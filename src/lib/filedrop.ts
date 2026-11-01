@@ -6,6 +6,7 @@ export const HUGE_FILE_BYTES = 1024 * 1024 * 1024;
 export type ControlFrame =
   | { t: 'hello'; agent: string }
   | { t: 'text'; id: string; body: string; ts: number }
+  | { t: 'scan'; id: string; body: string; ts: number }
   | { t: 'meta'; id: string; name: string; size: number; mime: string }
   | { t: 'accept'; id: string }
   | { t: 'reject'; id: string }
@@ -13,7 +14,7 @@ export type ControlFrame =
   | { t: 'done'; id: string }
   | { t: 'cancel'; id: string };
 
-const FRAME_TYPES = new Set(['hello', 'text', 'meta', 'accept', 'reject', 'begin', 'done', 'cancel']);
+const FRAME_TYPES = new Set(['hello', 'text', 'scan', 'meta', 'accept', 'reject', 'begin', 'done', 'cancel']);
 
 export function encodeControl(frame: ControlFrame): string {
   return JSON.stringify(frame);
@@ -57,6 +58,7 @@ export function parseControl(text: string): ControlFrame {
     case 'hello':
       return { t, agent: str('agent') };
     case 'text':
+    case 'scan':
       return { t, id: str('id'), body: str('body'), ts: num('ts') };
     case 'meta':
       return { t, id: str('id'), name: str('name'), size: num('size'), mime: str('mime') };

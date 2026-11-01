@@ -2,7 +2,7 @@
 
 [![Deploy to GitHub Pages](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml/badge.svg)](https://github.com/YuChuanhui3/devtoolbox/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-![Tools](https://img.shields.io/badge/tools-34-blue)
+![Tools](https://img.shields.io/badge/tools-33-blue)
 ![PRs%20Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 **Live site: <https://YuChuanhui3.github.io/devtoolbox/>**
@@ -24,8 +24,8 @@ DevToolbox is a free, open-source online toolbox for developers: **34 browser-ba
 | Encoding & Encryption 编码加密 | 3 | Codec Toolkit (Base64/URL/Unicode/Hex/JS-escape/Base32-62/Gzip/Morse on one shared input), Hash & Password Toolkit (MD5/SHA, bcrypt/scrypt, htpasswd), Cipher Toolkit (AES, DES/3DES/RC4, RSA, JWT) |
 | Developer Utilities 开发调试 | 12 | Developer Reference handbook (status codes/headers/methods/ports/MIME/Linux/MQTT), Random Toolkit (UUID/number/password), Regex Toolkit, Link Parser Toolkit (vmess/thunder/magnet/Type7), Dev Calc Toolkit (radix/size/CRC/PPI), Code Formatter Toolkit, Identity Generator, plus timestamp, URL parser, color, cron, diff, SSL cert, HTTP simulator, curl-to-code, text & code diff toolkit |
 | Data Formats 数据格式 | 2 | JSON Toolkit (format/minify/validate + JSONPath query + Schema + structural diff + six-format converter JSON/XML/YAML/CSV/Properties/Query, all on one shared input), JSON to Java/TS/Go entities |
-| Network Tools 网络工具 | 10 | IP Toolkit (egress IP, geo lookup, subnet mask, IP↔number, random IP/MAC), Site Diagnosis Toolkit (DNS/NS/links/SEO/headers/WebCheck on one shared URL), UA Toolkit, Webmaster Toolkit (robots.txt + shields badge), Browser Toolkit (env info + cookies), curl to code, WebSocket tester, LAN file transfer (WebRTC) |
-| Image Tools 图像处理 | 5 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator, QR file transfer (air-gapped chunk send/receive) |
+| Network Tools 网络工具 | 10 | IP Toolkit (egress IP, geo lookup, subnet mask, IP↔number, random IP/MAC), Site Diagnosis Toolkit (DNS/NS/links/SEO/headers/WebCheck on one shared URL), UA Toolkit, Webmaster Toolkit (robots.txt + shields badge), Browser Toolkit (env info + cookies), curl to code, WebSocket tester, File Transfer Toolkit (LAN WebRTC drop, phone-as-QR-scanner, air-gapped QR send / receive / salvage) |
+| Image Tools 图像处理 | 4 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator |
 | Text Tools 文本处理 | 1 | Text Toolkit: counter, occurrence ranking, sort, dedupe, case converter, multi-line processor, diff |
 | Markdown | 1 | Live Markdown editor with split view, syntax highlighting, DOMPurify-sanitized preview, export `.md` / `.html` |
 
@@ -64,14 +64,14 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 # 中文说明
 
-一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **34 个高频工具箱**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
+一个纯前端、本地优先的开发者在线工具箱。覆盖编码加密、开发调试、Markdown、数据格式、图像处理、网络工具与文本处理，共 **33 个高频工具箱**。分类与分类内工具均按名称拼音首字母自动排序。界面支持中文 / English 双语切换。
 
 没有账号、没有后端、没有第三方统计脚本。文本、JSON、图片等内容默认在浏览器内处理，不会上传服务器；收藏、最近使用与草稿仅保存在本机 `localStorage`。
 
 ## 功能特性
 
 - **全局搜索**：`⌘ / Ctrl + K` 唤起，支持名称、别名、标签与描述搜索，键盘上下选择、Enter 打开。
-- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；34 个工具页、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
+- **中英双语**：设置或顶栏一键切换 中文 / English，即时生效无需刷新；33 个工具页、错误提示、参考数据（端口、HTTP 状态码、Linux 命令等）全量双语，搜索中英互通；选择持久化到本机并同步 `<html lang>`，非中文浏览器首次访问默认英文。
 - **工具分类**：编码加密、开发调试、Markdown、数据格式、图像处理、网络工具、文本处理七大分类，按名称拼音首字母排序。
 - **工具箱合并**：功能相似的工具已合并为工具箱页（顶部标签切换、共享输入、Keep-alive 不丢状态），42 个页面吸收原 70+ 独立工具，旧链接 `/tools/*` 自动重定向。
 - **收藏与最近使用**：收藏工具、记录最近访问，刷新后仍然保留。
@@ -82,7 +82,7 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 - **安全渲染**：Markdown 预览经 DOMPurify 过滤，禁止脚本、iframe、事件属性与 `javascript:` 链接。
 - **本地设置中心**：主题、语言（中文 / English）、草稿开关、本地匿名统计开关、本地数据清空、快捷键入口。
 - **按需加载**：每个工具独立分包，首页不加载全部工具代码。
-- **局域网文件互传**：基于 WebRTC DataChannel 的点对点传输，扫码或复制粘贴配对，文件不出本机、不经过服务器。
+- **文件传输工具箱**：同一 Wi-Fi 下基于 WebRTC DataChannel 点对点互传文件与文本，手机可充当电脑的扫码器实时回传二维码内容；物理隔离网络改用二维码逐帧发送 / 连续接收 / 录屏回收。全程不经过服务器。
 
 ## 工具清单
 
@@ -104,15 +104,15 @@ Markdown 实时渲染：编辑 / 分栏 / 预览三种模式、同步滚动、�
 
 JSON 工具箱（格式化/压缩/校验 + JSONPath 查询 + Schema 校验生成 + JSON 结构化对比 + 六种格式互转（JSON/XML/YAML/CSV/Properties/Query），共享同一份输入）、JSON 转多语言实体类。
 
-### 图像处理（5）
+### 图像处理（4）
 
-二维码生成、二维码跨网传输（把文本/小文件切成二维码帧序列播放或下载，另一端相机连续扫码 / 截图批量 / 录屏逐帧回收，内网外网隔空传 JSON）、图片 Base64 互转、图片压缩（质量 / 目标大小双模式，智能择优 WebP/JPG/PNG 输出最小结果）、图片格式转换。图片处理通过 Canvas 在本地完成，支持批量处理、并排 / 拖动对比线预览、单张 / 批量下载。
+二维码生成、图片 Base64 互转、图片压缩（质量 / 目标大小双模式，智能择优 WebP/JPG/PNG 输出最小结果）、图片格式转换。图片处理通过 Canvas 在本地完成，支持批量处理、并排 / 拖动对比线预览、单张 / 批量下载。
 
 ### 网络工具（10）
 
-IP 与网络地址工具箱（出口 IP / 归属地 / 定位地图 / IP↔数字 / 子网掩码 / 随机 IP / MAC，共享一个 IP 输入）、网站诊断工具箱（DNS 记录 / NS 与注册 / 内外链 / SEO / 响应头 / WebCheck，共享一个 URL 输入）、UA 工具箱（随机生成 / 大全 / 解析）、站长工具（robots.txt + 徽章）、浏览器检测工具箱（环境信息 + Cookie），以及 curl 转代码、模拟 WebSocket 请求、网页自动刷新、局域网文件互传。
+IP 与网络地址工具箱（出口 IP / 归属地 / 定位地图 / IP↔数字 / 子网掩码 / 随机 IP / MAC，共享一个 IP 输入）、网站诊断工具箱（DNS 记录 / NS 与注册 / 内外链 / SEO / 响应头 / WebCheck，共享一个 URL 输入）、UA 工具箱（随机生成 / 大全 / 解析）、站长工具（robots.txt + 徽章）、浏览器检测工具箱（环境信息 + Cookie），以及 curl 转代码、模拟 WebSocket 请求、网页自动刷新、文件传输工具箱（局域网互传 / 手机当扫码器 / 二维码发送 / 二维码接收 / 截图录屏回收，五个页签）。
 
-在线查询类工具依赖公开 API（ipify、Cloudflare DoH、WebSocket 测试服务等），部分需经 CORS 代理转发，页面内已标注数据来源与限制；局域网文件互传为 WebRTC 点对点直连，数据不经过任何服务器。
+在线查询类工具依赖公开 API（ipify、Cloudflare DoH、WebSocket 测试服务等），部分需经 CORS 代理转发，页面内已标注数据来源与限制；文件传输工具箱的局域网页签为 WebRTC 点对点直连，数据不经过任何服务器。
 
 ### 文本处理（1）
 
@@ -165,7 +165,7 @@ src/
 ├── lib/                 # 纯函数与浏览器能力封装（JSON、编码、转换、图片等）
 ├── pages/               # 首页、全部工具、分类、收藏、最近、关于、隐私
 ├── store/               # Zustand 全局状态
-├── tools/               # 34 个工具箱页组件，按工具独立分包
+├── tools/               # 33 个工具箱页组件，按工具独立分包
 └── workers/             # JSON 转代码 Web Worker
 ```
 
@@ -182,7 +182,7 @@ src/
 
 - 大部分工具在浏览器本地运行，文本、JSON、YAML、XML、CSV、图片等内容默认不上传服务器。
 - 网络工具中的在线查询类（IP 信息、DNS、SEO、网页抓取等）会调用第三方公开 API 或经 CORS 代理转发目标地址，输入的目标 URL / 域名会离开本机，页面内已标注数据来源；请勿查询敏感内网地址。
-- 局域网文件互传基于 WebRTC 点对点直连，文件只在两台设备间传输，不经过服务器，也不落盘保存会话记录。
+- 文件传输工具箱的局域网页签基于 WebRTC 点对点直连，文件与扫码内容只在两台设备间传输，不经过服务器，也不落盘保存会话记录。
 - 收藏、最近使用、搜索历史、Markdown 草稿、工具草稿与本地统计保存在 `localStorage`。
 - 本地统计仅记录工具访问 / 执行次数，不记录输入内容，不使用第三方脚本，可在设置中关闭并清除。
 - 加密类工具（Hash、JWT、AES 等）标记为敏感工具，不自动保存输入草稿。
@@ -196,7 +196,7 @@ src/
 - 测试规模以 `npm run test:run` 实际输出为准（另有工具注册表完整性守卫：每个工具有组件、注册表无孤儿、README 工具数与元数据一致）。
 - `src/lib/**` 覆盖率：**语句 96%+、分支 89%+、函数 98%+**。
 - 已通过 `tsc -b` 类型检查与 `vite build` 生产构建。
-- 已对全部工具路由做浏览器冒烟检查，并在英文界面下重跑；局域网文件互传另有双页 WebRTC 端到端测试（配对、文本、5MB 文件字节一致性、拒绝流程），中文与英文模式均已覆盖。
+- 已对全部工具路由做浏览器冒烟检查，并在英文界面下重跑；文件传输工具箱另有双页 WebRTC 端到端测试（配对、文本、5MB 文件字节一致性、拒绝流程），中文与英文模式均已覆盖。
 
 ```bash
 npm run test:run
@@ -233,7 +233,7 @@ npm run build
 
 - 图片输出支持 JPG / PNG / WebP；GIF 仅处理首帧，BMP 由浏览器解码后重新编码。
 - 在线查询类网络工具依赖第三方公开 API 与 CORS 代理，可用性与速率受上游影响，页面内已标注；路由追踪、SSL 套件检测、证书链查询、网页截图等需要服务端能力，不在纯前端范围内。
-- 局域网文件互传要求两台设备在同一 Wi-Fi / 局域网（仅 host 候选，不穿 NAT），配对信息一次性有效；断线后未完成的文件需重新发送，不支持续传。
+- 文件传输工具箱的局域网页签要求两台设备在同一 Wi-Fi / 局域网（仅 host 候选，不穿 NAT），配对信息一次性有效；断线后未完成的文件需重新发送，不支持续传。
 - 本地统计为设备维度，不做跨设备汇总。
 
 ## 文档

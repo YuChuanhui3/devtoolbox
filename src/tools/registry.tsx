@@ -39,7 +39,6 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'image-convert': lazy(() => import('./ImageConvertTool')),
   'image-base64': lazy(() => import('./ImageBase64Tool')),
   'qr-generator': lazy(() => import('./QrGeneratorTool')),
-  'qr-transfer': lazy(() => import('./QrTransferTool')),
 
   // 网络工具
   'ip-toolkit': lazy(() => import('./IpToolkitTool')),
@@ -51,5 +50,5 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'websocket-client': lazy(() => import('./WebSocketClientTool')),
   'site-diagnosis-toolkit': lazy(() => import('./SiteDiagnosisToolkitTool')),
   'page-refresh': lazy(() => import('./PageRefreshTool')),
-  'file-drop': lazy(() => import('./filedrop/FileDropTool')),
+  'transfer-toolkit': lazy(() => import('./TransferToolkitTool')),
 };

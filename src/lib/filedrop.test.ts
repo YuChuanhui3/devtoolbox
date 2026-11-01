@@ -36,6 +36,7 @@ describe('control frames', () => {
   const frames: ControlFrame[] = [
     { t: 'hello', agent: 'iPhone · Safari' },
     { t: 'text', id: 'a1', body: '你好', ts: 1 },
+    { t: 'scan', id: 'a2', body: 'https://example.com', ts: 2 },
     { t: 'meta', id: 'a1', name: 'IMG_0001.jpg', size: 12345, mime: 'image/jpeg' },
     { t: 'accept', id: 'a1' },
     { t: 'reject', id: 'a1' },

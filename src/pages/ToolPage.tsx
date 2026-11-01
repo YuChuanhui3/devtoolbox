@@ -1,5 +1,5 @@
 import { Suspense, useEffect, type ComponentType, type LazyExoticComponent } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Blocks } from 'lucide-react';
 import { TOOL_COMPONENTS } from '@/tools/registry';
 import { getTool, resolveToolTarget, toolPath } from '@/data/tools';
@@ -34,6 +34,7 @@ function ToolSkeleton() {
 
 export function ToolPage() {
   const { toolId = '' } = useParams();
+  const [params] = useSearchParams();
   const tool = getTool(toolId);
   const addRecent = useAppStore((state) => state.addRecent);
   const { t } = useI18n();
@@ -76,8 +77,11 @@ export function ToolPage() {
   if (tool.id !== toolId) {
     const target = resolveToolTarget(toolId);
     const query = new URLSearchParams();
-    if (target.mode) query.set('mode', target.mode);
-    if (target.sub) query.set('sub', target.sub);
+    // 链接里已经写明页签/子功能时尊重访客意图：/tools/qr-transfer?mode=salvage 仍直达回收页签
+    const mode = params.get('mode') ?? target.mode;
+    const sub = params.get('sub') ?? target.sub;
+    if (mode) query.set('mode', mode);
+    if (sub) query.set('sub', sub);
     const suffix = query.toString();
     return <Navigate to={toolPath(target.toolId) + (suffix ? `?${suffix}` : '')} replace />;
   }

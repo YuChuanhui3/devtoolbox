@@ -432,24 +432,6 @@ const RAW_TOOLS: ToolMeta[] = [
     icon: 'QrCode',
     priority: 'P1',
   },
-  {
-    id: 'qr-transfer',
-    subFeatures: [
-    { id: 'send', name: { zh: '发送', en: 'Send' }, keywords: ['二维码发送', '生成二维码', '播放二维码'] },
-    { id: 'receive', name: { zh: '接收', en: 'Receive' }, keywords: ['扫码', '摄像头', '二维码接收'] },
-    { id: 'salvage', name: { zh: '截图/录屏回收', en: 'Salvage' }, keywords: ['录屏', '批量解码', '回收'] },
-    ],
-    name: '二维码跨网传输',
-    nameEn: 'QR File Transfer (Air-gapped)',
-    category: 'image',
-    description: '把文本或文件切成二维码帧序列播放/下载，另一端相机连续扫码或截图录屏回收，内网外网隔空传 JSON。',
-    descriptionEn: 'Split text or files into a sequence of QR frames for playback or download, then reassemble via continuous camera scanning or screenshot/screen-recording salvage — move JSON across air-gapped networks.',
-    tags: ['跨网传输', '隔空传输', '内网', 'airgap', 'qr transfer', '分块'],
-    aliases: ['二维码传文件', '二维码传json', 'airgap传输', '内网外网传输', '扫码传文件', 'dqx'],
-    icon: 'RadioTower',
-    priority: 'P1',
-    sensitive: true,
-  },
 
   // ---------------- 网络工具 ----------------
   {
@@ -592,17 +574,25 @@ const RAW_TOOLS: ToolMeta[] = [
     priority: 'P2',
   },
   {
-    id: 'file-drop',
-    name: '局域网文件互传',
-    nameEn: 'LAN File Transfer',
+    id: 'transfer-toolkit',
+    subFeatures: [
+    { id: 'drop', name: { zh: '局域网互传', en: 'LAN Drop' }, keywords: ['文件互传', '局域网', 'webrtc', '手机传电脑'] },
+    { id: 'scan', name: { zh: '手机当扫码器', en: 'Phone Scanner' }, keywords: ['扫码回传', '手机扫码', '摄像头'] },
+    { id: 'send', name: { zh: '二维码发送', en: 'QR Send' }, keywords: ['二维码发送', '生成二维码', '播放二维码'] },
+    { id: 'receive', name: { zh: '二维码接收', en: 'QR Receive' }, keywords: ['扫码', '摄像头', '二维码接收'] },
+    { id: 'salvage', name: { zh: '截图/录屏回收', en: 'Salvage' }, keywords: ['录屏', '批量解码', '回收'] },
+    ],
+    name: '文件传输工具箱',
+    nameEn: 'File Transfer Toolkit',
     category: 'network',
-    description: '手机与电脑扫码配对后，通过 WebRTC 在同一 Wi-Fi 下点对点互传文件、图片、视频和文本，不经过任何服务器。',
-    descriptionEn: 'Pair phone and computer by scanning a QR code, then transfer files, images, videos, and text peer-to-peer over WebRTC on the same Wi-Fi, without passing through any server.',
-    tags: ['文件', '互传', '局域网', 'webrtc', '手机', '传输'],
-    aliases: ['文件互传', '局域网传输', '传文件', '手机传电脑', 'airdrop', 'filedrop'],
+    description: '同一 Wi-Fi 下手机与电脑扫码配对，WebRTC 点对点互传文件与文本、手机还能当电脑的扫码器实时回传；内网外网物理隔离时改用二维码逐帧发送、连续接收或录屏回收。',
+    descriptionEn: 'Pair phone and computer over the same Wi-Fi for peer-to-peer WebRTC file and text transfer, with the phone able to act as the computer\'s QR scanner and forward hits live; when networks are physically isolated, play QR frames instead and reassemble them by continuous scanning or screen-recording salvage.',
+    tags: ['文件', '互传', '局域网', 'webrtc', '手机', '传输', '跨网传输', '隔空传输', 'airgap', 'qr transfer', '分块', '扫码'],
+    aliases: ['文件互传', '局域网传输', '传文件', '手机传电脑', 'airdrop', 'filedrop', '文件传输', '手机当扫码器', '扫码回传', '二维码传文件', '二维码传json', 'airgap传输', '内网外网传输', '扫码传文件', 'dqx'],
     icon: 'SendHorizontal',
     priority: 'P0',
     featured: true,
+    sensitive: true,
   },
 ];
 
@@ -743,6 +733,8 @@ export const LEGACY_TOOL_IDS: Record<string, string> = {
   'case-converter': 'text-toolkit',
   'multi-line': 'text-toolkit',
   'text-diff': 'text-toolkit',
+  'file-drop': 'transfer-toolkit',
+  'qr-transfer': 'transfer-toolkit',
   'html-cleaner': 'code-format-toolkit',
   'regex-tester': 'regex-toolkit',
   'regex-escape': 'regex-toolkit',
@@ -861,6 +853,8 @@ export const LEGACY_TOOL_MODES: Record<string, string> = {
   'robots-generator': 'robots',
   'browser-info': 'info',
   'cookie-viewer': 'cookie',
+  'file-drop': 'drop',
+  'qr-transfer': 'send',
 };
 
 /** 旧工具 ID → 工具箱页签内的子功能（`?sub=`），如 /tools/html-entities 直达 HTML 实体转义。 */

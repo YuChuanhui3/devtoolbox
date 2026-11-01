@@ -183,7 +183,7 @@ describe('搜索直达子功能页签', () => {  test('“JWT” 命中加解密
     ['子网', 'ip-toolkit', 'subnet'],
     ['bcrypt', 'hash-toolkit', 'pwdhash'],
     ['状态码', 'dev-reference', 'http-status'],
-    ['录屏', 'qr-transfer', 'salvage'],
+    ['录屏', 'transfer-toolkit', 'salvage'],
   ] as const)('“%s” 直达 %s 的 %s', (query, toolId, subId) => {
     const hit = searchToolTargets(query).find((h) => h.sub?.id === subId);
     expect(hit?.tool.id).toBe(toolId);

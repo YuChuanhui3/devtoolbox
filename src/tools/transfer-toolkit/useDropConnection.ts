@@ -38,6 +38,15 @@ export interface TimelineText {
   ts: number;
 }
 
+/** 手机扫码器回传的二维码内容。 */
+export interface TimelineScan {
+  kind: 'scan';
+  id: string;
+  mine: boolean;
+  body: string;
+  ts: number;
+}
+
 export interface TimelineFile {
   kind: 'file';
   id: string;
@@ -57,7 +66,7 @@ export interface TimelineSys {
   text: Localized;
 }
 
-export type TimelineItem = TimelineText | TimelineFile | TimelineSys;
+export type TimelineItem = TimelineText | TimelineScan | TimelineFile | TimelineSys;
 
 const SEND_BUFFER_HIGH = 256 * 1024;
 const SEND_BUFFER_LOW = 64 * 1024;
@@ -164,9 +173,10 @@ export function useDropConnection() {
           setPeerLabel(frame.agent);
           break;
         case 'text':
+        case 'scan':
           setItems((prev) => [
             ...prev,
-            { kind: 'text', id: frame.id, mine: false, body: frame.body, ts: frame.ts },
+            { kind: frame.t, id: frame.id, mine: false, body: frame.body, ts: frame.ts },
           ]);
           break;
         case 'meta':
@@ -380,6 +390,19 @@ export function useDropConnection() {
     ]);
   }, []);
 
+  /** 扫码器回传：与 sendText 同一条通道，但对方以「扫码结果」样式展示。 */
+  const sendScan = useCallback((body: string) => {
+    const dc = dcRef.current;
+    const trimmed = body.trim();
+    if (!dc || dc.readyState !== 'open' || !trimmed) return;
+    const frame: ControlFrame = { t: 'scan', id: nextId(), body: trimmed, ts: Date.now() };
+    dc.send(encodeControl(frame));
+    setItems((prev) => [
+      ...prev,
+      { kind: 'scan', id: frame.id, mine: true, body: frame.body, ts: frame.ts },
+    ]);
+  }, []);
+
   const sendFile = useCallback(
     (file: File) => {
       const id = nextId();
@@ -446,8 +469,11 @@ export function useDropConnection() {
     consumeSignal,
     cancelPairing,
     sendText,
+    sendScan,
     sendFile,
     acceptIncoming,
     rejectIncoming,
   };
 }
+
+export type DropConnection = ReturnType<typeof useDropConnection>;

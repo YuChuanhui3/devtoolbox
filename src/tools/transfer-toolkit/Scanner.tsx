@@ -8,11 +8,13 @@ import { isSignalText } from '@/lib/sdp';
 interface ScannerProps {
   active: boolean;
   onResult: (text: string) => void;
+  /** signal：只吃配对信息，扫到一次即停；any：连续扫任意二维码并逐次回调。 */
+  mode?: 'signal' | 'any';
 }
 
 const SCAN_FALLBACK_HINT: L10n = { zh: '可改用「粘贴连接信息」完成配对', en: 'You can use "paste connection info" to pair instead' };
 
-export function Scanner({ active, onResult }: ScannerProps) {
+export function Scanner({ active, onResult, mode = 'signal' }: ScannerProps) {
   const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const stopRef = useRef<(() => void) | null>(null);
@@ -20,6 +22,7 @@ export function Scanner({ active, onResult }: ScannerProps) {
   const [message, setMessage] = useState<Localized>('');
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
+  const lastCodeRef = useRef<{ text: string; at: number }>({ text: '', at: 0 });
 
   useEffect(() => {
     if (!active) return;
@@ -38,9 +41,18 @@ export function Scanner({ active, onResult }: ScannerProps) {
           (result, _err, ctrl) => {
             if (!result) return;
             const text = result.getText();
-            if (!isSignalText(text)) return;
-            ctrl.stop();
-            stopRef.current = null;
+            if (mode === 'signal') {
+              if (!isSignalText(text)) return;
+              ctrl.stop();
+              stopRef.current = null;
+              setStatus('running');
+              onResultRef.current(text);
+              return;
+            }
+            // 摄像头每 150ms 重复解到同一张码，去重后才算一次新扫码
+            const now = Date.now();
+            if (text === lastCodeRef.current.text && now - lastCodeRef.current.at < 1500) return;
+            lastCodeRef.current = { text, at: now };
             setStatus('running');
             onResultRef.current(text);
           },
@@ -51,7 +63,11 @@ export function Scanner({ active, onResult }: ScannerProps) {
         }
         stopRef.current = () => controls.stop();
         setStatus('running');
-        setMessage({ zh: '对准对方屏幕上的二维码', en: 'Point at the QR code on the other screen' });
+        setMessage(
+          mode === 'signal'
+            ? { zh: '对准对方屏幕上的二维码', en: 'Point at the QR code on the other screen' }
+            : { zh: '对准任意二维码，扫到即回传', en: 'Point at any QR code; each hit is forwarded' },
+        );
       } catch (caught) {
         if (cancelled) return;
         setStatus('error');
@@ -69,7 +85,7 @@ export function Scanner({ active, onResult }: ScannerProps) {
       stopRef.current?.();
       stopRef.current = null;
     };
-  }, [active]);
+  }, [active, mode]);
 
   if (!active) return null;
 
@@ -89,7 +105,11 @@ export function Scanner({ active, onResult }: ScannerProps) {
           </div>
         ) : null}
       </div>
-      <p className="text-center text-[11px] text-ink-3">{status === 'error' && message ? t(message) : t({ zh: '扫码失败时，可展开下方「粘贴连接信息」兜底', en: 'If scanning fails, use the "paste connection info" fallback below' })}</p>
+      <p className="text-center text-[11px] text-ink-3">{status === 'error' && message
+          ? t(message)
+          : mode === 'signal'
+            ? t({ zh: '扫码失败时，可展开下方「粘贴连接信息」兜底', en: 'If scanning fails, use the "paste connection info" fallback below' })
+            : t({ zh: '同一张码 1.5 秒内只回传一次，可连续扫多张', en: 'The same code is forwarded once per 1.5 s, so you can keep scanning' })}</p>
     </div>
   );
 }

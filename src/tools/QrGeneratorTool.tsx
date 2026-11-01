@@ -344,11 +344,11 @@ export default function QrGeneratorTool() {
                 })}
               </p>
               <Link
-                to={toolPath('qr-transfer')}
+                to={`${toolPath('transfer-toolkit')}?mode=send`}
                 className="mt-1 inline-flex items-center gap-1 rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent hover:underline"
               >
                 <QrCode className="h-3.5 w-3.5" aria-hidden="true" />
-                {t({ zh: '用「二维码跨网传输」分块发送', en: 'Send it in chunks with QR File Transfer' })}
+                {t({ zh: '用「文件传输工具箱 · 二维码发送」分块发送', en: 'Send it in chunks with File Transfer Toolkit · QR Send' })}
               </Link>
             </div>
           ) : (
