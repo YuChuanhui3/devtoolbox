@@ -4,6 +4,7 @@ import { TransformTool } from '@/components/tool/TransformTool';
 import { useI18n } from '@/i18n/I18nProvider';
 import { countLines, splitLines } from '@/lib/text';
 import { SAMPLE_MULTILINE } from '@/data/samples';
+import type { TextPanelProps } from './types';
 
 interface Options {
   ignoreEmpty: boolean;
@@ -45,7 +46,7 @@ function dedupe(input: string, options: Options): string {
   return result.join('\n');
 }
 
-export default function TextDedupeTool() {
+export function DedupePanel({ value, onValueChange, active }: TextPanelProps) {
   const { t } = useI18n();
   const [options, setOptions] = useState<Options>(DEFAULT);
   const update = <K extends keyof Options>(key: K, value: Options[K]) =>
@@ -53,6 +54,9 @@ export default function TextDedupeTool() {
 
   return (
     <TransformTool
+      value={value}
+      onValueChange={onValueChange}
+      active={active}
       transform={(input) => dedupe(input, options)}
       sample={SAMPLE_MULTILINE}
       inputLabel={{ zh: '原始文本', en: 'Source text' }}

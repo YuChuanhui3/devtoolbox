@@ -12,6 +12,7 @@ import type { Localized } from '@/i18n/locale';
 import { countLines, countTextStats, splitLines } from '@/lib/text';
 import { errorHint } from '@/lib/errors';
 import { SAMPLE_MULTILINE } from '@/data/samples';
+import type { TextPanelProps } from './types';
 
 interface Options {
   trim: boolean;
@@ -104,9 +105,8 @@ function processText(input: string, options: Options): { output: string; error: 
   };
 }
 
-export default function MultiLineTool() {
+export function MultiLinePanel({ value: input, onValueChange: setInput }: TextPanelProps) {
   const { t } = useI18n();
-  const [input, setInput] = useState(SAMPLE_MULTILINE);
   const [options, setOptions] = useState<Options>(DEFAULT);
 
   const processed = useMemo(() => processText(input, options), [input, options]);

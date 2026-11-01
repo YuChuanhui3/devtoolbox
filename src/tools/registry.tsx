@@ -22,7 +22,6 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'color-converter': lazy(() => import('./ColorTool')),
   'cron-parser': lazy(() => import('./CronTool')),
   'code-format-toolkit': lazy(() => import('./CodeFormatToolkitTool')),
-  'text-diff': lazy(() => import('./DiffTool')),
   'regex-toolkit': lazy(() => import('./RegexToolkitTool')),
   'link-parser-toolkit': lazy(() => import('./LinkParserToolkitTool')),
   'dev-calc-toolkit': lazy(() => import('./DevCalcToolkitTool')),
@@ -30,12 +29,7 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'identity-toolkit': lazy(() => import('./IdentityToolkitTool')),
 
   // 文本处理
-  'text-dedupe': lazy(() => import('./TextDedupeTool')),
-  'text-sort': lazy(() => import('./TextSortTool')),
-  'case-converter': lazy(() => import('./CaseConverterTool')),
-  'word-count': lazy(() => import('./WordCountTool')),
-  'multi-line': lazy(() => import('./MultiLineTool')),
-  'occurrence-count': lazy(() => import('./OccurrenceCountTool')),
+  'text-toolkit': lazy(() => import('./TextToolkitTool')),
 
   // Markdown
   'markdown-editor': lazy(() => import('./MarkdownTool')),

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Calculator } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
 import { InputPanel } from '@/components/tool/EditorPanels';
@@ -6,15 +6,15 @@ import { ActionBar, ClearButton, CopyButton, DownloadButton, SampleButton } from
 import { useI18n } from '@/i18n/I18nProvider';
 import type { L10n } from '@/i18n/locale';
 import { countTextStats } from '@/lib/text';
+import type { TextPanelProps } from './types';
 
 const SAMPLE = `DevToolbox 是一个开发者在线工具箱。
 
 它提供 JSON 格式化、Base64 编解码、时间戳转换等 40 多个常用工具。
 All tools run locally in your browser.`;
 
-export default function WordCountTool() {
+export function WordCountPanel({ value: input, onValueChange: setInput }: TextPanelProps) {
   const { t } = useI18n();
-  const [input, setInput] = useState(SAMPLE);
   const stats = useMemo(() => countTextStats(input), [input]);
 
   const rows: Array<{ label: L10n; value: number; hint: L10n }> = [

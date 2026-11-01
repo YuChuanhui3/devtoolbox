@@ -8,6 +8,7 @@ import { ActionBar, ClearButton, CopyButton, DownloadButton, SampleButton } from
 import { useI18n } from '@/i18n/I18nProvider';
 import { splitLines } from '@/lib/text';
 import { SAMPLE_REGEX_TEXT } from '@/data/samples';
+import type { TextPanelProps } from './types';
 
 type Mode = 'lines' | 'words';
 
@@ -37,9 +38,8 @@ function countOccurrences(text: string, mode: Mode, ignoreCase: boolean, ignoreE
   };
 }
 
-export default function OccurrenceCountTool() {
+export function OccurrencePanel({ value: input, onValueChange: setInput }: TextPanelProps) {
   const { t } = useI18n();
-  const [input, setInput] = useState(SAMPLE_REGEX_TEXT);
   const [mode, setMode] = useState<Mode>('words');
   const [ignoreCase, setIgnoreCase] = useState(true);
   const [ignoreEmpty, setIgnoreEmpty] = useState(true);

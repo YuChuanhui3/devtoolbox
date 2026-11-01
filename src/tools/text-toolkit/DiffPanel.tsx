@@ -26,6 +26,7 @@ import {
   SAMPLE_TEXT_DIFF_RIGHT,
 } from '@/data/samples';
 import { cn } from '@/lib/cn';
+import type { DiffPanelProps } from './types';
 
 type Granularity = 'line' | InlineGranularity;
 
@@ -41,10 +42,8 @@ interface Stats {
   unchanged: number;
 }
 
-export default function DiffTool() {
+export function DiffPanel({ value: left, onValueChange: setLeft, right, onRightChange: setRight }: DiffPanelProps) {
   const { t } = useI18n();
-  const [left, setLeft] = useState(SAMPLE_DIFF_LEFT);
-  const [right, setRight] = useState(SAMPLE_DIFF_RIGHT);
   const [granularity, setGranularity] = useState<Granularity>('line');
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const [compareAsJson, setCompareAsJson] = useState(false);

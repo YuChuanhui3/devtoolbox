@@ -7,6 +7,7 @@ import { TransformTool } from '@/components/tool/TransformTool';
 import { useI18n } from '@/i18n/I18nProvider';
 import { countLines, splitLines } from '@/lib/text';
 import { SAMPLE_MULTILINE } from '@/data/samples';
+import type { TextPanelProps } from './types';
 
 type Order = 'asc' | 'desc' | 'random';
 type Mode = 'text' | 'numeric' | 'length';
@@ -51,7 +52,7 @@ function sortLines(
   return sorted.join('\n');
 }
 
-export default function TextSortTool() {
+export function SortPanel({ value, onValueChange, active }: TextPanelProps) {
   const { t } = useI18n();
   const [order, setOrder] = useState<Order>('asc');
   const [mode, setMode] = useState<Mode>('text');
@@ -61,6 +62,9 @@ export default function TextSortTool() {
 
   return (
     <TransformTool
+      value={value}
+      onValueChange={onValueChange}
+      active={active}
       transform={(input) => sortLines(input, { order, mode, ignoreCase, removeEmpty })}
       sample={SAMPLE_MULTILINE}
       inputLabel={{ zh: '原始文本', en: 'Source text' }}

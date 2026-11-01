@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { CaseUpper } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
 import { InputPanel, StatsBar } from '@/components/tool/EditorPanels';
 import { ActionBar, ClearButton, CopyButton, CopyIconButton, DownloadButton, SampleButton } from '@/components/tool/ToolActions';
 import { useI18n } from '@/i18n/I18nProvider';
 import { countTextStats } from '@/lib/text';
+import type { TextPanelProps } from './types';
 
 const SAMPLE = 'hello World, this is DevToolbox';
 
@@ -55,9 +56,8 @@ function buildVariants(input: string): Array<{ label: string; value: string }> {
   ];
 }
 
-export default function CaseConverterTool() {
+export function CasePanel({ value: input, onValueChange: setInput }: TextPanelProps) {
   const { t } = useI18n();
-  const [input, setInput] = useState(SAMPLE);
 
   const variants = useMemo(() => buildVariants(input), [input]);
   const stats = useMemo(() => countTextStats(input), [input]);
