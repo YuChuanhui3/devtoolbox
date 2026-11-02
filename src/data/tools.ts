@@ -583,8 +583,7 @@ const RAW_TOOLS: ToolMeta[] = [
   {
     id: 'transfer-toolkit',
     subFeatures: [
-    { id: 'drop', name: { zh: '局域网互传', en: 'LAN Drop' }, keywords: ['文件互传', '局域网', 'webrtc', '手机传电脑'] },
-    { id: 'scan', name: { zh: '手机当扫码器', en: 'Phone Scanner' }, keywords: ['扫码回传', '手机扫码', '摄像头'] },
+    { id: 'drop', name: { zh: '局域网互传 / 手机扫码', en: 'LAN Drop / Scan' }, keywords: ['文件互传', '局域网', 'webrtc', '手机传电脑', '手机当扫码器', '扫码回传', '摄像头'] },
     { id: 'send', name: { zh: '二维码发送', en: 'QR Send' }, keywords: ['二维码发送', '生成二维码', '播放二维码'] },
     { id: 'receive', name: { zh: '二维码接收', en: 'QR Receive' }, keywords: ['扫码', '摄像头', '二维码接收'] },
     { id: 'salvage', name: { zh: '截图/录屏回收', en: 'Salvage' }, keywords: ['录屏', '批量解码', '回收'] },
