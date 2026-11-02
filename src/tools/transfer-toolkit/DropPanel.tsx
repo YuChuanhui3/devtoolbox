@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MonitorSmartphone, ScanLine, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -8,21 +8,30 @@ import { Textarea } from '@/components/ui/Textarea';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { shouldWarnHuge } from '@/lib/filedrop';
+import { DQX_PREFIX } from '@/lib/qr-transfer';
+import type { DqxSession } from '@/hooks/useDqxSession';
 import { useDropConnection } from './useDropConnection';
 import { EndSessionButton, PairingFlow } from './PairingFlow';
 import { Scanner } from './Scanner';
 import { Timeline } from './Timeline';
+import { DqxResult, SessionProgress } from './DqxResult';
 
 const TOUCH_DEVICE = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
-export default function DropPanel() {
+interface DropPanelProps {
+  session: DqxSession;
+}
+
+export default function DropPanel({ session }: DropPanelProps) {
   const { t } = useI18n();
   const conn = useDropConnection();
   const [pendingHuge, setPendingHuge] = useState<File | null>(null);
   const [composer, setComposer] = useState('');
   const [scanMode, setScanMode] = useState(TOUCH_DEVICE);
   const [manualScan, setManualScan] = useState('');
+  const [mismatch, setMismatch] = useState<{ sid: string; crc: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fedRef = useRef<Set<string>>(new Set());
 
   const deliverFile = (file: File) => {
     if (shouldWarnHuge(file.size)) {
@@ -38,6 +47,30 @@ export default function DropPanel() {
 
   const connected = conn.phase === 'connected';
 
+  // 对方转发来的 DQX 帧直接进共享会话收集器：缺帧清单、CRC 校验、解压全是接收页现成的。
+  const acceptRef = useRef(session.accept);
+  acceptRef.current = session.accept;
+  useEffect(() => {
+    for (const item of conn.items) {
+      if (item.kind !== 'scan' || item.mine || fedRef.current.has(item.id)) continue;
+      const body = item.body.trim();
+      if (!body.startsWith(DQX_PREFIX)) continue;
+      fedRef.current.add(item.id);
+      acceptRef.current(body);
+    }
+  }, [conn.items]);
+
+  const lastEvent = session.event;
+  useEffect(() => {
+    if (lastEvent?.kind === 'mismatch') setMismatch({ sid: lastEvent.session.sid, crc: lastEvent.crcActual });
+    if (lastEvent?.kind === 'complete') setMismatch(null);
+  }, [lastEvent]);
+
+  const sessions = session.sessions;
+  const complete = sessions.find((view) => view.missingCount === 0);
+  const completePayload =
+    lastEvent?.kind === 'complete' && lastEvent.session.sid === complete?.sid ? lastEvent.payload : null;
+
   return (
     <div className="space-y-4">
       <ToolAlert
@@ -50,6 +83,26 @@ export default function DropPanel() {
       />
 
       <PairingFlow conn={conn} />
+
+      {sessions.length > 0 ? (
+        <Panel
+          title={t({ zh: '转发来的二维码帧', en: 'Forwarded QR frames' })}
+          subtitle={t({ zh: '手机扫到的 DQX 帧自动在这里重组、解压', en: 'DQX frames the phone scans are reassembled and inflated here' })}
+          actions={
+            <Button variant="ghost" size="sm" onClick={session.reset}>
+              {t({ zh: '清空重来', en: 'Reset' })}
+            </Button>
+          }
+          bodyClassName="p-4"
+        >
+          <div className="space-y-3">
+            {sessions.map((view) => (
+              <SessionProgress key={view.sid} view={view} mismatch={mismatch?.sid === view.sid ? mismatch.crc : undefined} />
+            ))}
+            {complete && completePayload ? <DqxResult view={complete} payload={completePayload} /> : null}
+          </div>
+        </Panel>
+      ) : null}
 
       {conn.items.length > 0 && conn.phase !== 'idle' ? (
         <Panel
@@ -146,8 +199,8 @@ export default function DropPanel() {
               onChange={setScanMode}
               label={t({ zh: '本机充当对方的扫码器', en: 'Use this device as the peer\'s scanner' })}
               description={t({
-                zh: '勾选后摄像头连续扫码，每个结果实时回传给对方；没有摄像头的电脑关掉它，用下方粘贴框转发。',
-                en: 'When ticked the camera scans continuously and forwards every result to the peer. On a computer with no camera, turn it off and paste instead.',
+                zh: '勾选后摄像头连续扫码，每个结果实时回传给对方；扫到 DQX 协议帧会自动重组解压。没有摄像头的电脑关掉它，用下方粘贴框转发。',
+                en: 'When ticked the camera scans continuously and forwards every result to the peer; DQX protocol frames are reassembled and inflated automatically. On a computer with no camera, turn it off and paste instead.',
               })}
               className="text-xs"
             />

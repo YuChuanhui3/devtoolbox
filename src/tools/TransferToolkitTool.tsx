@@ -34,7 +34,7 @@ export default function TransferToolkitTool() {
       />
 
       <LazyPanel active={mode === 'drop'}>
-        <DropPanel />
+        <DropPanel session={session} />
       </LazyPanel>
       <LazyPanel active={mode === 'send'}>
         <SendPanel active={mode === 'send'} />

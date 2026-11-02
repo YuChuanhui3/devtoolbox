@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import type { L10n } from '@/i18n/locale';
 import { formatBytes } from '@/lib/number';
 import { downloadBlob, safeFilename } from '@/lib/download';
+import { DQX_PREFIX, parseFrame } from '@/lib/qr-transfer';
 import type { TimelineFile, TimelineItem } from './useDropConnection';
 
 function fileIcon(mime: string) {
@@ -116,6 +117,7 @@ export function Timeline({ items, onAccept, onReject }: { items: TimelineItem[];
           );
         }
         if (item.kind === 'scan') {
+          const frame = item.body.trim().startsWith(DQX_PREFIX) ? parseFrame(item.body) : null;
           return (
             <div
               key={item.id}
@@ -129,7 +131,16 @@ export function Timeline({ items, onAccept, onReject }: { items: TimelineItem[];
                   ? t({ zh: '本机扫码回传', en: 'Sent from this scanner' })
                   : t({ zh: '对方手机扫码结果', en: 'Scanned by the peer\'s phone' })}
               </p>
-              <p className="break-all font-mono text-xs leading-5">{item.body}</p>
+              {frame ? (
+                <p className="font-mono text-xs leading-5">
+                  {t({ zh: `DQX 帧 ${frame.index + 1}/${frame.total}`, en: `DQX frame ${frame.index + 1}/${frame.total}` })}
+                  {!item.mine ? (
+                    <span className="ml-1.5 text-ink-3">{t({ zh: '已并入上方二维码接收会话', en: 'merged into the QR session above' })}</span>
+                  ) : null}
+                </p>
+              ) : (
+                <p className="break-all font-mono text-xs leading-5">{item.body}</p>
+              )}
             </div>
           );
         }
