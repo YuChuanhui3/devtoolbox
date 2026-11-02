@@ -4,7 +4,12 @@ import {
   compactSdp,
   decodeSignal,
   encodeSignal,
+  hasMdnsCandidate,
+  isMdnsAddress,
   isSignalText,
+  isValidIpv4,
+  parseCandidates,
+  replaceMdnsAddresses,
   SIGNAL_PREFIX,
 } from './sdp';
 
@@ -93,5 +98,50 @@ describe('encodeSignal / decodeSignal', () => {
 
   test('encode rejects empty envelope', async () => {
     await expect(encodeSignal({ type: 'offer', sdp: '' })).rejects.toThrowError('连接信息生成失败');
+  });
+});
+
+const MDNS_SDP = [
+  'v=0',
+  'm=application 9 UDP/DTLS/SCTP webrtc-datachannel',
+  'a=candidate:914006730 1 udp 2113937151 08e71a6a-64a1-429b-860b-1005a2d050ec.local 55610 typ host generation 0 network-cost 999',
+  'a=candidate:511095408 1 udp 1677730559 203.0.113.9 49210 typ srflx raddr 0.0.0.0 rport 0',
+  'a=end-of-candidates',
+  '',
+].join('\r\n');
+
+describe('mDNS 兜底', () => {
+  test('parseCandidates reads address, port and type', () => {
+    expect(parseCandidates(MDNS_SDP)).toEqual([
+      { address: '08e71a6a-64a1-429b-860b-1005a2d050ec.local', port: 55610, type: 'host' },
+      { address: '203.0.113.9', port: 49210, type: 'srflx' },
+    ]);
+  });
+
+  test('hasMdnsCandidate only fires on the fake hostname', () => {
+    expect(hasMdnsCandidate(MDNS_SDP)).toBe(true);
+    expect(hasMdnsCandidate(SAMPLE_SDP)).toBe(false);
+    expect(isMdnsAddress('192.168.1.9')).toBe(false);
+  });
+
+  test('replaceMdnsAddresses swaps only host aliases and keeps the port', () => {
+    const rewritten = replaceMdnsAddresses(MDNS_SDP, '192.168.1.23');
+    expect(rewritten).toContain('192.168.1.23 55610 typ host');
+    expect(rewritten).not.toContain('.local');
+    expect(rewritten).toContain('203.0.113.9 49210 typ srflx');
+    expect(hasMdnsCandidate(rewritten)).toBe(false);
+  });
+
+  test('an invalid IP leaves the SDP untouched', () => {
+    for (const bad of ['', '192.168.1', '256.1.1.1', '01.2.3.4', '192.168.1.23:8080']) {
+      expect(isValidIpv4(bad)).toBe(false);
+      expect(replaceMdnsAddresses(MDNS_SDP, bad)).toBe(MDNS_SDP);
+    }
+    expect(isValidIpv4(' 10.0.0.1 ')).toBe(true);
+  });
+
+  test('compactSdp keeps srflx only when the STUN fallback is on', () => {
+    expect(compactSdp(MDNS_SDP)).not.toContain('typ srflx');
+    expect(compactSdp(MDNS_SDP, true)).toContain('203.0.113.9 49210 typ srflx');
   });
 });

@@ -7,7 +7,18 @@ import {
   sliceFile,
   type ControlFrame,
 } from '@/lib/filedrop';
-import { compactSdp, decodeSignal, encodeSignal, type SignalEnvelope } from '@/lib/sdp';
+import {
+  compactSdp,
+  decodeSignal,
+  encodeSignal,
+  hasMdnsCandidate,
+  isValidIpv4,
+  parseCandidates,
+  replaceMdnsAddresses,
+  STUN_SERVERS,
+  type CandidateInfo,
+  type SignalEnvelope,
+} from '@/lib/sdp';
 import { toToolError, ToolError } from '@/lib/errors';
 import { useI18n } from '@/i18n/I18nProvider';
 import { tl, type Locale, type Localized } from '@/i18n/locale';
@@ -71,6 +82,23 @@ export type TimelineItem = TimelineText | TimelineScan | TimelineFile | Timeline
 const SEND_BUFFER_HIGH = 256 * 1024;
 const SEND_BUFFER_LOW = 64 * 1024;
 const GATHER_TIMEOUT_MS = 2500;
+// STUN 要走一次公网查询，候选到齐更慢
+const GATHER_TIMEOUT_STUN_MS = 6000;
+
+export interface ConnectionDiagnostics {
+  local: CandidateInfo[];
+  remote: CandidateInfo[];
+  states: string[];
+  /** 上一次配对用掉的 IP 覆盖值，用于失败后判断是否已经试过直连。 */
+  appliedIp: string;
+}
+
+const EMPTY_DIAGNOSTICS: ConnectionDiagnostics = {
+  local: [],
+  remote: [],
+  states: [],
+  appliedIp: '',
+};
 
 let seq = 0;
 const nextId = () => `t${Date.now().toString(36)}-${(seq += 1)}`;
@@ -91,10 +119,15 @@ export function useDropConnection() {
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [peerLabel, setPeerLabel] = useState('');
   const [error, setError] = useState<{ message: Localized; hint?: Localized } | null>(null);
+  const [peerIp, setPeerIp] = useState('');
+  const [stunEnabled, setStunEnabled] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>(EMPTY_DIAGNOSTICS);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const roleRef = useRef<'initiator' | 'joiner' | null>(null);
+  const peerIpRef = useRef('');
+  const stunRef = useRef(false);
   const activeSendRef = useRef<{ id: string; file: File } | null>(null);
   const sendQueueRef = useRef<{ id: string; file: File }[]>([]);
   const activeReceiveRef = useRef<{ id: string; assembler: ChunkAssembler } | null>(null);
@@ -279,10 +312,29 @@ export function useDropConnection() {
   );
 
   const createPeer = useCallback(() => {
-    const pc = new RTCPeerConnection({ iceServers: [] });
+    const pc = new RTCPeerConnection({
+      iceServers: stunRef.current ? STUN_SERVERS.map((urls) => ({ urls })) : [],
+    });
+    const note = () =>
+      setDiagnostics((current) => ({
+        ...current,
+        states: [...current.states, `${pc.connectionState}/${pc.iceConnectionState}`].slice(-8),
+      }));
+    pc.oniceconnectionstatechange = note;
     pc.onconnectionstatechange = () => {
+      note();
       if (pc.connectionState === 'failed' && pcRef.current === pc) {
         teardown({ zh: '连接失败：请确保两台设备在同一 Wi-Fi 后重新配对', en: 'Connection failed: make sure both devices are on the same Wi-Fi, then pair again' });
+        setError({
+          message: {
+            zh: '点对点通道没建立：浏览器的局域网地址解析失败',
+            en: 'The peer-to-peer channel did not open: the browser could not resolve the LAN address',
+          },
+          hint: {
+            zh: '展开下方「连不上？」：填对方设备的局域网 IP 后重新配对，或开启 STUN 兜底。',
+            en: 'Open "Can\'t connect?" below: enter the peer device\'s LAN IP and pair again, or enable the STUN fallback.',
+          },
+        });
       }
     };
     pcRef.current = pc;
@@ -295,7 +347,7 @@ export function useDropConnection() {
         resolve();
         return;
       }
-      const timer = window.setTimeout(resolve, GATHER_TIMEOUT_MS);
+      const timer = window.setTimeout(resolve, stunRef.current ? GATHER_TIMEOUT_STUN_MS : GATHER_TIMEOUT_MS);
       pc.addEventListener('icegatheringstatechange', () => {
         if (pc.iceGatheringState === 'complete') {
           window.clearTimeout(timer);
@@ -307,11 +359,13 @@ export function useDropConnection() {
     if (!local || (local.type !== 'offer' && local.type !== 'answer')) {
       throw new ToolError({ zh: '本地连接信息未就绪，请重试', en: 'Local connection info is not ready. Try again.' });
     }
-    return { type: local.type, sdp: compactSdp(local.sdp) };
+    setDiagnostics((current) => ({ ...current, local: parseCandidates(local.sdp) }));
+    return { type: local.type, sdp: compactSdp(local.sdp, stunRef.current) };
   }, []);
 
   const startAsInitiator = useCallback(async () => {
     setError(null);
+    setDiagnostics((current) => ({ ...current, states: [] }));
     try {
       const pc = createPeer();
       roleRef.current = 'initiator';
@@ -332,25 +386,36 @@ export function useDropConnection() {
       setError(null);
       try {
         const envelope = await decodeSignal(text);
+        // 浏览器把对方局域网 IP 藏成了 <uuid>.local；组播解析不通时，用填好的 IP 原地替换。
+        const override = peerIpRef.current.trim();
+        const usableOverride = isValidIpv4(override) && hasMdnsCandidate(envelope.sdp);
+        const remote: SignalEnvelope = usableOverride
+          ? { ...envelope, sdp: replaceMdnsAddresses(envelope.sdp, override) }
+          : envelope;
+        setDiagnostics((current) => ({
+          ...current,
+          remote: parseCandidates(remote.sdp),
+          appliedIp: usableOverride ? override : '',
+        }));
         let pc = pcRef.current;
         if (!pc) {
-          if (envelope.type !== 'offer') {
+          if (remote.type !== 'offer') {
             throw new ToolError({ zh: '请在本页先点击「发起配对」生成连接信息，再粘贴对方的回执', en: 'Tap "Start pairing" on this page first to generate connection info, then paste the peer\'s reply' });
           }
           pc = createPeer();
           roleRef.current = 'joiner';
         }
         const expect = roleRef.current === 'initiator' ? 'answer' : 'offer';
-        if (envelope.type !== expect) {
-          throw new ToolError({ zh: `当前需要对方的 ${expect} 信息，粘贴的是 ${envelope.type}`, en: `Expecting the peer's ${expect}, but pasted ${envelope.type}` });
+        if (remote.type !== expect) {
+          throw new ToolError({ zh: `当前需要对方的 ${expect} 信息，粘贴的是 ${remote.type}`, en: `Expecting the peer's ${expect}, but pasted ${remote.type}` });
         }
         if (roleRef.current === 'initiator') {
-          await pc.setRemoteDescription(envelope);
+          await pc.setRemoteDescription(remote);
           setPhase('connecting');
           return;
         }
         pc.ondatachannel = (event) => bindChannel(event.channel);
-        await pc.setRemoteDescription(envelope);
+        await pc.setRemoteDescription(remote);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         setMySignal(await encodeSignal(await gatherLocal(pc)));
@@ -364,10 +429,22 @@ export function useDropConnection() {
 
   const startAsJoiner = useCallback(() => {
     setError(null);
+    setDiagnostics((current) => ({ ...current, states: [] }));
     createPeer();
     roleRef.current = 'joiner';
     setPhase('scanning-offer');
   }, [createPeer]);
+
+  // 回调里要读到最新值，不能被 render 闭包冻住
+  const updatePeerIp = useCallback((value: string) => {
+    peerIpRef.current = value;
+    setPeerIp(value);
+  }, []);
+
+  const updateStunEnabled = useCallback((value: boolean) => {
+    stunRef.current = value;
+    setStunEnabled(value);
+  }, []);
 
   const cancelPairing = useCallback(() => {
     teardown();
@@ -464,6 +541,11 @@ export function useDropConnection() {
     items,
     peerLabel,
     error,
+    peerIp,
+    stunEnabled,
+    diagnostics,
+    setPeerIp: updatePeerIp,
+    setStunEnabled: updateStunEnabled,
     startAsInitiator,
     startAsJoiner,
     consumeSignal,

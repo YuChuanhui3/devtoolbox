@@ -14,15 +14,69 @@ export function isSignalText(text: string): boolean {
   return trimmed.startsWith(SIGNAL_PREFIX) || trimmed.startsWith(COMPRESSED_PREFIX);
 }
 
-/** 局域网直传只需要 host 候选：丢弃 srflx/relay 等其余 candidate 行，把 SDP 压进二维码容量。 */
-export function compactSdp(sdp: string): string {
+/** 兜底用的公共 STUN：只用于问出本机公网地址，仍然没有 relay，文件不过第三方服务器。 */
+export const STUN_SERVERS: string[] = ['stun:stun.l.google.com:19302', 'stun:stun2.l.google.com:19302'];
+
+/** 局域网直传只需要 host 候选：默认丢弃 srflx/relay 等其余 candidate 行，把 SDP 压进二维码容量。
+ *  开启 STUN 兜底时保留 srflx，否则跨网段就只剩解析不了的 .local。 */
+export function compactSdp(sdp: string, keepSrflx = false): string {
   return sdp
     .split(/\r?\n/)
     .filter((line) => {
-      if (line.startsWith('a=candidate:')) return / typ host(?: |$)/.test(line);
+      if (line.startsWith('a=candidate:')) {
+        return / typ host(?: |$)/.test(line) || (keepSrflx && / typ srflx(?: |$)/.test(line));
+      }
       if (line.startsWith('a=remote-candidates')) return false;
       if (line.startsWith('a=candidate-acl')) return false;
       return true;
+    })
+    .join('\r\n');
+}
+
+const CANDIDATE_LINE =
+  /^a=candidate:(\S+) (\d+) (\S+) (\d+) (\S+) (\d+) typ (\S+)(.*)$/;
+
+export interface CandidateInfo {
+  address: string;
+  port: number;
+  type: string;
+}
+
+export function parseCandidates(sdp: string): CandidateInfo[] {
+  const out: CandidateInfo[] = [];
+  for (const line of sdp.split(/\r?\n/)) {
+    const match = CANDIDATE_LINE.exec(line);
+    if (!match) continue;
+    out.push({ address: match[5], port: Number(match[6]), type: match[7] });
+  }
+  return out;
+}
+
+export function isMdnsAddress(address: string): boolean {
+  return /\.local$/i.test(address);
+}
+
+/** 对方候选里还有 mDNS 假名时，才需要手填 IP。 */
+export function hasMdnsCandidate(sdp: string): boolean {
+  return parseCandidates(sdp).some((candidate) => isMdnsAddress(candidate.address));
+}
+
+export function isValidIpv4(value: string): boolean {
+  const parts = value.trim().split('.');
+  if (parts.length !== 4) return false;
+  return parts.every((part) => /^(0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255);
+}
+
+/** Chrome 会把 host 候选的真实局域网 IP 换成 `<uuid>.local`，只能靠组播 mDNS 解析。
+ *  组播被路由器拦掉时，用用户填的 IP 原地替换假名，让 ICE 直连。 */
+export function replaceMdnsAddresses(sdp: string, ip: string): string {
+  if (!isValidIpv4(ip)) return sdp;
+  return sdp
+    .split(/\r?\n/)
+    .map((line) => {
+      const match = CANDIDATE_LINE.exec(line);
+      if (!match || !isMdnsAddress(match[5])) return line;
+      return line.replace(`${match[5]} ${match[6]} typ`, `${ip.trim()} ${match[6]} typ`);
     })
     .join('\r\n');
 }
