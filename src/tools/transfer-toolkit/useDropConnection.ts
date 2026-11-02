@@ -20,12 +20,14 @@ import {
   type SignalEnvelope,
 } from '@/lib/sdp';
 import { toToolError, ToolError } from '@/lib/errors';
+import { buildJoinUrl, makePairCode, openLanSocket, resolveLanBase } from '@/lib/lanSignal';
 import { useI18n } from '@/i18n/I18nProvider';
 import { tl, type Locale, type Localized } from '@/i18n/locale';
 
 export type Phase =
   | 'idle'
   | 'waiting-answer'
+  | 'waiting-phone'
   | 'scanning-offer'
   | 'waiting-scan'
   | 'connecting'
@@ -121,10 +123,13 @@ export function useDropConnection() {
   const [error, setError] = useState<{ message: Localized; hint?: Localized } | null>(null);
   const [peerIp, setPeerIp] = useState('');
   const [stunEnabled, setStunEnabled] = useState(false);
+  const [pairingMode, setPairingMode] = useState<'lan' | 'manual'>('lan');
+  const [pairingNotice, setPairingNotice] = useState<Localized>('');
   const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>(EMPTY_DIAGNOSTICS);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
+  const signalRef = useRef<WebSocket | null>(null);
   const roleRef = useRef<'initiator' | 'joiner' | null>(null);
   const peerIpRef = useRef('');
   const stunRef = useRef(false);
@@ -264,8 +269,20 @@ export function useDropConnection() {
     [addSys, patchFile, pumpQueue, streamActiveFile],
   );
 
+  const closeSignaling = useCallback(() => {
+    const socket = signalRef.current;
+    signalRef.current = null;
+    if (socket) {
+      socket.onmessage = null;
+      socket.onclose = null;
+      socket.onerror = null;
+      socket.close();
+    }
+  }, []);
+
   const teardown = useCallback(
     (note?: Localized) => {
+      closeSignaling();
       dcRef.current?.close();
       dcRef.current = null;
       pcRef.current?.close();
@@ -286,6 +303,7 @@ export function useDropConnection() {
       dcRef.current = channel;
       channel.binaryType = 'arraybuffer';
       channel.onopen = () => {
+        closeSignaling();
         setPhase('connected');
         channel.send(encodeControl({ t: 'hello', agent: agentLabel(locale) }));
         addSys({ zh: '连接已建立，可以互传内容', en: 'Connected. You can exchange content now.' });
@@ -308,7 +326,7 @@ export function useDropConnection() {
         }
       };
     },
-    [addSys, handleControl, locale, patchFile, pumpQueue, teardown],
+    [addSys, closeSignaling, handleControl, locale, patchFile, pumpQueue, teardown],
   );
 
   const createPeer = useCallback(() => {
@@ -339,7 +357,7 @@ export function useDropConnection() {
     };
     pcRef.current = pc;
     return pc;
-  }, [teardown]);
+  }, [teardown, closeSignaling]);
 
   const gatherLocal = useCallback(async (pc: RTCPeerConnection): Promise<SignalEnvelope> => {
     await new Promise<void>((resolve) => {
@@ -363,8 +381,10 @@ export function useDropConnection() {
     return { type: local.type, sdp: compactSdp(local.sdp, stunRef.current) };
   }, []);
 
-  const startAsInitiator = useCallback(async () => {
+  const startManualPairing = useCallback(async () => {
+    closeSignaling();
     setError(null);
+    setPairingMode('manual');
     setDiagnostics((current) => ({ ...current, states: [] }));
     try {
       const pc = createPeer();
@@ -379,7 +399,129 @@ export function useDropConnection() {
       setError({ message: { zh: `生成配对信息失败：${tl(loc, 'zh')}`, en: `Failed to create pairing info: ${tl(loc, 'en')}` } });
       teardown();
     }
-  }, [bindChannel, createPeer, gatherLocal, teardown]);
+  }, [bindChannel, closeSignaling, createPeer, gatherLocal, teardown]);
+
+  const startAsInitiator = useCallback(async () => {
+    setError(null);
+    setPairingNotice('');
+    setPairingMode('lan');
+    setPhase('connecting');
+    setDiagnostics((current) => ({ ...current, states: [] }));
+    try {
+      const base = await resolveLanBase();
+      const socket = await openLanSocket(base);
+      closeSignaling();
+      signalRef.current = socket;
+      const room = makePairCode();
+      socket.send(JSON.stringify({ type: 'create', room }));
+      setMySignal(buildJoinUrl(base, room));
+      setPhase('waiting-phone');
+
+      const pc = createPeer();
+      roleRef.current = 'initiator';
+      bindChannel(pc.createDataChannel('filedrop'));
+      socket.onmessage = (event) => {
+        void (async () => {
+          const message = JSON.parse(String(event.data)) as { type?: string; payload?: string; reason?: string };
+          if (message.type === 'peer-joined') {
+            setPairingNotice({ zh: '手机已打开配对链接，正在自动建立连接…', en: 'The phone opened the pairing link. Connecting automatically…' });
+          }
+          if (message.type === 'signal' && message.payload) {
+            const decoded = await decodeSignal(message.payload);
+            const override = peerIpRef.current.trim();
+            const usableOverride = isValidIpv4(override) && hasMdnsCandidate(decoded.sdp);
+            const remote = usableOverride ? { ...decoded, sdp: replaceMdnsAddresses(decoded.sdp, override) } : decoded;
+            setDiagnostics((current) => ({ ...current, remote: parseCandidates(remote.sdp), appliedIp: usableOverride ? override : '' }));
+            await pc.setRemoteDescription(remote);
+            setPhase('connecting');
+          }
+          if (message.type === 'error' || message.type === 'closed') {
+            throw new ToolError({ zh: '手机配对已中断，请重新发起', en: 'Phone pairing was interrupted. Start again.' });
+          }
+        })().catch((caught) => {
+          if (signalRef.current === socket) {
+            setError({ message: toToolError(caught).localized });
+            teardown();
+          }
+        });
+      };
+      socket.onclose = () => {
+        if (signalRef.current === socket && dcRef.current?.readyState !== 'open') {
+          setError({ message: { zh: '内网配对通道已断开，请重新发起', en: 'The LAN pairing channel closed. Start again.' } });
+          teardown();
+        }
+      };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      const signal = await encodeSignal(await gatherLocal(pc));
+      socket.send(JSON.stringify({ type: 'signal', payload: signal }));
+    } catch {
+      // 静态托管没有 WebSocket 信令：保留原来的双向 SDP 配对，不让功能直接不可用。
+      setPairingNotice({
+        zh: '当前部署未启用内网信令，已切换为离线配对。使用 npm run start:lan 部署可实现只扫一次。',
+        en: 'LAN signaling is not enabled on this deployment, so offline pairing is used. Deploy with npm run start:lan for one-scan pairing.',
+      });
+      await startManualPairing();
+    }
+  }, [bindChannel, closeSignaling, createPeer, gatherLocal, startManualPairing, teardown]);
+
+  const joinViaLink = useCallback(async (room: string) => {
+    setError(null);
+    setPairingNotice('');
+    setPairingMode('lan');
+    setPhase('connecting');
+    try {
+      const base = new URL(window.location.href).origin;
+      const socket = await openLanSocket(base);
+      closeSignaling();
+      signalRef.current = socket;
+      const pc = createPeer();
+      roleRef.current = 'joiner';
+      pc.ondatachannel = (event) => bindChannel(event.channel);
+      socket.onmessage = (event) => {
+        void (async () => {
+          const message = JSON.parse(String(event.data)) as { type?: string; payload?: string };
+          if (message.type === 'signal' && message.payload) {
+            const decoded = await decodeSignal(message.payload);
+            const override = peerIpRef.current.trim();
+            const usableOverride = isValidIpv4(override) && hasMdnsCandidate(decoded.sdp);
+            const remote = usableOverride ? { ...decoded, sdp: replaceMdnsAddresses(decoded.sdp, override) } : decoded;
+            setDiagnostics((current) => ({ ...current, remote: parseCandidates(remote.sdp), appliedIp: usableOverride ? override : '' }));
+            await pc.setRemoteDescription(remote);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            const signal = await encodeSignal(await gatherLocal(pc));
+            socket.send(JSON.stringify({ type: 'signal', payload: signal }));
+            return;
+          }
+          if (message.type === 'error' || message.type === 'closed') {
+            throw new ToolError(
+              { zh: '配对链接无效或已过期', en: 'This pairing link is invalid or expired' },
+              { zh: '请让电脑重新发起配对，再扫新的二维码。', en: 'Ask the computer to start pairing again, then scan the new QR code.' },
+            );
+          }
+        })().catch((caught) => {
+          if (signalRef.current === socket) {
+            setError({ message: toToolError(caught).localized });
+            teardown();
+          }
+        });
+      };
+      socket.onclose = () => {
+        if (signalRef.current === socket && dcRef.current?.readyState !== 'open') {
+          setError({ message: { zh: '内网配对通道已断开', en: 'The LAN pairing channel closed' } });
+          teardown();
+        }
+      };
+      socket.send(JSON.stringify({ type: 'join', room }));
+    } catch (caught) {
+      setError({
+        message: toToolError(caught).localized,
+        hint: { zh: '请确认手机与电脑在同一局域网，并让电脑重新生成配对二维码。', en: 'Make sure the phone and computer share a LAN, then ask the computer to generate a new pairing QR.' },
+      });
+      teardown();
+    }
+  }, [bindChannel, closeSignaling, createPeer, gatherLocal, teardown]);
 
   const consumeSignal = useCallback(
     async (text: string) => {
@@ -428,12 +570,14 @@ export function useDropConnection() {
   );
 
   const startAsJoiner = useCallback(() => {
+    closeSignaling();
     setError(null);
+    setPairingMode('manual');
     setDiagnostics((current) => ({ ...current, states: [] }));
     createPeer();
     roleRef.current = 'joiner';
     setPhase('scanning-offer');
-  }, [createPeer]);
+  }, [closeSignaling, createPeer]);
 
   // 回调里要读到最新值，不能被 render 闭包冻住
   const updatePeerIp = useCallback((value: string) => {
@@ -452,6 +596,7 @@ export function useDropConnection() {
     setPhase('idle');
     setItems([]);
     setPeerLabel('');
+    setPairingNotice('');
     setError(null);
   }, [teardown, revokeObjectUrls]);
 
@@ -470,9 +615,9 @@ export function useDropConnection() {
   /** 扫码器回传：与 sendText 同一条通道，但对方以「扫码结果」样式展示。 */
   const sendScan = useCallback((body: string) => {
     const dc = dcRef.current;
-    const trimmed = body.trim();
-    if (!dc || dc.readyState !== 'open' || !trimmed) return;
-    const frame: ControlFrame = { t: 'scan', id: nextId(), body: trimmed, ts: Date.now() };
+    // 只拒绝全空白内容，保留二维码里的首尾空格与换行，回传文本与扫描结果逐字一致。
+    if (!dc || dc.readyState !== 'open' || !body.trim()) return;
+    const frame: ControlFrame = { t: 'scan', id: nextId(), body, ts: Date.now() };
     dc.send(encodeControl(frame));
     setItems((prev) => [
       ...prev,
@@ -525,6 +670,7 @@ export function useDropConnection() {
 
   useEffect(() => {
     return () => {
+      closeSignaling();
       dcRef.current?.close();
       dcRef.current = null;
       pcRef.current?.close();
@@ -533,7 +679,7 @@ export function useDropConnection() {
       for (const url of objectUrlsRef.current) URL.revokeObjectURL(url);
       objectUrlsRef.current.clear();
     };
-  }, []);
+  }, [closeSignaling]);
 
   return {
     phase,
@@ -543,11 +689,15 @@ export function useDropConnection() {
     error,
     peerIp,
     stunEnabled,
+    pairingMode,
+    pairingNotice,
     diagnostics,
     setPeerIp: updatePeerIp,
     setStunEnabled: updateStunEnabled,
     startAsInitiator,
+    startManualPairing,
     startAsJoiner,
+    joinViaLink,
     consumeSignal,
     cancelPairing,
     sendText,

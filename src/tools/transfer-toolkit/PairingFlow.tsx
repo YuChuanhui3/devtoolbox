@@ -16,7 +16,7 @@ import { isMdnsAddress, isValidIpv4, type CandidateInfo } from '@/lib/sdp';
 import { Scanner } from './Scanner';
 import type { DropConnection } from './useDropConnection';
 
-function QrCard({ signal, hint }: { signal: string; hint: Localized }) {
+function QrCard({ signal, hint, copyLabel = { zh: '复制连接信息', en: 'Copy connection info' } }: { signal: string; hint: Localized; copyLabel?: Localized }) {
   const { t } = useI18n();
   const svg = useMemo(() => {
     try {
@@ -43,7 +43,7 @@ function QrCard({ signal, hint }: { signal: string; hint: Localized }) {
         />
       )}
       <p className="text-center text-xs text-ink-3">{t(hint)}</p>
-      <CopyButton text={signal} label={{ zh: '复制连接信息', en: 'Copy connection info' }} />
+      <CopyButton text={signal} label={copyLabel} />
     </div>
   );
 }
@@ -181,13 +181,15 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
   return (
     <div className="space-y-3">
       {conn.error ? <ToolAlert tone="error" title={conn.error.message} hint={conn.error.hint} /> : null}
+      {conn.pairingNotice ? <ToolAlert tone="info" title={conn.pairingNotice} /> : null}
 
       {conn.phase === 'idle' ? (
         <Panel title={t({ zh: '开始配对', en: 'Start pairing' })} bodyClassName="space-y-3">
           <p className="text-sm text-ink-2">
-            {t({ zh: '两台设备打开本站同一页面：手机用扫码配对；', en: 'Open this same page on both devices: phones pair by scanning; ' })}
-            <strong className="font-medium text-ink">{t({ zh: '两台电脑无需摄像头', en: 'two computers need no camera' })}</strong>
-            {t({ zh: '——一端「发起配对」后点「复制连接信息」发给对方，对方直接粘贴即可，回执再原路粘回。', en: ' — one side taps "Start pairing" and sends its "Copy connection info" to the peer, who just pastes it; then paste the reply back the same way.' })}
+            {t({
+              zh: '电脑点「发起配对」，手机用系统相机扫一次二维码即可自动连接；无法使用内网信令时会自动切换为离线配对。',
+              en: 'Start pairing on the computer and scan once with the phone camera to connect automatically. Offline pairing is used when LAN signaling is unavailable.',
+            })}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={() => void conn.startAsInitiator()}>
@@ -201,6 +203,30 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
           </div>
           <div className="border-t border-dashed border-line pt-3">
             <PasteBox label={{ zh: '已收到对方的配对信息？直接粘贴到这里（DTX…），自动加入', en: 'Got the peer\'s pairing info? Paste it here (DTX…) to join automatically' }} onSubmit={(text) => void conn.consumeSignal(text)} />
+          </div>
+        </Panel>
+      ) : null}
+
+      {conn.phase === 'waiting-phone' ? (
+        <Panel
+          title={t({ zh: '手机扫一次即可连接', en: 'One scan to connect' })}
+          subtitle={t({ zh: '配对链接已包含一次性房间号，手机打开后自动交换连接信息，无需再扫回执', en: 'The link contains a one-time room. The phone exchanges connection info automatically — no reply scan needed' })}
+          bodyClassName="p-4"
+        >
+          <div className="space-y-3">
+            <QrCard
+              signal={conn.mySignal}
+              hint={{ zh: '用手机系统相机扫码，或把配对链接发送到手机打开', en: 'Scan with the phone camera, or send the pairing link to the phone' }}
+              copyLabel={{ zh: '复制配对链接', en: 'Copy pairing link' }}
+            />
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => void conn.startManualPairing()}>
+                {t({ zh: '改用离线配对', en: 'Use offline pairing' })}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={conn.cancelPairing}>
+                {t({ zh: '取消', en: 'Cancel' })}
+              </Button>
+            </div>
           </div>
         </Panel>
       ) : null}

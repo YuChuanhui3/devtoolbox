@@ -57,7 +57,7 @@ export function DqxResult({ view, payload }: DqxResultProps) {
     <div className="space-y-3 rounded-xl border border-ok/30 bg-ok-soft/40 p-4">
       <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
         <CheckCircle2 className="h-4 w-4 text-ok" aria-hidden="true" />
-        {t({ zh: '接收完成', en: 'Transfer complete' })}
+        {t({ zh: text !== null ? '原文已自动还原' : '接收完成', en: text !== null ? 'Original content restored' : 'Transfer complete' })}
         <span className="text-xs font-normal text-ink-3">
           {fileName} · {formatBytes(payload.length, 0)}
           {view.meta?.rawBytes && view.meta.rawBytes !== payload.length ? ` → ${formatBytes(view.meta.rawBytes, 0)}` : ''}
@@ -69,7 +69,10 @@ export function DqxResult({ view, payload }: DqxResultProps) {
       </div>
       {note ? <p className="text-xs text-ink-3">{note}</p> : null}
       {text !== null ? (
-        <pre className="max-h-56 overflow-auto rounded-lg bg-surface p-3 font-mono text-[11px] leading-5 text-ink-2">{text.slice(0, 4000)}{text.length > 4000 ? '…' : ''}</pre>
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-ink-2">{t({ zh: '原始文本（不是 DQX1 协议帧）', en: 'Original text (not the DQX1 protocol frame)' })}</p>
+          <pre className="max-h-56 overflow-auto rounded-lg bg-surface p-3 font-mono text-[11px] leading-5 text-ink-2">{text.slice(0, 4000)}{text.length > 4000 ? '…' : ''}</pre>
+        </div>
       ) : null}
     </div>
   );

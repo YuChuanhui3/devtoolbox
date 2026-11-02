@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MonitorSmartphone, ScanLine, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +13,9 @@ import { DQX_PREFIX } from '@/lib/qr-transfer';
 import type { DqxSession } from '@/hooks/useDqxSession';
 import { useDropConnection } from './useDropConnection';
 import { EndSessionButton, PairingFlow } from './PairingFlow';
+import { ScanInbox } from './ScanInbox';
 import { Scanner } from './Scanner';
+import { TextQrBoard } from './TextQrBoard';
 import { Timeline } from './Timeline';
 import { DqxResult, SessionProgress } from './DqxResult';
 
@@ -25,6 +28,9 @@ interface DropPanelProps {
 export default function DropPanel({ session }: DropPanelProps) {
   const { t } = useI18n();
   const conn = useDropConnection();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pairCode = searchParams.get('pair');
+  const attemptedPairRef = useRef('');
   const [pendingHuge, setPendingHuge] = useState<File | null>(null);
   const [composer, setComposer] = useState('');
   const [scanMode, setScanMode] = useState(TOUCH_DEVICE);
@@ -46,13 +52,28 @@ export default function DropPanel({ session }: DropPanelProps) {
   };
 
   const connected = conn.phase === 'connected';
+  const joinViaLink = conn.joinViaLink;
 
-  // 对方转发来的 DQX 帧直接进共享会话收集器：缺帧清单、CRC 校验、解压全是接收页现成的。
+  // 手机扫配对二维码后带着一次性房间号打开本页，自动完成 answer，无需电脑再扫回执。
+  useEffect(() => {
+    if (!pairCode || attemptedPairRef.current === pairCode) return;
+    attemptedPairRef.current = pairCode;
+    void joinViaLink(pairCode);
+  }, [pairCode, joinViaLink]);
+
+  useEffect(() => {
+    if (!connected || !pairCode) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('pair');
+    setSearchParams(next, { replace: true });
+  }, [connected, pairCode, searchParams, setSearchParams]);
+
+  // 双方都把 DQX 帧喂给共享收集器：手机扫码的一端也能直接看到还原原文，对端则同步重组。
   const acceptRef = useRef(session.accept);
   acceptRef.current = session.accept;
   useEffect(() => {
     for (const item of conn.items) {
-      if (item.kind !== 'scan' || item.mine || fedRef.current.has(item.id)) continue;
+      if (item.kind !== 'scan' || fedRef.current.has(item.id)) continue;
       const body = item.body.trim();
       if (!body.startsWith(DQX_PREFIX)) continue;
       fedRef.current.add(item.id);
@@ -75,17 +96,28 @@ export default function DropPanel({ session }: DropPanelProps) {
         tone="info"
         title={{ zh: '两台设备连接同一 Wi-Fi，数据点对点直传', en: 'Connect both devices to the same Wi-Fi; data goes peer-to-peer' }}
         hint={{
-          zh: '文件不经过任何服务器。连上后勾选「手机充当扫码器」，手机扫到的二维码内容会实时出现在另一台设备上。',
-          en: 'Files never pass through a server. Once connected, tick "Use this phone as the scanner" and every QR code it reads appears live on the other device.',
+          zh: '文件不经过任何服务器。连上后任一方勾选「本机充当对方的扫码器」即可扫码回传；也可以在上方生成文本二维码给手机扫，结果显示在「扫码回传」。',
+          en: 'Files never pass through a server. Once connected, either side can tick "Use this device as the peer\'s scanner" to forward hits; you can also generate a text QR above for the phone to scan, and the result appears under "Scanned results".',
         }}
       />
 
+      {!window.isSecureContext ? (
+        <ToolAlert
+          tone="warning"
+          title={{ zh: '当前 HTTP 环境可能无法调用摄像头', en: 'The camera may be blocked on HTTP' }}
+          hint={{ zh: '配对与文本/文件传输仍可使用；手机扫码回传通常需要 HTTPS 或 localhost。', en: 'Pairing and text/file transfer still work; in-page phone scanning usually requires HTTPS or localhost.' }}
+        />
+      ) : null}
+
       <PairingFlow conn={conn} />
+
+      {connected ? <ScanInbox items={conn.items} /> : null}
+      {connected ? <TextQrBoard /> : null}
 
       {sessions.length > 0 ? (
         <Panel
-          title={t({ zh: '转发来的二维码帧', en: 'Forwarded QR frames' })}
-          subtitle={t({ zh: '手机扫到的 DQX 帧自动在这里重组、解压', en: 'DQX frames the phone scans are reassembled and inflated here' })}
+          title={t({ zh: 'DQX 接收与原文还原', en: 'DQX receiving & restored content' })}
+          subtitle={t({ zh: '协议帧自动重组、校验并解压；完成后下方直接显示原始文本或文件', en: 'Protocol frames are reassembled, verified and inflated automatically; the original text or file appears below' })}
           actions={
             <Button variant="ghost" size="sm" onClick={session.reset}>
               {t({ zh: '清空重来', en: 'Reset' })}

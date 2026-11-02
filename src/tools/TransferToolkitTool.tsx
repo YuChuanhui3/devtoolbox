@@ -1,22 +1,24 @@
-import { Camera, Film, QrCode, Send, SendHorizontal, ShieldCheck } from 'lucide-react';
+import { Film, QrCode, SendHorizontal, ShieldCheck } from 'lucide-react';
 import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useDqxSession } from '@/hooks/useDqxSession';
 import DropPanel from './transfer-toolkit/DropPanel';
-import { ReceivePanel } from './transfer-toolkit/ReceivePanel';
+import { QrTransferPanel } from './transfer-toolkit/QrTransferPanel';
 import { SalvagePanel } from './transfer-toolkit/SalvagePanel';
-import { SendPanel } from './transfer-toolkit/SendPanel';
 
-type TransferMode = 'drop' | 'send' | 'receive' | 'salvage';
+type TransferMode = 'drop' | 'qr' | 'send' | 'receive' | 'salvage';
 
-const AIRGAP_MODES: TransferMode[] = ['send', 'receive', 'salvage'];
+const AIRGAP_MODES: TransferMode[] = ['qr', 'salvage'];
 
 export default function TransferToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useToolkitMode<TransferMode>(['drop', 'send', 'receive', 'salvage'], 'drop');
+  const [routeMode, setMode] = useToolkitMode<TransferMode>(['drop', 'qr', 'send', 'receive', 'salvage'], 'drop');
   const session = useDqxSession();
+  // 旧 ?mode=send/receive 链接继续可用，并定位到合并页签里的对应方向。
+  const mode = routeMode === 'send' || routeMode === 'receive' ? 'qr' : routeMode;
+  const initialDirection = routeMode === 'send' || routeMode === 'receive' ? routeMode : undefined;
   const airgap = AIRGAP_MODES.includes(mode);
 
   return (
@@ -27,8 +29,7 @@ export default function TransferToolkitTool() {
           ariaLabel={t({ zh: '文件传输方式', en: 'Transfer mode' })}
           options={[
             { value: 'drop', label: t({ zh: '局域网互传 / 手机扫码', en: 'LAN Drop / Scan' }), icon: <SendHorizontal className="h-3.5 w-3.5" aria-hidden="true" /> },
-            { value: 'send', label: t({ zh: '二维码发送', en: 'QR Send' }), icon: <Send className="h-3.5 w-3.5" aria-hidden="true" /> },
-            { value: 'receive', label: t({ zh: '二维码接收', en: 'QR Receive' }), icon: <Camera className="h-3.5 w-3.5" aria-hidden="true" /> },
+            { value: 'qr', label: t({ zh: '二维码传输', en: 'QR Transfer' }), icon: <QrCode className="h-3.5 w-3.5" aria-hidden="true" /> },
             { value: 'salvage', label: t({ zh: '截图/录屏回收', en: 'Salvage' }), icon: <Film className="h-3.5 w-3.5" aria-hidden="true" /> },
           ]}
       />
@@ -36,11 +37,8 @@ export default function TransferToolkitTool() {
       <LazyPanel active={mode === 'drop'}>
         <DropPanel session={session} />
       </LazyPanel>
-      <LazyPanel active={mode === 'send'}>
-        <SendPanel active={mode === 'send'} />
-      </LazyPanel>
-      <LazyPanel active={mode === 'receive'}>
-        <ReceivePanel active={mode === 'receive'} session={session} />
+      <LazyPanel active={mode === 'qr'}>
+        <QrTransferPanel active={mode === 'qr'} initialDirection={initialDirection} session={session} />
       </LazyPanel>
       <LazyPanel active={mode === 'salvage'}>
         <SalvagePanel active={mode === 'salvage'} session={session} />

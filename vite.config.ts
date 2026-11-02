@@ -3,13 +3,28 @@ import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { attachLanSignaling, handleLanInfo, LAN_INFO_PATH } from './scripts/lan-signaling.mjs';
+
+function lanSignalingPlugin() {
+  return {
+    name: 'lan-signaling',
+    configureServer(server: import('vite').ViteDevServer) {
+      attachLanSignaling(server.httpServer);
+      server.middlewares.use(LAN_INFO_PATH, handleLanInfo);
+    },
+    configurePreviewServer(server: import('vite').PreviewServer) {
+      attachLanSignaling(server.httpServer);
+      server.middlewares.use(LAN_INFO_PATH, handleLanInfo);
+    },
+  };
+}
 
 const packageJson = JSON.parse(
   readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'),
 ) as { version: string };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), lanSignalingPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),

@@ -7,7 +7,7 @@
 
 **Live site: <https://YuChuanhui3.github.io/devtoolbox/>**
 
-DevToolbox is a free, open-source online toolbox for developers: **34 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Everything runs 100% client-side — your text, JSON and images never leave your device. No account, no backend, no analytics scripts. The interface is fully bilingual (English / 中文) with instant switching.
+DevToolbox is a free, open-source online toolbox for developers: **34 browser-based tools** for JSON formatting, encoding & encryption, hashing, regex testing, image compression, QR codes, timestamps, UUIDs, Markdown, local file transfer and more. Conversion and file content stay on your devices. No account, no required backend, no analytics scripts; the optional LAN pairing service relays only WebRTC setup messages. The interface is fully bilingual (English / 中文) with instant switching.
 
 ## Why DevToolbox
 
@@ -82,7 +82,7 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 - **安全渲染**：Markdown 预览经 DOMPurify 过滤，禁止脚本、iframe、事件属性与 `javascript:` 链接。
 - **本地设置中心**：主题、语言（中文 / English）、草稿开关、本地匿名统计开关、本地数据清空、快捷键入口。
 - **按需加载**：每个工具独立分包，首页不加载全部工具代码。
-- **文件传输工具箱**：同一 Wi-Fi 下基于 WebRTC DataChannel 点对点互传文件与文本，手机可充当电脑的扫码器实时回传二维码内容；物理隔离网络改用二维码逐帧发送 / 连续接收 / 录屏回收。全程不经过服务器。
+- **文件传输工具箱**：同一 Wi-Fi 下基于 WebRTC DataChannel 点对点互传文件与文本；内网信令部署时手机只扫一次即可自动配对，静态托管自动回退离线配对。手机可充当电脑的扫码器实时回传二维码内容，主机也能直接生成原文二维码；二维码发送 / 接收合并在同一页签，DQX 帧集齐后自动显示原文；物理隔离网络支持逐帧发送、连续接收与录屏回收。文件和内容不经过服务器。
 
 ## 工具清单
 
@@ -110,7 +110,7 @@ JSON 工具箱（格式化/压缩/校验 + JSONPath 查询 + Schema 校验生成
 
 ### 网络工具（10）
 
-IP 与网络地址工具箱（出口 IP / 归属地 / 定位地图 / IP↔数字 / 子网掩码 / 随机 IP / MAC，共享一个 IP 输入）、网站诊断工具箱（DNS 记录 / NS 与注册 / 内外链 / SEO / 响应头 / WebCheck，共享一个 URL 输入）、UA 工具箱（随机生成 / 大全 / 解析）、站长工具（robots.txt + 徽章）、浏览器检测工具箱（环境信息 + Cookie），以及 curl 转代码、模拟 WebSocket 请求、网页自动刷新、文件传输工具箱（局域网互传含手机充当扫码器 / 二维码发送 / 二维码接收 / 截图录屏回收，四个页签）。
+IP 与网络地址工具箱（出口 IP / 归属地 / 定位地图 / IP↔数字 / 子网掩码 / 随机 IP / MAC，共享一个 IP 输入）、网站诊断工具箱（DNS 记录 / NS 与注册 / 内外链 / SEO / 响应头 / WebCheck，共享一个 URL 输入）、UA 工具箱（随机生成 / 大全 / 解析）、站长工具（robots.txt + 徽章）、浏览器检测工具箱（环境信息 + Cookie），以及 curl 转代码、模拟 WebSocket 请求、网页自动刷新、文件传输工具箱（局域网互传含手机充当扫码器与文本二维码回传 / 二维码发送与接收合并页签 / 截图录屏回收，三个页签）。
 
 在线查询类工具依赖公开 API（ipify、Cloudflare DoH、WebSocket 测试服务等），部分需经 CORS 代理转发，页面内已标注数据来源与限制；文件传输工具箱的局域网页签为 WebRTC 点对点直连，数据不经过任何服务器。
 
@@ -182,7 +182,7 @@ src/
 
 - 大部分工具在浏览器本地运行，文本、JSON、YAML、XML、CSV、图片等内容默认不上传服务器。
 - 网络工具中的在线查询类（IP 信息、DNS、SEO、网页抓取等）会调用第三方公开 API 或经 CORS 代理转发目标地址，输入的目标 URL / 域名会离开本机，页面内已标注数据来源；请勿查询敏感内网地址。
-- 文件传输工具箱的局域网页签基于 WebRTC 点对点直连，文件与扫码内容只在两台设备间传输，不经过服务器，也不落盘保存会话记录。
+- 文件传输工具箱的局域网页签基于 WebRTC 点对点直连，文件与扫码内容只在两台设备间传输，不经过服务器，也不落盘保存会话记录。一次扫码配对所用的内网信令仅中继一次性房间内的 SDP 连接信息，通道建立后立即断开。
 - 收藏、最近使用、搜索历史、Markdown 草稿、工具草稿与本地统计保存在 `localStorage`。
 - 本地统计仅记录工具访问 / 执行次数，不记录输入内容，不使用第三方脚本，可在设置中关闭并清除。
 - 加密类工具（Hash、JWT、AES 等）标记为敏感工具，不自动保存输入草稿。
@@ -209,6 +209,19 @@ npm run build
 
 构建产物位于 `dist/`，可直接部署到任意静态托管服务。GitHub Pages 上线由 `.github/workflows/deploy.yml` 自动完成（`main` 分支推送触发，`npm run build:ghpages` + `actions/deploy-pages`）。
 
+### 内网部署与一次扫码配对
+
+静态托管无法替两台设备交换 WebRTC 回执，因此会保留双向离线配对。若希望电脑显示二维码、手机只扫一次就连接，使用附带的同源内网服务：
+
+```bash
+npm run build
+npm run start:lan
+```
+
+终端会打印 `http://<电脑局域网 IP>:4173`；电脑通过该地址打开本站，再进入文件传输工具箱发起配对。手机扫描的是一次性配对链接，打开后自动交换 offer / answer。信令只用于配对，文件、文本和扫码内容仍走 WebRTC 点对点通道。开发模式可使用 `npm run dev:lan`。
+
+手机页面内调用摄像头通常要求 HTTPS 安全上下文。可在内网服务前配置 HTTPS 反向代理，或设置 `LAN_HTTPS_KEY` / `LAN_HTTPS_CERT` 后运行 `npm run start:lan`；仅 HTTP 时配对和文本/文件互传可用，但浏览器可能禁止摄像头。
+
 项目使用 `BrowserRouter` 的 History 路由，部署时需要将未知路径回退到 `index.html`：
 
 - **GitHub Pages（子路径 `/devtoolbox/`）**：已提供 `public/404.html` + `index.html` 头部恢复脚本的 SPA 深链方案，构建需用 `--base=/devtoolbox/`（即 `npm run build:ghpages`）。
@@ -234,6 +247,7 @@ npm run build
 - 图片输出支持 JPG / PNG / WebP；GIF 仅处理首帧，BMP 由浏览器解码后重新编码。
 - 在线查询类网络工具依赖第三方公开 API 与 CORS 代理，可用性与速率受上游影响，页面内已标注；路由追踪、SSL 套件检测、证书链查询、网页截图等需要服务端能力，不在纯前端范围内。
 - 文件传输工具箱的局域网页签要求两台设备在同一 Wi-Fi / 局域网（仅 host 候选，不穿 NAT），配对信息一次性有效；断线后未完成的文件需重新发送，不支持续传。
+- 一次扫码配对需要 `npm run start:lan` / `npm run dev:lan` 提供同源内网信令；纯静态托管会自动回退为交换回执的离线配对。配对链接一次性有效，房间 5 分钟过期。
 - 本地统计为设备维度，不做跨设备汇总。
 
 ## 文档

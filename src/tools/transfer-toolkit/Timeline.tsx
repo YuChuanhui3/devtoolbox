@@ -129,7 +129,7 @@ export function Timeline({ items, onAccept, onReject }: { items: TimelineItem[];
                 <ScanLine className="h-3 w-3" aria-hidden="true" />
                 {item.mine
                   ? t({ zh: '本机扫码回传', en: 'Sent from this scanner' })
-                  : t({ zh: '对方手机扫码结果', en: 'Scanned by the peer\'s phone' })}
+                  : t({ zh: '对方扫码结果', en: 'Scanned by the peer' })}
               </p>
               {frame ? (
                 <p className="font-mono text-xs leading-5">
