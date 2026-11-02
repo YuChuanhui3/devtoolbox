@@ -266,7 +266,7 @@ export function SendPanel({ active }: { active: boolean }) {
           {source === 'text' ? (
             <div className="h-[300px]">
               <InputPanel
-                label={t({ zh: '文本 / JSON', en: 'Text / JSON' })}
+                label={t({ zh: '文本', en: 'Text' })}
                 value={text}
                 onChange={setText}
                 placeholder={t({
