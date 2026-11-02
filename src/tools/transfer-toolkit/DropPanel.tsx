@@ -67,9 +67,7 @@ export default function DropPanel({ session }: DropPanelProps) {
   }, [lastEvent]);
 
   const sessions = session.sessions;
-  const complete = sessions.find((view) => view.missingCount === 0);
-  const completePayload =
-    lastEvent?.kind === 'complete' && lastEvent.session.sid === complete?.sid ? lastEvent.payload : null;
+  const { complete } = session;
 
   return (
     <div className="space-y-4">
@@ -99,7 +97,7 @@ export default function DropPanel({ session }: DropPanelProps) {
             {sessions.map((view) => (
               <SessionProgress key={view.sid} view={view} mismatch={mismatch?.sid === view.sid ? mismatch.crc : undefined} />
             ))}
-            {complete && completePayload ? <DqxResult view={complete} payload={completePayload} /> : null}
+            {complete ? <DqxResult view={complete.view} payload={complete.payload} /> : null}
           </div>
         </Panel>
       ) : null}

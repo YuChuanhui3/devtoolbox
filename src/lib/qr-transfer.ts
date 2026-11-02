@@ -160,24 +160,35 @@ interface SessionState {
   bytes: number;
   meta?: DqxFrameMeta;
   crcExpected?: string;
+  /** 最后一次入账的时序戳，用于把最新会话排在列表最前。 */
+  touched: number;
 }
 
 export class FrameAssembler {
   private sessions = new Map<string, SessionState>();
+  private clock = 0;
 
-  /** 记录每 sid 首帧声明的总帧数，冲突帧直接忽略。 */
+  /** 记录每 sid 首帧声明的总帧数；首帧换了总帧数视为发送端重开，清空旧会话。 */
   push(textOrFrame: string | DqxFrame | null): AssembleEvent {
     if (!textOrFrame) return { kind: 'ignored', reason: 'not-dqx' };
     const frame = typeof textOrFrame === 'string' ? parseFrame(textOrFrame) : textOrFrame;
     if (!frame) return { kind: 'ignored', reason: 'not-dqx' };
 
     let session = this.sessions.get(frame.sid);
+    if (session && session.total !== frame.total) {
+      // 复用同一 sid 换内容重发（改了容量档/换了文本）：旧帧已无意义，从头收。
+      if (frame.index === 0) {
+        this.sessions.delete(frame.sid);
+        session = undefined;
+      } else {
+        return { kind: 'ignored', reason: 'conflict' };
+      }
+    }
     if (!session) {
       if (this.sessions.size >= DQX_LIMITS.maxSessions) return { kind: 'ignored', reason: 'overflow' };
-      session = { total: frame.total, frames: new Map(), bytes: 0 };
+      session = { total: frame.total, frames: new Map(), bytes: 0, touched: 0 };
       this.sessions.set(frame.sid, session);
     }
-    if (session.total !== frame.total) return { kind: 'ignored', reason: 'conflict' };
     if (session.frames.has(frame.index)) {
       const existing = session.frames.get(frame.index)!;
       if (existing.length !== frame.data.length || existing.some((byte, i) => byte !== frame.data[i])) {
@@ -190,6 +201,7 @@ export class FrameAssembler {
     }
     session.frames.set(frame.index, frame.data);
     session.bytes += frame.data.length;
+    session.touched = ++this.clock;
     if (frame.meta) session.meta = frame.meta;
     if (frame.crc) session.crcExpected = frame.crc;
 
@@ -225,8 +237,11 @@ export class FrameAssembler {
     };
   }
 
+  /** 最新有帧入账的会话排在最前：接收端默认展示最近一次传完的内容。 */
   sessionsList(): SessionView[] {
-    return Array.from(this.sessions.keys(), (sid) => this.view(sid)!);
+    return Array.from(this.sessions.entries())
+      .sort(([, a], [, b]) => b.touched - a.touched)
+      .map(([sid]) => this.view(sid)!);
   }
 
   has(sid: string): boolean {

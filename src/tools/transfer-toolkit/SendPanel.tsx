@@ -150,6 +150,12 @@ export function SendPanel({ active }: { active: boolean }) {
   const frames = prepared?.frames ?? [];
   const total = frames.length;
 
+  // 换内容/换压缩开关就是另一次传输：必须换 sid，否则接收端会把新帧当成旧会话的冲突帧丢掉。
+  useEffect(() => {
+    setSid(makeSessionId());
+    setIndex(0);
+  }, [payload.bytes]);
+
   // —— 帧号钳制 ——
   useEffect(() => {
     setIndex((current) => Math.min(current, Math.max(0, total - 1)));

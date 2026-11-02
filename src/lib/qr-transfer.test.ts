@@ -137,11 +137,34 @@ describe('splitFrames + FrameAssembler roundtrip', () => {
     if (event.kind === 'complete') expect(event.payload.length).toBe(0);
   });
 
-  it('ignores conflicting totals for the same sid', () => {
+  it('ignores a mid-frame whose total conflicts with the session', () => {
     const assembler = new FrameAssembler();
     assembler.push(encodeFrame('sfffff', 0, 3, bytes('aaa')));
     const event = assembler.push(encodeFrame('sfffff', 1, 4, bytes('bbb')));
     expect(event).toEqual({ kind: 'ignored', reason: 'conflict' });
+  });
+
+  it('restarts the session when frame 0 declares a new total', () => {
+    const assembler = new FrameAssembler();
+    assembler.push(encodeFrame('sfffff', 0, 3, bytes('aaa'), { fileName: 'old.txt' }));
+    assembler.push(encodeFrame('sfffff', 1, 3, bytes('bbb')));
+    assembler.push(encodeFrame('sfffff', 2, 3, bytes('ccc')));
+    const restarted = assembler.push(encodeFrame('sfffff', 0, 2, bytes('ddd'), { fileName: 'new.txt' }));
+    expect(restarted.kind).toBe('progress');
+    const view = assembler.view('sfffff')!;
+    expect(view.total).toBe(2);
+    expect(view.received).toBe(1);
+    expect(view.meta?.fileName).toBe('new.txt');
+    assembler.push(encodeFrame('sfffff', 1, 2, bytes('eee')));
+    expect(Buffer.from(assembler.payloadBytes('sfffff'))).toEqual(Buffer.from(bytes('dddeee')));
+  });
+
+  it('lists the most recently touched session first', () => {
+    const assembler = new FrameAssembler();
+    assembler.push(encodeFrame('aaaaaa', 0, 2, bytes('x')));
+    assembler.push(encodeFrame('bbbbbb', 0, 1, bytes('y'), undefined, crc32OfPayload(bytes('y'))));
+    assembler.push(encodeFrame('aaaaaa', 1, 2, bytes('z')));
+    expect(assembler.sessionsList().map((view) => view.sid)).toEqual(['aaaaaa', 'bbbbbb']);
   });
 });
 

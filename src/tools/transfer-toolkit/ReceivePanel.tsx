@@ -94,9 +94,7 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
   };
 
   const sessions = session.sessions;
-  const complete = sessions.find((view) => view.missingCount === 0);
-  const completePayload =
-    lastEvent?.kind === 'complete' && lastEvent.session.sid === complete?.sid ? lastEvent.payload : null;
+  const { complete } = session;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
@@ -185,7 +183,7 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
               <SessionProgress key={view.sid} view={view} mismatch={mismatch?.sid === view.sid ? mismatch.crc : undefined} />
             ))
           )}
-          {complete && completePayload ? <DqxResult view={complete} payload={completePayload} /> : null}
+          {complete ? <DqxResult view={complete.view} payload={complete.payload} /> : null}
         </div>
       </Panel>
     </div>

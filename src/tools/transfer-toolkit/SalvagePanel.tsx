@@ -213,9 +213,7 @@ export function SalvagePanel({ active, session }: SalvagePanelProps) {
   };
 
   const sessions = session.sessions;
-  const complete = sessions.find((view) => view.missingCount === 0);
-  const completePayload =
-    session.event?.kind === 'complete' && session.event.session.sid === complete?.sid ? session.event.payload : null;
+  const { complete } = session;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
@@ -331,7 +329,7 @@ export function SalvagePanel({ active, session }: SalvagePanelProps) {
           ) : (
             sessions.map((view) => <SessionProgress key={view.sid} view={view} />)
           )}
-          {complete && completePayload ? <DqxResult view={complete} payload={completePayload} /> : null}
+          {complete ? <DqxResult view={complete.view} payload={complete.payload} /> : null}
         </div>
       </Panel>
     </div>
