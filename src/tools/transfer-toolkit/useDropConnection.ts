@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { UAParser } from 'ua-parser-js';
 import {
-  ChunkAssembler,
+  CHUNK_SIZE,
+  EventQueue,
+  FrameReassembler,
+  MANIFEST_MAX_BYTES,
+  MANIFEST_MAX_ENTRIES,
+  PacedSender,
+  PROTOCOL_VERSION,
+  createHasher,
   encodeControl,
+  hashFile,
   parseControl,
-  sliceFile,
+  type BatchKind,
   type ControlFrame,
+  type HashAlgo,
+  type IncrementalHash,
+  type ManifestEntry,
 } from '@/lib/filedrop';
 import {
   compactSdp,
@@ -21,6 +32,18 @@ import {
 } from '@/lib/sdp';
 import { toToolError, ToolError } from '@/lib/errors';
 import { buildJoinUrl, makePairCode, openLanSocket, resolveLanBase } from '@/lib/lanSignal';
+import {
+  cleanupEmptyDirs,
+  flattenDirectory,
+  hasFsAccess,
+  makeFsSink,
+  makeMemorySink,
+  removeLocalFile,
+  type FileSink,
+  type FlatMap,
+} from '@/lib/fsaccess';
+import { diffMaps, type DiffMode, type DiffResult } from '@/lib/dirSync';
+import { RateTracker } from '@/lib/transferStats';
 import { useI18n } from '@/i18n/I18nProvider';
 import { tl, type Locale, type Localized } from '@/i18n/locale';
 
@@ -34,14 +57,45 @@ export type Phase =
   | 'connected'
   | 'closed';
 
-export type FileStatus =
-  | 'incoming'
-  | 'waiting'
-  | 'active'
-  | 'done'
-  | 'rejected'
-  | 'canceled'
-  | 'failed';
+export type EntryStatus = 'pending' | 'active' | 'done' | 'failed' | 'canceled' | 'mismatch' | 'skipped';
+
+export interface BatchEntryState {
+  key: string;
+  name: string;
+  path: string[];
+  size: number;
+  mime: string;
+  status: EntryStatus;
+  received: number;
+  /** 内存降级路径收好的文件（FS 流式写路径直接落盘，没有 blob）。 */
+  blob?: Blob;
+  url?: string;
+}
+
+export interface SyncState {
+  phase: 'need-dir' | 'diffing' | 'review' | 'running' | 'done';
+  mode: DiffMode;
+  progress?: [number, number];
+  diff?: DiffResult;
+  targetName?: string;
+}
+
+export interface TimelineBatch {
+  kind: 'batch';
+  id: string;
+  batchId: string;
+  mine: boolean;
+  root: string;
+  batchKind: BatchKind;
+  algo: HashAlgo;
+  entries: BatchEntryState[];
+  status: 'review' | 'active' | 'done' | 'failed' | 'canceled';
+  totalSize: number;
+  totalReceived: number;
+  speed: number;
+  etaMs: number;
+  sync?: SyncState;
+}
 
 export interface TimelineText {
   kind: 'text';
@@ -60,32 +114,19 @@ export interface TimelineScan {
   ts: number;
 }
 
-export interface TimelineFile {
-  kind: 'file';
-  id: string;
-  mine: boolean;
-  name: string;
-  size: number;
-  mime: string;
-  status: FileStatus;
-  received: number;
-  blob?: Blob;
-  url?: string;
-}
-
 export interface TimelineSys {
   kind: 'sys';
   id: string;
   text: Localized;
 }
 
-export type TimelineItem = TimelineText | TimelineScan | TimelineFile | TimelineSys;
+export type TimelineItem = TimelineText | TimelineScan | TimelineBatch | TimelineSys;
 
-const SEND_BUFFER_HIGH = 256 * 1024;
-const SEND_BUFFER_LOW = 64 * 1024;
 const GATHER_TIMEOUT_MS = 2500;
 // STUN 要走一次公网查询，候选到齐更慢
 const GATHER_TIMEOUT_STUN_MS = 6000;
+const HASH_WAIT_TIMEOUT_MS = 30_000;
+const utf8 = new TextEncoder();
 
 export interface ConnectionDiagnostics {
   local: CandidateInfo[];
@@ -114,6 +155,57 @@ function agentLabel(locale: Locale): string {
   return [browser || unknownBrowser, os || unknownOs].join(' · ');
 }
 
+interface EntryRuntime {
+  file: File | null;
+  path: string[];
+  size: number;
+  lastModified: number;
+  mime: string;
+  name: string;
+}
+
+interface BatchRuntime {
+  mine: boolean;
+  kind: BatchKind;
+  algo: HashAlgo;
+  root: string;
+  entries: Map<string, EntryRuntime>;
+  tracker: RateTracker;
+  /** 已完成文件的累计字节：进度 = base + 当前文件字节。 */
+  base: number;
+  totalSize: number;
+}
+
+interface SyncRuntime {
+  dir: FileSystemDirectoryHandle;
+  localFlat: FlatMap;
+  /** diff 用去根相对键 ↔ manifest 键的互转。 */
+  relToKey: Map<string, string>;
+  mode: DiffMode;
+}
+
+interface ReceiveRuntime {
+  batchId: string;
+  key: string;
+  re: FrameReassembler;
+  sink: FileSink;
+  hasher: IncrementalHash;
+}
+
+interface PullPlan {
+  batchId: string;
+  queue: string[];
+  dir: FileSystemDirectoryHandle | null;
+  /** syncDir 批次写进目标目录本身：落盘路径去掉根目录首段。 */
+  stripRoot: boolean;
+}
+
+const EMPTY_MD5 = 'd41d8cd98f00b204e9800998ecf8427e';
+const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+function emptyHash(algo: HashAlgo): string {
+  return algo === 'md5' ? EMPTY_MD5 : EMPTY_SHA256;
+}
+
 export function useDropConnection() {
   const { locale } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
@@ -133,9 +225,15 @@ export function useDropConnection() {
   const roleRef = useRef<'initiator' | 'joiner' | null>(null);
   const peerIpRef = useRef('');
   const stunRef = useRef(false);
-  const activeSendRef = useRef<{ id: string; file: File } | null>(null);
-  const sendQueueRef = useRef<{ id: string; file: File }[]>([]);
-  const activeReceiveRef = useRef<{ id: string; assembler: ChunkAssembler } | null>(null);
+  const batchesRef = useRef<Map<string, BatchRuntime>>(new Map());
+  const syncsRef = useRef<Map<string, SyncRuntime>>(new Map());
+  const pacedSenderRef = useRef<PacedSender | null>(null);
+  const serveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const receiveRef = useRef<ReceiveRuntime | null>(null);
+  const pullPlanRef = useRef<PullPlan | null>(null);
+  const lastPulledKeyRef = useRef('');
+  const hashWaitersRef = useRef<Map<string, (hash: string) => void>>(new Map());
+  const canceledBatchesRef = useRef<Set<string>>(new Set());
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
   const revokeObjectUrls = useCallback(() => {
@@ -143,10 +241,21 @@ export function useDropConnection() {
     objectUrlsRef.current.clear();
   }, []);
 
-  const patchFile = useCallback(
-    (id: string, patch: Partial<TimelineFile>) =>
+  const patchBatch = useCallback(
+    (batchId: string, patch: Partial<TimelineBatch>) =>
       setItems((prev) =>
-        prev.map((item) => (item.kind === 'file' && item.id === id ? { ...item, ...patch } : item)),
+        prev.map((item) => (item.kind === 'batch' && item.batchId === batchId ? { ...item, ...patch } : item)),
+      ),
+    [],
+  );
+
+  const patchEntry = useCallback(
+    (batchId: string, key: string, patch: Partial<BatchEntryState>) =>
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.kind !== 'batch' || item.batchId !== batchId) return item;
+          return { ...item, entries: item.entries.map((e) => (e.key === key ? { ...e, ...patch } : e)) };
+        }),
       ),
     [],
   );
@@ -156,59 +265,160 @@ export function useDropConnection() {
     [],
   );
 
-  const pumpQueue = useCallback(() => {
+  const sendFrame = useCallback((frame: ControlFrame) => {
     const dc = dcRef.current;
-    if (!dc || dc.readyState !== 'open' || activeSendRef.current) return;
-    const next = sendQueueRef.current.shift();
-    if (!next) return;
-    activeSendRef.current = next;
-    const frame: ControlFrame = {
-      t: 'meta',
-      id: next.id,
-      name: next.file.name,
-      size: next.file.size,
-      mime: next.file.type || 'application/octet-stream',
-    };
-    dc.send(encodeControl(frame));
+    if (dc && dc.readyState === 'open') dc.send(encodeControl(frame));
   }, []);
 
-  const streamActiveFile = useCallback(async () => {
+  const refreshBatchRate = useCallback((batchId: string, received: number, now: number) => {
+    const rt = batchesRef.current.get(batchId);
+    if (!rt) return;
+    rt.tracker.sample(received, 0, now);
+    patchBatch(batchId, {
+      totalReceived: received,
+      speed: rt.tracker.instant(),
+      etaMs: rt.tracker.eta(rt.totalSize - received, now),
+    });
+  }, [patchBatch]);
+
+  // —— 发送端：被动按 pull 供片，串行链保证同通道一次一个文件 ——
+
+  const serveFile = useCallback(async (batchId: string, key: string) => {
     const dc = dcRef.current;
-    const active = activeSendRef.current;
-    if (!dc || !active) return;
-    let sent = 0;
-    try {
-      dc.bufferedAmountLowThreshold = SEND_BUFFER_LOW;
-      for await (const chunk of sliceFile(active.file)) {
-        if (dcRef.current !== dc || dc.readyState !== 'open') throw new Error('连接已断开');
-        if (dc.bufferedAmount > SEND_BUFFER_HIGH) {
-          await new Promise<void>((resolve) => {
-            dc.addEventListener('bufferedamountlow', () => resolve(), { once: true });
-          });
-        }
-        dc.send(chunk);
-        sent += chunk.byteLength;
-        patchFile(active.id, { received: sent });
-      }
-      dc.send(encodeControl({ t: 'done', id: active.id }));
-      patchFile(active.id, { status: 'done', received: active.file.size });
-      addSys({ zh: `已发送「${active.file.name}」`, en: `Sent "${active.file.name}"` });
-    } catch {
-      patchFile(active.id, { status: 'failed' });
-      if (dcRef.current === dc) addSys({ zh: `「${active.file.name}」发送中断，请重新发送`, en: `Sending "${active.file.name}" was interrupted. Send it again.` });
-    } finally {
-      if (activeSendRef.current?.id === active.id) {
-        activeSendRef.current = null;
-        pumpQueue();
-      }
+    const paced = pacedSenderRef.current;
+    const rt = batchesRef.current.get(batchId);
+    if (!dc || !paced || !rt || !rt.mine) return;
+    if (dc.readyState !== 'open' || canceledBatchesRef.current.has(batchId)) return;
+    const entry = rt.entries.get(key);
+    if (!entry || !entry.file) {
+      sendFrame({ t: 'err', code: 404, msg: 'no such file', batchId, key });
+      return;
     }
-  }, [addSys, patchFile, pumpQueue]);
+    const file = entry.file;
+    const count = Math.ceil(file.size / CHUNK_SIZE);
+    dc.send(encodeControl({ t: 'begin', batchId, key, size: file.size, count }));
+    patchEntry(batchId, key, { status: 'active' });
+    try {
+      const hash = await paced.sendFile(file, rt.algo, (sent) => {
+        patchEntry(batchId, key, { received: sent });
+        refreshBatchRate(batchId, rt.base + sent, Date.now());
+      });
+      dc.send(encodeControl({ t: 'fileDone', batchId, key, hash }));
+      rt.base += file.size;
+      patchEntry(batchId, key, { status: 'done', received: file.size });
+      refreshBatchRate(batchId, rt.base, Date.now());
+    } catch {
+      if (!canceledBatchesRef.current.has(batchId)) patchEntry(batchId, key, { status: 'failed' });
+    }
+  }, [patchEntry, refreshBatchRate, sendFrame]);
+
+  const enqueueServe = useCallback((task: () => Promise<void>) => {
+    serveChainRef.current = serveChainRef.current.then(task).catch(() => undefined);
+  }, []);
+
+  const computeHashResult = useCallback(async (batchId: string, key: string) => {
+    const rt = batchesRef.current.get(batchId);
+    const entry = rt?.entries.get(key);
+    if (!rt || rt.mine !== true || !entry?.file) {
+      sendFrame({ t: 'err', code: 404, msg: 'no such file', batchId, key });
+      return;
+    }
+    const hash = await hashFile(entry.file, rt.algo);
+    sendFrame({ t: 'hashResult', batchId, key, hash });
+  }, [sendFrame]);
+
+  // —— 接收端：pull 流水线 ——
+
+  const finishBatch = useCallback((batchId: string) => {
+    pullPlanRef.current = null;
+    lastPulledKeyRef.current = '';
+    receiveRef.current = null;
+    sendFrame({ t: 'batchDone', batchId });
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.kind !== 'batch' || item.batchId !== batchId) return item;
+        const bad = item.entries.some((e) => e.status === 'mismatch' || e.status === 'failed');
+        return {
+          ...item,
+          status: bad ? 'failed' : 'done',
+          ...(item.sync ? { sync: { ...item.sync, phase: 'done' as const } } : {}),
+        };
+      }),
+    );
+  }, [sendFrame]);
+
+  const nextPull = useCallback(() => {
+    const plan = pullPlanRef.current;
+    const dc = dcRef.current;
+    if (!plan || !dc || dc.readyState !== 'open') return;
+    if (receiveRef.current) return; // 上一个还没收尾
+    const key = plan.queue.shift();
+    if (key === undefined) {
+      finishBatch(plan.batchId);
+      return;
+    }
+    lastPulledKeyRef.current = key;
+    dc.send(encodeControl({ t: 'pull', batchId: plan.batchId, key }));
+  }, [finishBatch]);
+
+  const abortCurrentReceive = useCallback(async () => {
+    const receive = receiveRef.current;
+    receiveRef.current = null;
+    if (!receive) return null;
+    try {
+      await receive.sink.abort();
+    } catch { /* 已断开时忽略 */ }
+    return receive;
+  }, []);
+
+  const handleBinary = useCallback(async (data: ArrayBuffer) => {
+    const receive = receiveRef.current;
+    const rt = receive ? batchesRef.current.get(receive.batchId) : null;
+    if (!receive || !rt) return;
+    const bytes = receive.re.consume(data);
+    if (!bytes) return;
+    receive.hasher.update(bytes);
+    await receive.sink.write(bytes);
+    patchEntry(receive.batchId, receive.key, { received: receive.re.received });
+    refreshBatchRate(receive.batchId, rt.base + receive.re.received, Date.now());
+  }, [patchEntry, refreshBatchRate]);
+
+  const finalizeReceivedFile = useCallback(async (expectedHash: string) => {
+    const receive = receiveRef.current;
+    if (!receive) return;
+    receiveRef.current = null;
+    const rt = batchesRef.current.get(receive.batchId);
+    const actual = receive.hasher.digestHex();
+    if (actual !== expectedHash) {
+      // 参照 FastSend：校验失败即删除半写文件，绝不静默保留。
+      try {
+        await receive.sink.abort();
+      } catch { /* 忽略 */ }
+      patchEntry(receive.batchId, receive.key, { status: 'mismatch' });
+      sendFrame({ t: 'err', code: 409, msg: 'checksum mismatch', batchId: receive.batchId, key: receive.key });
+      addSys({ zh: `「${receive.key}」校验不匹配，半写文件已删除`, en: `"${receive.key}" failed the checksum; the partial file was removed` });
+      nextPull();
+      return;
+    }
+    await receive.sink.close();
+    const size = rt?.entries.get(receive.key)?.size ?? 0;
+    if (rt) rt.base += size;
+    patchEntry(receive.batchId, receive.key, { status: 'done', received: size });
+    refreshBatchRate(receive.batchId, rt?.base ?? 0, Date.now());
+    nextPull();
+  }, [addSys, nextPull, patchEntry, refreshBatchRate, sendFrame]);
 
   const handleControl = useCallback(
-    (frame: ControlFrame) => {
+    async (frame: ControlFrame): Promise<void> => {
       switch (frame.t) {
         case 'hello':
           setPeerLabel(frame.agent);
+          if (frame.v !== PROTOCOL_VERSION) {
+            addSys({
+              zh: `对端传输协议版本为 v${frame.v}，本页是 v${PROTOCOL_VERSION}：请两端刷新页面后再传输`,
+              en: `Peer protocol v${frame.v} differs from this page v${PROTOCOL_VERSION}: refresh both pages before transferring`,
+            });
+          }
           break;
         case 'text':
         case 'scan':
@@ -217,56 +427,183 @@ export function useDropConnection() {
             { kind: frame.t, id: frame.id, mine: false, body: frame.body, ts: frame.ts },
           ]);
           break;
-        case 'meta':
-          setItems((prev) => [
-            ...prev,
-            {
-              kind: 'file',
-              id: frame.id,
-              mine: false,
-              name: frame.name,
-              size: frame.size,
-              mime: frame.mime,
-              status: 'incoming',
-              received: 0,
-            },
-          ]);
-          break;
-        case 'accept':
-          if (activeSendRef.current?.id === frame.id) void streamActiveFile();
-          break;
-        case 'reject':
-          if (activeSendRef.current?.id === frame.id) {
-            patchFile(frame.id, { status: 'rejected' });
-            activeSendRef.current = null;
-            addSys({ zh: '对方取消了接收', en: 'The peer canceled the transfer' });
-            pumpQueue();
+        case 'manifest': {
+          if (frame.kind === 'syncDir' && !hasFsAccess()) {
+            sendFrame({ t: 'err', code: 403, msg: 'directory sync unsupported', batchId: frame.batchId });
+            addSys({ zh: '对方请求目录同步，但本浏览器不支持直接写盘（需桌面 Chrome/Edge + HTTPS）', en: 'The peer wants folder sync, but this browser cannot write to disk (needs desktop Chrome/Edge over HTTPS)' });
+            return;
           }
+          const rt: BatchRuntime = {
+            mine: false,
+            kind: frame.kind,
+            algo: frame.algo,
+            root: frame.root,
+            entries: new Map(frame.entries.map((e) => [e.key, {
+              file: null,
+              path: e.path,
+              size: e.size,
+              lastModified: e.lastModified,
+              mime: e.mime,
+              name: e.path[e.path.length - 1],
+            }])),
+            tracker: new RateTracker(),
+            base: 0,
+            totalSize: frame.entries.reduce((sum, e) => sum + e.size, 0),
+          };
+          batchesRef.current.set(frame.batchId, rt);
+          const batch: TimelineBatch = {
+            kind: 'batch',
+            id: nextId(),
+            batchId: frame.batchId,
+            mine: false,
+            root: frame.root,
+            batchKind: frame.kind,
+            algo: frame.algo,
+            entries: frame.entries.map((e) => ({
+              key: e.key,
+              name: e.path[e.path.length - 1],
+              path: e.path,
+              size: e.size,
+              mime: e.mime,
+              status: 'pending' as EntryStatus,
+              received: 0,
+            })),
+            status: 'review',
+            totalSize: rt.totalSize,
+            totalReceived: 0,
+            speed: 0,
+            etaMs: Number.POSITIVE_INFINITY,
+            ...(frame.kind === 'syncDir' ? { sync: { phase: 'need-dir' as const, mode: 'quick' as DiffMode } } : {}),
+          };
+          setItems((prev) => [...prev, batch]);
           break;
-        case 'done': {
-          const receiving = activeReceiveRef.current;
-          if (receiving && receiving.id === frame.id) {
-            const blob = receiving.assembler.finish();
-            const url = URL.createObjectURL(blob);
-            objectUrlsRef.current.add(url);
-            patchFile(frame.id, { status: 'done', blob, url, received: blob.size });
-            activeReceiveRef.current = null;
-            addSys({ zh: '接收完成', en: 'Received' });
+        }
+        case 'pull':
+          enqueueServe(() => serveFile(frame.batchId, frame.key));
+          break;
+        case 'calcHash':
+          enqueueServe(() => computeHashResult(frame.batchId, frame.key));
+          break;
+        case 'begin': {
+          const plan = pullPlanRef.current;
+          if (!plan || plan.batchId !== frame.batchId || lastPulledKeyRef.current !== frame.key) return;
+          const rt = batchesRef.current.get(frame.batchId);
+          const entry = rt?.entries.get(frame.key);
+          if (!rt || !entry) return;
+          const re = new FrameReassembler();
+          re.expect(frame.count);
+          const strip = plan.stripRoot && entry.path.length > 1 ? 1 : 0;
+          const sinkPath = entry.path.slice(strip);
+          let sink: FileSink;
+          if (plan.dir) {
+            sink = await makeFsSink(plan.dir, sinkPath);
+          } else {
+            const { batchId } = plan;
+            const { key } = frame;
+            sink = makeMemorySink((blob) => {
+              const url = URL.createObjectURL(blob);
+              objectUrlsRef.current.add(url);
+              patchEntry(batchId, key, { blob, url });
+            });
+          }
+          receiveRef.current = { batchId: frame.batchId, key: frame.key, re, sink, hasher: createHasher(rt.algo) };
+          patchEntry(frame.batchId, frame.key, { status: 'active' });
+          patchBatch(frame.batchId, { status: 'active' });
+          if (frame.count === 0) {
+            // 空文件没有数据块：立即收尾，fileDone 到达时会被 receiveRef 已空而忽略。
+            await finalizeReceivedFile(emptyHash(rt.algo));
           }
           break;
         }
-        case 'cancel':
-          if (activeReceiveRef.current?.id === frame.id) {
-            activeReceiveRef.current.assembler.dispose();
-            activeReceiveRef.current = null;
-            patchFile(frame.id, { status: 'canceled' });
+        case 'fileDone': {
+          const receive = receiveRef.current;
+          if (!receive || receive.batchId !== frame.batchId || receive.key !== frame.key) return;
+          await finalizeReceivedFile(frame.hash);
+          break;
+        }
+        case 'hashResult': {
+          const waiterKey = `${frame.batchId}\u0000${frame.key}`;
+          const waiter = hashWaitersRef.current.get(waiterKey);
+          if (waiter) {
+            hashWaitersRef.current.delete(waiterKey);
+            waiter(frame.hash);
           }
           break;
-        case 'begin':
+        }
+        case 'batchDone': {
+          // 发送端收到：对方不再拉取，剩余条目记为跳过。
+          const rt = batchesRef.current.get(frame.batchId);
+          if (!rt || !rt.mine) return;
+          setItems((prev) =>
+            prev.map((item) => {
+              if (item.kind !== 'batch' || item.batchId !== frame.batchId) return item;
+              return {
+                ...item,
+                status: 'done',
+                entries: item.entries.map((e) => (e.status === 'pending' ? { ...e, status: 'skipped' as EntryStatus } : e)),
+              };
+            }),
+          );
+          break;
+        }
+        case 'cancel': {
+          const rt = batchesRef.current.get(frame.batchId);
+          if (rt?.mine) {
+            if (frame.key) {
+              pacedSenderRef.current?.cancel();
+              patchEntry(frame.batchId, frame.key, { status: 'canceled' });
+            } else {
+              canceledBatchesRef.current.add(frame.batchId);
+              pacedSenderRef.current?.cancel();
+              patchBatch(frame.batchId, { status: 'canceled' });
+            }
+            return;
+          }
+          if (frame.key) {
+            const receive = await abortCurrentReceive();
+            if (receive) patchEntry(receive.batchId, receive.key, { status: 'canceled' });
+            nextPull();
+          } else {
+            pullPlanRef.current = null;
+            await abortCurrentReceive();
+            patchBatch(frame.batchId, { status: 'canceled' });
+          }
+          break;
+        }
+        case 'err': {
+          if (frame.code === 403 && frame.batchId) {
+            const rt = batchesRef.current.get(frame.batchId);
+            if (rt?.mine) {
+              canceledBatchesRef.current.add(frame.batchId);
+              patchBatch(frame.batchId, { status: 'canceled' });
+              addSys({ zh: '对方拒绝接收这一批文件', en: 'The peer rejected this batch' });
+            }
+            return;
+          }
+          if (frame.code === 409 && frame.batchId && frame.key) {
+            const rt = batchesRef.current.get(frame.batchId);
+            if (rt?.mine) patchEntry(frame.batchId, frame.key, { status: 'mismatch' });
+            return;
+          }
+          if (frame.code === 404 && frame.batchId && frame.key) {
+            const plan = pullPlanRef.current;
+            if (plan && plan.batchId === frame.batchId) {
+              patchEntry(frame.batchId, frame.key, { status: 'failed' });
+              nextPull();
+              return;
+            }
+          }
+          addSys({ zh: `对端报错：${frame.msg}`, en: `Peer error: ${frame.msg}` });
+          break;
+        }
+        default:
           break;
       }
     },
-    [addSys, patchFile, pumpQueue, streamActiveFile],
+    [
+      addSys, abortCurrentReceive, computeHashResult, enqueueServe, finalizeReceivedFile,
+      nextPull, patchBatch, patchEntry, refreshBatchRate, sendFrame, serveFile,
+    ],
   );
 
   const closeSignaling = useCallback(() => {
@@ -288,9 +625,16 @@ export function useDropConnection() {
       pcRef.current?.close();
       pcRef.current = null;
       roleRef.current = null;
-      activeSendRef.current = null;
-      sendQueueRef.current = [];
-      activeReceiveRef.current = null;
+      pacedSenderRef.current?.cancel();
+      pacedSenderRef.current = null;
+      void receiveRef.current?.sink.abort().catch(() => undefined);
+      receiveRef.current = null;
+      pullPlanRef.current = null;
+      batchesRef.current.clear();
+      syncsRef.current.clear();
+      hashWaitersRef.current.clear();
+      canceledBatchesRef.current.clear();
+      serveChainRef.current = Promise.resolve();
       setMySignal('');
       setPhase('closed');
       if (note) addSys(note);
@@ -302,31 +646,33 @@ export function useDropConnection() {
     (channel: RTCDataChannel) => {
       dcRef.current = channel;
       channel.binaryType = 'arraybuffer';
+      const queue = new EventQueue<ArrayBuffer | string>(
+        (message) => {
+          if (typeof message === 'string') {
+            try {
+              return handleControl(parseControl(message));
+            } catch (caught) {
+              addSys(toToolError(caught).localized);
+              return undefined;
+            }
+          }
+          return handleBinary(message);
+        },
+        (caught) => addSys(toToolError(caught).localized),
+      );
       channel.onopen = () => {
+        pacedSenderRef.current = new PacedSender(channel);
         closeSignaling();
         setPhase('connected');
-        channel.send(encodeControl({ t: 'hello', agent: agentLabel(locale) }));
+        channel.send(encodeControl({ t: 'hello', agent: agentLabel(locale), v: PROTOCOL_VERSION }));
         addSys({ zh: '连接已建立，可以互传内容', en: 'Connected. You can exchange content now.' });
-        pumpQueue();
       };
       channel.onclose = () => teardown({ zh: '连接已关闭', en: 'Connection closed' });
       channel.onmessage = (event: MessageEvent) => {
-        if (typeof event.data === 'string') {
-          try {
-            handleControl(parseControl(event.data));
-          } catch (caught) {
-            addSys(toToolError(caught).localized);
-          }
-          return;
-        }
-        const receiving = activeReceiveRef.current;
-        if (receiving) {
-          receiving.assembler.push(event.data as ArrayBuffer);
-          patchFile(receiving.id, { received: receiving.assembler.received });
-        }
+        queue.enqueue(event.data as ArrayBuffer | string);
       };
     },
-    [addSys, closeSignaling, handleControl, locale, patchFile, pumpQueue, teardown],
+    [addSys, closeSignaling, handleBinary, handleControl, locale, teardown],
   );
 
   const createPeer = useCallback(() => {
@@ -357,7 +703,7 @@ export function useDropConnection() {
     };
     pcRef.current = pc;
     return pc;
-  }, [teardown, closeSignaling]);
+  }, [teardown]);
 
   const gatherLocal = useCallback(async (pc: RTCPeerConnection): Promise<SignalEnvelope> => {
     await new Promise<void>((resolve) => {
@@ -625,47 +971,217 @@ export function useDropConnection() {
     ]);
   }, []);
 
-  const sendFile = useCallback(
-    (file: File) => {
-      const id = nextId();
-      sendQueueRef.current.push({ id, file });
+  /** 发送一组条目：kind 决定接收端的呈现与流程（散文件 / 目录 / 目录同步）。 */
+  const sendItems = useCallback(
+    (payload: { file: File; path: string[] }[], kind: BatchKind) => {
+      const dc = dcRef.current;
+      if (!dc || dc.readyState !== 'open' || payload.length === 0) return;
+      if (payload.length > MANIFEST_MAX_ENTRIES) {
+        addSys({
+          zh: `一批最多 ${MANIFEST_MAX_ENTRIES} 个文件，请拆分后再发送`,
+          en: `Up to ${MANIFEST_MAX_ENTRIES} files per batch. Split and send again.`,
+        });
+        return;
+      }
+      const batchId = nextId();
+      const manifestEntries: ManifestEntry[] = payload.map(({ file, path }) => ({
+        key: path.join('/'),
+        path,
+        size: file.size,
+        lastModified: file.lastModified,
+        mime: file.type || 'application/octet-stream',
+      }));
+      const root = kind === 'files' ? '' : payload[0].path[0] ?? '';
+      const frame: ControlFrame = { t: 'manifest', batchId, kind, root, algo: 'md5', entries: manifestEntries };
+      const text = encodeControl(frame);
+      if (utf8.encode(text).length > MANIFEST_MAX_BYTES) {
+        addSys({
+          zh: '文件清单过大（路径太深或名字太长），请拆分目录后再传',
+          en: 'The manifest is too large (deep paths or long names). Split the directory first.',
+        });
+        return;
+      }
+      const totalSize = payload.reduce((sum, e) => sum + e.file.size, 0);
+      batchesRef.current.set(batchId, {
+        mine: true,
+        kind,
+        algo: 'md5',
+        root,
+        entries: new Map(payload.map(({ file, path }) => [
+          path.join('/'),
+          {
+            file,
+            path,
+            size: file.size,
+            lastModified: file.lastModified,
+            mime: file.type || 'application/octet-stream',
+            name: path[path.length - 1],
+          },
+        ])),
+        tracker: new RateTracker(),
+        base: 0,
+        totalSize,
+      });
+      canceledBatchesRef.current.delete(batchId);
       setItems((prev) => [
         ...prev,
         {
-          kind: 'file',
-          id,
+          kind: 'batch',
+          id: nextId(),
+          batchId,
           mine: true,
-          name: file.name,
-          size: file.size,
-          mime: file.type || 'application/octet-stream',
-          status: 'waiting',
-          received: 0,
+          root,
+          batchKind: kind,
+          algo: 'md5' as HashAlgo,
+          entries: manifestEntries.map((e) => ({
+            key: e.key,
+            name: e.path[e.path.length - 1],
+            path: e.path,
+            size: e.size,
+            mime: e.mime,
+            status: 'pending' as EntryStatus,
+            received: 0,
+          })),
+          status: 'active',
+          totalSize,
+          totalReceived: 0,
+          speed: 0,
+          etaMs: Number.POSITIVE_INFINITY,
         },
       ]);
-      pumpQueue();
+      dc.send(text);
     },
-    [pumpQueue],
+    [addSys],
   );
 
-  const acceptIncoming = useCallback(
-    (item: TimelineFile) => {
-      const dc = dcRef.current;
-      if (!dc || dc.readyState !== 'open' || activeReceiveRef.current) return;
-      activeReceiveRef.current = { id: item.id, assembler: new ChunkAssembler() };
-      dc.send(encodeControl({ t: 'accept', id: item.id }));
-      patchFile(item.id, { status: 'active' });
+  const sendFiles = useCallback(
+    (files: File[]) => {
+      sendItems(files.map((file) => ({ file, path: [file.name] })), 'files');
     },
-    [patchFile],
+    [sendItems],
   );
 
-  const rejectIncoming = useCallback(
-    (item: TimelineFile) => {
+  const acceptBatch = useCallback(
+    (batchId: string, keys: string[], dir: FileSystemDirectoryHandle | null) => {
       const dc = dcRef.current;
-      if (!dc || dc.readyState !== 'open') return;
-      dc.send(encodeControl({ t: 'reject', id: item.id }));
-      patchFile(item.id, { status: 'canceled' });
+      const rt = batchesRef.current.get(batchId);
+      if (!dc || dc.readyState !== 'open' || !rt || rt.mine || keys.length === 0) return;
+      if (pullPlanRef.current) return; // 同一时刻只维持一个拉取计划
+      pullPlanRef.current = { batchId, queue: [...keys], dir, stripRoot: rt.kind === 'syncDir' };
+      patchBatch(batchId, { status: 'active' });
+      nextPull();
     },
-    [patchFile],
+    [nextPull, patchBatch],
+  );
+
+  const rejectBatch = useCallback(
+    (batchId: string) => {
+      const rt = batchesRef.current.get(batchId);
+      if (!rt || rt.mine) return;
+      sendFrame({ t: 'err', code: 403, msg: 'rejected', batchId });
+      patchBatch(batchId, { status: 'canceled' });
+    },
+    [patchBatch, sendFrame],
+  );
+
+  const cancelBatch = useCallback(
+    (batchId: string) => {
+      const rt = batchesRef.current.get(batchId);
+      if (!rt) return;
+      sendFrame({ t: 'cancel', batchId });
+      if (rt.mine) {
+        canceledBatchesRef.current.add(batchId);
+        pacedSenderRef.current?.cancel();
+        patchBatch(batchId, { status: 'canceled' });
+      } else {
+        pullPlanRef.current = null;
+        void abortCurrentReceive();
+        patchBatch(batchId, { status: 'canceled' });
+      }
+    },
+    [abortCurrentReceive, patchBatch, sendFrame],
+  );
+
+  const requestRemoteHash = useCallback(
+    (batchId: string, key: string): Promise<string> =>
+      new Promise<string>((resolve, reject) => {
+        const waiterKey = `${batchId}\u0000${key}`;
+        const timer = window.setTimeout(() => {
+          if (hashWaitersRef.current.delete(waiterKey)) {
+            reject(new ToolError({ zh: '等待对端文件哈希超时', en: 'Timed out waiting for the peer file hash' }));
+          }
+        }, HASH_WAIT_TIMEOUT_MS);
+        hashWaitersRef.current.set(waiterKey, (hash) => {
+          window.clearTimeout(timer);
+          resolve(hash);
+        });
+        sendFrame({ t: 'calcHash', batchId, key });
+      }),
+    [sendFrame],
+  );
+
+  /** 目录同步：选定本地目录后与远端清单 diff（快速 size+mtime / 精确内容哈希）。 */
+  const startSyncDiff = useCallback(
+    async (batchId: string, dir: FileSystemDirectoryHandle, mode: DiffMode) => {
+      const rt = batchesRef.current.get(batchId);
+      if (!rt || rt.mine || rt.kind !== 'syncDir') return;
+      patchBatch(batchId, { sync: { phase: 'diffing', mode, targetName: dir.name } });
+      try {
+        const localFlat = await flattenDirectory(dir);
+        const prefix = rt.root ? `${rt.root}/` : '';
+        const relToKey = new Map<string, string>();
+        const remote: Record<string, { size: number; lastModified: number }> = {};
+        for (const [key, entry] of rt.entries) {
+          const rel = prefix && key.startsWith(prefix) ? key.slice(prefix.length) : key;
+          relToKey.set(rel, key);
+          remote[rel] = { size: entry.size, lastModified: entry.lastModified };
+        }
+        syncsRef.current.set(batchId, { dir, localFlat, relToKey, mode });
+        const diff = await diffMaps(
+          remote,
+          localFlat,
+          mode,
+          async (rel) => {
+            const manifestKey = relToKey.get(rel) ?? rel;
+            const remoteHash = await requestRemoteHash(batchId, manifestKey);
+            const local = localFlat[rel];
+            const localHash = local ? await hashFile(await local.getFile(), rt.algo) : '';
+            return { remoteHash, localHash };
+          },
+          (done, total) => patchBatch(batchId, { sync: { phase: 'diffing', mode, targetName: dir.name, progress: [done, total] } }),
+        );
+        patchBatch(batchId, { sync: { phase: 'review', mode, targetName: dir.name, diff } });
+      } catch (caught) {
+        patchBatch(batchId, { sync: { phase: 'need-dir', mode } });
+        addSys(toToolError(caught).localized);
+      }
+    },
+    [addSys, patchBatch, requestRemoteHash],
+  );
+
+  /** 执行同步：删除桶回收 + 新增/更新桶走同一 pull 流水线写入目标目录。 */
+  const runSync = useCallback(
+    async (batchId: string, pullRels: string[], deleteRels: string[]) => {
+      const rt = batchesRef.current.get(batchId);
+      const sync = syncsRef.current.get(batchId);
+      if (!rt || !sync || rt.mine) return;
+      patchBatch(batchId, { sync: { phase: 'running', mode: sync.mode, targetName: sync.dir.name } });
+      const deleted: string[] = [];
+      for (const rel of deleteRels) {
+        try {
+          await removeLocalFile(sync.dir, rel);
+          deleted.push(rel);
+        } catch { /* 本地文件已被外部改动则跳过 */ }
+      }
+      if (deleted.length > 0) await cleanupEmptyDirs(sync.dir, deleted);
+      const manifestKeys = pullRels.map((rel) => sync.relToKey.get(rel) ?? rel);
+      if (manifestKeys.length > 0) {
+        acceptBatch(batchId, manifestKeys, sync.dir);
+      } else {
+        patchBatch(batchId, { status: 'done', sync: { phase: 'done', mode: sync.mode, targetName: sync.dir.name } });
+      }
+    },
+    [acceptBatch, patchBatch],
   );
 
   useEffect(() => {
@@ -692,6 +1208,7 @@ export function useDropConnection() {
     pairingMode,
     pairingNotice,
     diagnostics,
+    fsWritable: hasFsAccess(),
     setPeerIp: updatePeerIp,
     setStunEnabled: updateStunEnabled,
     startAsInitiator,
@@ -702,9 +1219,13 @@ export function useDropConnection() {
     cancelPairing,
     sendText,
     sendScan,
-    sendFile,
-    acceptIncoming,
-    rejectIncoming,
+    sendFiles,
+    sendItems,
+    acceptBatch,
+    rejectBatch,
+    cancelBatch,
+    startSyncDiff,
+    runSync,
   };
 }
 

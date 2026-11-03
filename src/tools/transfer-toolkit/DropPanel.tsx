@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MonitorSmartphone, ScanLine, Send } from 'lucide-react';
+import { FolderSync, FolderUp, MonitorSmartphone, ScanLine, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { shouldWarnHuge } from '@/lib/filedrop';
+import { flattenDirectory, pickDirectory, readDataTransfer } from '@/lib/fsaccess';
 import { DQX_PREFIX } from '@/lib/qr-transfer';
 import type { DqxSession } from '@/hooks/useDqxSession';
 import { useDropConnection } from './useDropConnection';
@@ -31,24 +32,71 @@ export default function DropPanel({ session }: DropPanelProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const pairCode = searchParams.get('pair');
   const attemptedPairRef = useRef('');
-  const [pendingHuge, setPendingHuge] = useState<File | null>(null);
+  const [pendingHuge, setPendingHuge] = useState<{ label: string; run: () => void } | null>(null);
   const [composer, setComposer] = useState('');
   const [scanMode, setScanMode] = useState(TOUCH_DEVICE);
   const [manualScan, setManualScan] = useState('');
   const [mismatch, setMismatch] = useState<{ sid: string; crc: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const fedRef = useRef<Set<string>>(new Set());
 
-  const deliverFile = (file: File) => {
-    if (shouldWarnHuge(file.size)) {
-      setPendingHuge(file);
+  const sendFilesGuarded = (label: string, files: File[]) => {
+    const total = files.reduce((sum, f) => sum + f.size, 0);
+    const run = () => conn.sendFiles(files);
+    if (shouldWarnHuge(total)) {
+      setPendingHuge({ label, run });
       return;
     }
-    conn.sendFile(file);
+    run();
   };
 
   const onFilesPicked = (files: FileList | File[]) => {
-    for (const file of Array.from(files)) deliverFile(file);
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    sendFilesGuarded(list.length === 1 ? list[0].name : t({ zh: `${list.length} 个文件`, en: `${list.length} files` }), list);
+  };
+
+  const onFolderPicked = (files: FileList) => {
+    const list = Array.from(files);
+    const entries = list.map((file) => {
+      const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath;
+      return { file, path: rel ? rel.split('/') : [file.name] };
+    });
+    if (entries.length === 0) return;
+    conn.sendItems(entries, 'dir');
+  };
+
+  const [syncBusy, setSyncBusy] = useState(false);
+  const sendSyncDir = async () => {
+    const dir = await pickDirectory();
+    if (!dir) return;
+    setSyncBusy(true);
+    try {
+      const flat = await flattenDirectory(dir);
+      const payload: { file: File; path: string[] }[] = [];
+      for (const [key, entry] of Object.entries(flat)) {
+        payload.push({ file: await entry.getFile(), path: [dir.name, ...key.split('/')] });
+      }
+      conn.sendItems(payload, 'syncDir');
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const handleDrop = async (event: React.DragEvent) => {
+    event.preventDefault();
+    const entries = await readDataTransfer(event.dataTransfer);
+    if (entries.length === 0) return;
+    const flatOnly = entries.every((entry) => entry.path.length === 1);
+    if (flatOnly) {
+      sendFilesGuarded(
+        entries.length === 1 ? entries[0].file.name : t({ zh: `${entries.length} 个文件`, en: `${entries.length} files` }),
+        entries.map((entry) => entry.file),
+      );
+    } else {
+      conn.sendItems(entries, 'dir');
+    }
   };
 
   const connected = conn.phase === 'connected';
@@ -140,7 +188,7 @@ export default function DropPanel({ session }: DropPanelProps) {
           subtitle={conn.peerLabel ? t({ zh: `已连接：${conn.peerLabel}`, en: `Connected: ${conn.peerLabel}` }) : t({ zh: '等待连接…', en: 'Waiting for connection…' })}
           actions={<EndSessionButton onClick={conn.cancelPairing} />}
         >
-          <Timeline items={conn.items} onAccept={conn.acceptIncoming} onReject={conn.rejectIncoming} />
+          <Timeline items={conn.items} conn={conn} />
         </Panel>
       ) : null}
 
@@ -149,7 +197,7 @@ export default function DropPanel({ session }: DropPanelProps) {
           {pendingHuge ? (
             <ToolAlert
               tone="warning"
-              title={t({ zh: `「${pendingHuge.name}」超过 1GB`, en: `"${pendingHuge.name}" is over 1GB` })}
+              title={t({ zh: `「${pendingHuge.label}」合计超过 1GB`, en: `"${pendingHuge.label}" totals over 1GB` })}
               hint={{ zh: '手机端内存有限，超大文件可能传输失败。确认仍要发送？', en: 'Phones have limited memory; very large files may fail. Send anyway?' }}
             >
               <div className="mt-2 flex gap-2">
@@ -157,7 +205,7 @@ export default function DropPanel({ session }: DropPanelProps) {
                   variant="primary"
                   size="sm"
                   onClick={() => {
-                    conn.sendFile(pendingHuge);
+                    pendingHuge.run();
                     setPendingHuge(null);
                   }}
                 >
@@ -169,6 +217,11 @@ export default function DropPanel({ session }: DropPanelProps) {
               </div>
             </ToolAlert>
           ) : null}
+          <div
+            className="space-y-2 rounded-card border border-dashed border-line p-2"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => void handleDrop(event)}
+          >
           <Textarea
             value={composer}
             onChange={(event) => setComposer(event.target.value)}
@@ -221,6 +274,41 @@ export default function DropPanel({ session }: DropPanelProps) {
               <Send className="h-3.5 w-3.5" aria-hidden="true" />
               {t({ zh: '发送', en: 'Send' })}
             </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={folderInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                if (event.target.files) onFolderPicked(event.target.files);
+                event.target.value = '';
+              }}
+              {...{ webkitdirectory: '', directory: '' }}
+            />
+            <Button variant="secondary" size="sm" onClick={() => folderInputRef.current?.click()}>
+              <FolderUp className="h-3.5 w-3.5" aria-hidden="true" />
+              {t({ zh: '选择文件夹', en: 'Choose folder' })}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void sendSyncDir()}
+              disabled={!conn.fsWritable || syncBusy}
+              title={
+                conn.fsWritable
+                  ? t({ zh: '选取本机文件夹，比对差异后增量同步', en: 'Pick a local folder and sync only the differences' })
+                  : t({ zh: '需要 HTTPS 且浏览器支持目录读写', en: 'Requires HTTPS and browser directory access' })
+              }
+            >
+              <FolderSync className="h-3.5 w-3.5" aria-hidden="true" />
+              {syncBusy ? t({ zh: '读取目录…', en: 'Reading folder…' }) : t({ zh: '发送并同步文件夹', en: 'Sync folder' })}
+            </Button>
+            <p className="text-[11px] text-ink-3">
+              {t({ zh: '可把文件夹直接拖进上方虚线区域', en: 'Drop a folder onto the dashed area above' })}
+            </p>
+          </div>
           </div>
 
           <div className="space-y-3 border-t border-dashed border-line pt-3">

@@ -4,9 +4,14 @@ export const LAN_SIGNAL_PATH = '/__lan-signal';
 export const LAN_INFO_PATH = '/api/lan-info';
 
 export function makePairCode(): string {
+  // 每个 Uint32 转 36 进制不足 7 位，循环补齐后才能稳定切出 18 位
+  let out = '';
   const values = new Uint32Array(3);
-  crypto.getRandomValues(values);
-  return Array.from(values, (value) => value.toString(36)).join('').slice(0, 18);
+  while (out.length < 18) {
+    crypto.getRandomValues(values);
+    out += Array.from(values, (value) => value.toString(36)).join('');
+  }
+  return out.slice(0, 18);
 }
 
 export function buildJoinUrl(base: string, room: string): string {
