@@ -10,6 +10,8 @@ import { CopyButton } from '@/components/tool/ToolActions';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { type Localized } from '@/i18n/locale';
+import { toToolError } from '@/lib/errors';
+import { getSignalBase, setSignalBase } from '@/lib/lanSignal';
 import { formatBytes } from '@/lib/number';
 import { buildQrSvg, createQrMatrix, QR_DEFAULT_STYLE } from '@/lib/qr';
 import { cn } from '@/lib/cn';
@@ -174,13 +176,24 @@ function AdvancedPairing({ conn }: { conn: DropConnection }) {
   );
 }
 
-/** 取件码依赖内网信令服务；静态托管或信令故障时，离线 DTX 配对收在这个折叠区里备用。 */
+/** 取件码依赖信令服务；这里可把信令指向自建/中继地址（如 Cloudflare relay），失败时再用折叠的离线 DTX 配对。 */
 function OfflinePairing({ conn }: { conn: DropConnection }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [signalInput, setSignalInput] = useState(() => getSignalBase());
+  const [signalError, setSignalError] = useState<Localized | null>(null);
   useEffect(() => {
     if (conn.pairingMode === 'manual') setOpen(true);
   }, [conn.pairingMode]);
+
+  const saveSignalBase = () => {
+    try {
+      setSignalBase(signalInput);
+      setSignalError(null);
+    } catch (caught) {
+      setSignalError(toToolError(caught).localized);
+    }
+  };
 
   return (
     <div className="rounded-xl border border-line bg-surface-2/40 px-3.5 py-2.5">
@@ -190,15 +203,38 @@ function OfflinePairing({ conn }: { conn: DropConnection }) {
         onClick={() => setOpen((current) => !current)}
         className="flex w-full items-center justify-between gap-2 text-left text-xs font-medium text-ink-2 transition-colors hover:text-ink"
       >
-        {t({ zh: '高级 · 离线配对（没有内网信令服务时用）', en: 'Advanced · Offline pairing (when LAN signaling is unavailable)' })}
+        {t({ zh: '高级 · 信令地址 / 离线配对', en: 'Advanced · Signaling address / offline pairing' })}
         <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-ink-3 transition-transform duration-200', open && 'rotate-180')} aria-hidden="true" />
       </button>
       {open ? (
         <div className="mt-3 space-y-3">
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-2 text-xs text-ink-3">
+              {t({ zh: '信令地址', en: 'Signaling URL' })}
+              <Input
+                value={signalInput}
+                onChange={(event) => setSignalInput(event.target.value)}
+                placeholder="https://lan-relay.example.workers.dev"
+                autoComplete="off"
+                aria-label={t({ zh: '信令地址', en: 'Signaling URL' })}
+                className="h-8 min-w-0 flex-1 font-mono text-xs"
+              />
+              <Button variant="secondary" size="sm" onClick={saveSignalBase}>
+                {t({ zh: '保存', en: 'Save' })}
+              </Button>
+            </label>
+            {signalError ? <p className="text-[11px] text-danger">{t(signalError)}</p> : null}
+            <p className="text-[11px] leading-5 text-ink-3">
+              {t({
+                zh: '留空 = 跟随本页地址（npm run start:lan 的局域网用法）；填写后取件码走该中继信令配对，文件仍点对点。HTTPS 页面只能连 wss/https 地址。',
+                en: 'Empty = same origin as this page (the npm run start:lan LAN setup). Any URL here routes pickup-code signaling through that relay; files still go peer-to-peer. HTTPS pages can only reach wss/https relays.',
+              })}
+            </p>
+          </div>
           <p className="text-[11px] leading-5 text-ink-3">
             {t({
-              zh: '取件码需要 npm run start:lan 启动的局域网信令。静态托管或信令不可用时改走这里：一方发起、把连接信息交给对方，对方回传回执后建立连接（DTX 扫码 / 粘贴）。',
-              en: 'Pickup codes need the LAN signaling from npm run start:lan. On static hosting or if signaling fails, use this instead: one side starts, hands its connection info over, and the peer replies (DTX scan / paste).',
+              zh: '离线配对：没有信令服务时，一方发起、把连接信息交给对方，对方回传回执后建立连接（DTX 扫码 / 粘贴）。',
+              en: 'Offline pairing: with no signaling server, one side starts, hands its connection info over, and the peer replies (DTX scan / paste).',
             })}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -221,8 +257,12 @@ function OfflinePairing({ conn }: { conn: DropConnection }) {
 export function PairingFlow({ conn }: { conn: DropConnection }) {
   const { t } = useI18n();
   const [codeInput, setCodeInput] = useState('');
+  const [passInput, setPassInput] = useState('');
   useEffect(() => {
-    if (conn.phase === 'entering-code') setCodeInput('');
+    if (conn.phase === 'entering-code') {
+      setCodeInput('');
+      setPassInput('');
+    }
   }, [conn.phase]);
   if (conn.phase === 'connected') return null;
 
@@ -255,14 +295,14 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
       {conn.phase === 'entering-code' ? (
         <Panel
           title={t({ zh: '输入对方的取件码', en: 'Enter the peer\'s pickup code' })}
-          subtitle={t({ zh: '6 位数字，显示在对方屏幕中央', en: 'Six digits shown in the middle of the peer\'s screen' })}
+          subtitle={t({ zh: '取件码 6 位数字 + 口令 4 位字符，都显示在对方屏幕上', en: 'The 6-digit code and 4-character passphrase are both shown on the peer\'s screen' })}
           bodyClassName="space-y-3"
         >
           <form
             className="flex flex-wrap items-center gap-2"
             onSubmit={(event) => {
               event.preventDefault();
-              void conn.joinByCode(codeInput);
+              void conn.joinByCode(codeInput, passInput);
             }}
           >
             <Input
@@ -274,7 +314,15 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
               aria-label={t({ zh: '取件码', en: 'Pickup code' })}
               className="h-11 w-40 text-center font-mono text-xl tracking-[0.18em]"
             />
-            <Button variant="primary" type="submit" disabled={codeInput.length !== 6}>
+            <Input
+              value={passInput}
+              onChange={(event) => setPassInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4))}
+              autoComplete="off"
+              placeholder="口令"
+              aria-label={t({ zh: '房间口令', en: 'Room passphrase' })}
+              className="h-11 w-28 text-center font-mono text-xl tracking-[0.18em]"
+            />
+            <Button variant="primary" type="submit" disabled={codeInput.length !== 6 || passInput.length !== 4}>
               {t({ zh: '接入', en: 'Join' })}
             </Button>
             <Button variant="ghost" size="sm" type="button" onClick={conn.cancelPairing}>
@@ -293,14 +341,16 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
       {conn.phase === 'waiting-phone' ? (
         <Panel
           title={t({ zh: '等待对方接入', en: 'Waiting for the peer' })}
-          subtitle={t({ zh: '对方输入下面 6 位取件码，或扫码打开链接，均可自动建立连接', en: 'The peer can type this 6-digit pickup code, or scan the QR, to connect automatically' })}
+          subtitle={t({ zh: '对方输入下面的取件码 + 口令，或扫码打开链接，均可自动建立连接', en: 'The peer can type the code + passphrase below, or scan the QR, to connect automatically' })}
           bodyClassName="p-4"
         >
           <div className="space-y-3">
             <div className="flex flex-col items-center gap-1.5">
               <p className="text-[11px] text-ink-3">{t({ zh: '取件码', en: 'Pickup code' })}</p>
               <p className="font-mono text-5xl font-semibold tracking-[0.22em] text-ink">{conn.roomCode}</p>
-              <CopyButton text={conn.roomCode} label={{ zh: '复制取件码', en: 'Copy pickup code' }} />
+              <p className="mt-1 text-[11px] text-ink-3">{t({ zh: '房间口令', en: 'Room passphrase' })}</p>
+              <p className="font-mono text-2xl font-semibold tracking-[0.3em] text-ink">{conn.roomPass}</p>
+              <CopyButton text={`${conn.roomCode} ${conn.roomPass}`} label={{ zh: '复制取件码和口令', en: 'Copy code & passphrase' }} />
             </div>
             {conn.pendingBatch ? (
               <Badge tone="accent" className="mx-auto block w-fit">
@@ -312,7 +362,7 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
             ) : null}
             <QrCard
               signal={conn.mySignal}
-              hint={{ zh: '手机扫码免输入；两台电脑则把取件码念给对方输入', en: 'Phones can scan instead of typing; on two computers just read the code out' }}
+              hint={{ zh: '手机扫码免输入；两台电脑则把取件码和口令念给对方输入', en: 'Phones can scan instead of typing; on two computers just read out the code and passphrase' }}
               copyLabel={{ zh: '复制配对链接', en: 'Copy pairing link' }}
             />
             <div className="flex flex-wrap justify-center gap-2">

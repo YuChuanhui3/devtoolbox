@@ -31,7 +31,7 @@ import {
   type SignalEnvelope,
 } from '@/lib/sdp';
 import { toToolError, ToolError } from '@/lib/errors';
-import { buildJoinUrl, isPickupCode, makePickupCode, openLanSocket, resolveLanBase } from '@/lib/lanSignal';
+import { buildJoinUrl, getSignalBase, isPickupCode, isRoomPass, makePickupCode, makeRoomPass, normalizeRoomPass, openLanSocket, resolveSignalTargets } from '@/lib/lanSignal';
 import {
   cleanupEmptyDirs,
   flattenDirectory,
@@ -208,7 +208,7 @@ function emptyHash(algo: HashAlgo): string {
 }
 
 /** 抢占 6 位取件码房间：碰撞时换新码重试，直到服务端确认 'created'。 */
-function claimPickupRoom(socket: WebSocket): Promise<string> {
+function claimPickupRoom(socket: WebSocket, pass: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const fail = (error: unknown) => {
       window.clearTimeout(timer);
@@ -233,7 +233,7 @@ function claimPickupRoom(socket: WebSocket): Promise<string> {
           else fail(new ToolError({ zh: '取件码创建失败，请重新发起', en: 'Failed to claim a pickup code. Start again.' }));
         }
       };
-      socket.send(JSON.stringify({ type: 'create', room: code }));
+      socket.send(JSON.stringify({ type: 'create', room: code, pass }));
     };
     const timer = window.setTimeout(
       () => fail(new ToolError({ zh: '内网信令没有响应，请重新发起', en: 'The LAN signaling server did not respond. Start again.' })),
@@ -262,6 +262,7 @@ export function useDropConnection() {
   const [pairingNotice, setPairingNotice] = useState<Localized>('');
   const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>(EMPTY_DIAGNOSTICS);
   const [roomCode, setRoomCode] = useState('');
+  const [roomPass, setRoomPass] = useState('');
   const [pendingBatch, setPendingBatch] = useState<PendingBatchSummary | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -673,6 +674,7 @@ export function useDropConnection() {
       pcRef.current = null;
       roleRef.current = null;
       setRoomCode('');
+      setRoomPass('');
       pacedSenderRef.current?.cancel();
       pacedSenderRef.current = null;
       void receiveRef.current?.sink.abort().catch(() => undefined);
@@ -786,6 +788,7 @@ export function useDropConnection() {
     closeSignaling();
     setError(null);
     setRoomCode('');
+    setRoomPass('');
     setPairingMode('manual');
     setDiagnostics((current) => ({ ...current, states: [] }));
     try {
@@ -810,13 +813,15 @@ export function useDropConnection() {
     setPhase('connecting');
     setDiagnostics((current) => ({ ...current, states: [] }));
     try {
-      const base = await resolveLanBase();
-      const socket = await openLanSocket(base);
+      const { pageBase, signalBase } = await resolveSignalTargets();
+      const pass = makeRoomPass();
+      const socket = await openLanSocket(signalBase);
       closeSignaling();
       signalRef.current = socket;
-      const room = await claimPickupRoom(socket);
+      const room = await claimPickupRoom(socket, pass);
       setRoomCode(room);
-      setMySignal(buildJoinUrl(base, room));
+      setRoomPass(pass);
+      setMySignal(buildJoinUrl(pageBase, room, pass, signalBase !== pageBase ? signalBase : undefined));
       setPhase('waiting-phone');
 
       const pc = createPeer();
@@ -871,13 +876,13 @@ export function useDropConnection() {
     }
   }, [bindChannel, closeSignaling, createPeer, gatherLocal, teardown]);
 
-  const joinViaLink = useCallback(async (room: string) => {
+  const joinViaLink = useCallback(async (room: string, pass?: string, sigOverride?: string) => {
     setError(null);
     setPairingNotice('');
     setPairingMode('lan');
     setPhase('connecting');
     try {
-      const base = new URL(window.location.href).origin;
+      const base = sigOverride || getSignalBase() || new URL(window.location.href).origin;
       const socket = await openLanSocket(base);
       closeSignaling();
       signalRef.current = socket;
@@ -886,7 +891,7 @@ export function useDropConnection() {
       pc.ondatachannel = (event) => bindChannel(event.channel);
       socket.onmessage = (event) => {
         void (async () => {
-          const message = JSON.parse(String(event.data)) as { type?: string; payload?: string };
+          const message = JSON.parse(String(event.data)) as { type?: string; payload?: string; reason?: string };
           if (message.type === 'signal' && message.payload) {
             const decoded = await decodeSignal(message.payload);
             const override = peerIpRef.current.trim();
@@ -902,8 +907,12 @@ export function useDropConnection() {
           }
           if (message.type === 'error' || message.type === 'closed') {
             throw new ToolError(
-              { zh: '取件码无效、已被使用或已过期', en: 'The pickup code is invalid, already used, or expired' },
-              { zh: '请让对方重新生成取件码；手机也可以重新扫码。', en: 'Ask the peer to generate a new pickup code; phones can rescan the QR.' },
+              message.type === 'error' && message.reason === 'bad-pass'
+                ? { zh: '房间口令不正确', en: 'Wrong room passphrase' }
+                : { zh: '取件码无效、已被使用或已过期', en: 'The pickup code is invalid, already used, or expired' },
+              message.type === 'error' && message.reason === 'bad-pass'
+                ? { zh: '口令是发送端取件码下方的 4 位字符，注意区分 0/O、1/I 以外的相似字母。', en: 'The passphrase is the 4 characters shown under the peer\'s pickup code.' }
+                : { zh: '请让对方重新生成取件码；手机也可以重新扫码。', en: 'Ask the peer to generate a new pickup code; phones can rescan the QR.' },
             );
           }
         })().catch((caught) => {
@@ -919,7 +928,7 @@ export function useDropConnection() {
           teardown();
         }
       };
-      socket.send(JSON.stringify({ type: 'join', room }));
+      socket.send(JSON.stringify({ type: 'join', room, pass: normalizeRoomPass(pass ?? '') }));
     } catch (caught) {
       setError({
         message: toToolError(caught).localized,
@@ -994,7 +1003,7 @@ export function useDropConnection() {
   }, [closeSignaling]);
 
   const joinByCode = useCallback(
-    async (code: string) => {
+    async (code: string, pass?: string) => {
       const trimmed = code.trim();
       if (!isPickupCode(trimmed)) {
         setError({
@@ -1003,7 +1012,14 @@ export function useDropConnection() {
         });
         return;
       }
-      await joinViaLink(trimmed);
+      if (!isRoomPass(pass ?? '')) {
+        setError({
+          message: { zh: '房间口令应为 4 位字符', en: 'A room passphrase is 4 characters' },
+          hint: { zh: '口令显示在发送端取件码的下方。', en: 'The passphrase is shown under the sender\'s pickup code.' },
+        });
+        return;
+      }
+      await joinViaLink(trimmed, normalizeRoomPass(pass ?? ''));
     },
     [joinViaLink],
   );
@@ -1322,6 +1338,7 @@ export function useDropConnection() {
     pairingNotice,
     diagnostics,
     roomCode,
+    roomPass,
     pendingBatch,
     fsWritable: hasFsAccess(),
     setPeerIp: updatePeerIp,

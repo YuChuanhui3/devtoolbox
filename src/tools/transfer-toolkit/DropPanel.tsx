@@ -116,19 +116,21 @@ export default function DropPanel({ session }: DropPanelProps) {
   const joinByCode = conn.joinByCode;
 
   // 手机扫配对二维码后带着一次性房间号打开本页，自动完成 answer，无需电脑再扫回执。
+  const passParam = searchParams.get('pp');
+  const sigParam = searchParams.get('sig');
   useEffect(() => {
     if (!pairCode || attemptedPairRef.current === pairCode) return;
     attemptedPairRef.current = pairCode;
-    void joinViaLink(pairCode);
-  }, [pairCode, joinViaLink]);
+    void joinViaLink(pairCode, passParam ?? undefined, sigParam ?? undefined);
+  }, [pairCode, passParam, sigParam, joinViaLink]);
 
-  // ?code=123456 深链：把取件码直接分享给对方，打开即入房。
+  // ?code=123456&pp=AB23 深链：把取件码+口令直接分享给对方，打开即入房。
   const codeParam = searchParams.get('code');
   useEffect(() => {
     if (!codeParam || attemptedPairRef.current === codeParam) return;
     attemptedPairRef.current = codeParam;
-    void joinByCode(codeParam);
-  }, [codeParam, joinByCode]);
+    void joinByCode(codeParam, passParam ?? '');
+  }, [codeParam, passParam, joinByCode]);
 
   useEffect(() => {
     if (!connected) return;
@@ -136,6 +138,8 @@ export default function DropPanel({ session }: DropPanelProps) {
     if (!next.has('pair') && !next.has('code')) return;
     next.delete('pair');
     next.delete('code');
+    next.delete('pp');
+    next.delete('sig');
     setSearchParams(next, { replace: true });
   }, [connected, searchParams, setSearchParams]);
 

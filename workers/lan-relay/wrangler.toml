@@ -1,0 +1,12 @@
+name = "lan-relay"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# 取件码信令中继：所有房间共用一个 Durable Object（与 scripts/lan-signaling.mjs 的进程内 Map 对等）。
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "RelayHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RelayHub"]

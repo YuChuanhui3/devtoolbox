@@ -74,13 +74,14 @@ export function attachLanSignaling(server) {
       }
 
       if (message.type === 'create') {
+        const pass = typeof message.pass === 'string' ? message.pass.slice(0, 16).toUpperCase() : '';
         if (joinedRoom || !ROOM_PATTERN.test(message.room ?? '') || rooms.size >= MAX_ROOMS || rooms.has(message.room)) {
           send(socket, { type: 'error', reason: 'room-unavailable' });
           return;
         }
         joinedRoom = message.room;
         role = 'host';
-        const room = { host: socket, guest: null, offer: null, timer: null };
+        const room = { host: socket, guest: null, offer: null, pass, timer: null };
         room.timer = setTimeout(() => closeRoom(joinedRoom, 'expired'), ROOM_TTL_MS);
         rooms.set(joinedRoom, room);
         send(socket, { type: 'created', room: joinedRoom });
@@ -91,6 +92,12 @@ export function attachLanSignaling(server) {
         const room = rooms.get(message.room);
         if (joinedRoom || !room || room.guest || room.host?.readyState !== 1) {
           send(socket, { type: 'error', reason: 'room-not-found' });
+          return;
+        }
+        // 口令不符与房间不存在分开报错，让输入端知道该改码还是改口令。
+        if (room.pass && String(message.pass ?? '').trim().toUpperCase() !== room.pass) {
+          send(socket, { type: 'error', reason: 'bad-pass' });
+          socket.close();
           return;
         }
         joinedRoom = message.room;
