@@ -31,7 +31,7 @@ import {
   type SignalEnvelope,
 } from '@/lib/sdp';
 import { toToolError, ToolError } from '@/lib/errors';
-import { buildJoinUrl, makePairCode, openLanSocket, resolveLanBase } from '@/lib/lanSignal';
+import { buildJoinUrl, isPickupCode, makePickupCode, openLanSocket, resolveLanBase } from '@/lib/lanSignal';
 import {
   cleanupEmptyDirs,
   flattenDirectory,
@@ -51,6 +51,7 @@ export type Phase =
   | 'idle'
   | 'waiting-answer'
   | 'waiting-phone'
+  | 'entering-code'
   | 'scanning-offer'
   | 'waiting-scan'
   | 'connecting'
@@ -206,6 +207,48 @@ function emptyHash(algo: HashAlgo): string {
   return algo === 'md5' ? EMPTY_MD5 : EMPTY_SHA256;
 }
 
+/** 抢占 6 位取件码房间：碰撞时换新码重试，直到服务端确认 'created'。 */
+function claimPickupRoom(socket: WebSocket): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fail = (error: unknown) => {
+      window.clearTimeout(timer);
+      socket.onmessage = null;
+      reject(error);
+    };
+    const sendCreate = (attempts: number) => {
+      const code = makePickupCode();
+      socket.onmessage = (event) => {
+        let message: { type?: string; reason?: string };
+        try {
+          message = JSON.parse(String(event.data));
+        } catch {
+          return;
+        }
+        if (message.type === 'created') {
+          window.clearTimeout(timer);
+          socket.onmessage = null;
+          resolve(code);
+        } else if (message.type === 'error') {
+          if (message.reason === 'room-unavailable' && attempts < 10) sendCreate(attempts + 1);
+          else fail(new ToolError({ zh: '取件码创建失败，请重新发起', en: 'Failed to claim a pickup code. Start again.' }));
+        }
+      };
+      socket.send(JSON.stringify({ type: 'create', room: code }));
+    };
+    const timer = window.setTimeout(
+      () => fail(new ToolError({ zh: '内网信令没有响应，请重新发起', en: 'The LAN signaling server did not respond. Start again.' })),
+      4000,
+    );
+    sendCreate(0);
+  });
+}
+
+export interface PendingBatchSummary {
+  count: number;
+  totalSize: number;
+  kind: BatchKind;
+}
+
 export function useDropConnection() {
   const { locale } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
@@ -218,6 +261,8 @@ export function useDropConnection() {
   const [pairingMode, setPairingMode] = useState<'lan' | 'manual'>('lan');
   const [pairingNotice, setPairingNotice] = useState<Localized>('');
   const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>(EMPTY_DIAGNOSTICS);
+  const [roomCode, setRoomCode] = useState('');
+  const [pendingBatch, setPendingBatch] = useState<PendingBatchSummary | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
@@ -235,6 +280,8 @@ export function useDropConnection() {
   const hashWaitersRef = useRef<Map<string, (hash: string) => void>>(new Map());
   const canceledBatchesRef = useRef<Set<string>>(new Set());
   const objectUrlsRef = useRef<Set<string>>(new Set());
+  const pendingSendRef = useRef<{ payload: { file: File; path: string[] }[]; kind: BatchKind } | null>(null);
+  const sendItemsRef = useRef<(payload: { file: File; path: string[] }[], kind: BatchKind) => void>(() => {});
 
   const revokeObjectUrls = useCallback(() => {
     for (const url of objectUrlsRef.current) URL.revokeObjectURL(url);
@@ -625,6 +672,7 @@ export function useDropConnection() {
       pcRef.current?.close();
       pcRef.current = null;
       roleRef.current = null;
+      setRoomCode('');
       pacedSenderRef.current?.cancel();
       pacedSenderRef.current = null;
       void receiveRef.current?.sink.abort().catch(() => undefined);
@@ -666,6 +714,13 @@ export function useDropConnection() {
         setPhase('connected');
         channel.send(encodeControl({ t: 'hello', agent: agentLabel(locale), v: PROTOCOL_VERSION }));
         addSys({ zh: '连接已建立，可以互传内容', en: 'Connected. You can exchange content now.' });
+        const pending = pendingSendRef.current;
+        if (pending) {
+          pendingSendRef.current = null;
+          setPendingBatch(null);
+          sendItemsRef.current?.(pending.payload, pending.kind);
+          addSys({ zh: '已把暂存的文件清单送达对方，等待对方选择接收', en: 'The staged manifest was delivered; waiting for the peer to choose what to receive' });
+        }
       };
       channel.onclose = () => teardown({ zh: '连接已关闭', en: 'Connection closed' });
       channel.onmessage = (event: MessageEvent) => {
@@ -730,6 +785,7 @@ export function useDropConnection() {
   const startManualPairing = useCallback(async () => {
     closeSignaling();
     setError(null);
+    setRoomCode('');
     setPairingMode('manual');
     setDiagnostics((current) => ({ ...current, states: [] }));
     try {
@@ -758,8 +814,8 @@ export function useDropConnection() {
       const socket = await openLanSocket(base);
       closeSignaling();
       signalRef.current = socket;
-      const room = makePairCode();
-      socket.send(JSON.stringify({ type: 'create', room }));
+      const room = await claimPickupRoom(socket);
+      setRoomCode(room);
       setMySignal(buildJoinUrl(base, room));
       setPhase('waiting-phone');
 
@@ -770,7 +826,7 @@ export function useDropConnection() {
         void (async () => {
           const message = JSON.parse(String(event.data)) as { type?: string; payload?: string; reason?: string };
           if (message.type === 'peer-joined') {
-            setPairingNotice({ zh: '手机已打开配对链接，正在自动建立连接…', en: 'The phone opened the pairing link. Connecting automatically…' });
+            setPairingNotice({ zh: '对方已接入取件码，正在自动建立连接…', en: 'The peer joined with your pickup code. Connecting automatically…' });
           }
           if (message.type === 'signal' && message.payload) {
             const decoded = await decodeSignal(message.payload);
@@ -802,14 +858,18 @@ export function useDropConnection() {
       const signal = await encodeSignal(await gatherLocal(pc));
       socket.send(JSON.stringify({ type: 'signal', payload: signal }));
     } catch {
-      // 静态托管没有 WebSocket 信令：保留原来的双向 SDP 配对，不让功能直接不可用。
-      setPairingNotice({
-        zh: '当前部署未启用内网信令，已切换为离线配对。使用 npm run start:lan 部署可实现只扫一次。',
-        en: 'LAN signaling is not enabled on this deployment, so offline pairing is used. Deploy with npm run start:lan for one-scan pairing.',
+      // 取件码依赖内网信令服务。失败时明确报错回到 idle，离线配对由用户在「高级」区自行发起。
+      teardown();
+      setPhase('idle');
+      setError({
+        message: { zh: '内网信令服务连不上，取件码不可用', en: 'Cannot reach the LAN signaling service, so pickup codes are unavailable' },
+        hint: {
+          zh: '取件码需要 npm run dev:lan 或 npm run start:lan 启动的服务，并用局域网 IP 打开本页；静态托管请在下方「高级 · 离线配对」手动配对。',
+          en: 'Pickup codes need the server from npm run dev:lan or npm run start:lan, opened via this machine\'s LAN IP. On static hosting, use "Advanced · Offline pairing" below.',
+        },
       });
-      await startManualPairing();
     }
-  }, [bindChannel, closeSignaling, createPeer, gatherLocal, startManualPairing, teardown]);
+  }, [bindChannel, closeSignaling, createPeer, gatherLocal, teardown]);
 
   const joinViaLink = useCallback(async (room: string) => {
     setError(null);
@@ -842,8 +902,8 @@ export function useDropConnection() {
           }
           if (message.type === 'error' || message.type === 'closed') {
             throw new ToolError(
-              { zh: '配对链接无效或已过期', en: 'This pairing link is invalid or expired' },
-              { zh: '请让电脑重新发起配对，再扫新的二维码。', en: 'Ask the computer to start pairing again, then scan the new QR code.' },
+              { zh: '取件码无效、已被使用或已过期', en: 'The pickup code is invalid, already used, or expired' },
+              { zh: '请让对方重新生成取件码；手机也可以重新扫码。', en: 'Ask the peer to generate a new pickup code; phones can rescan the QR.' },
             );
           }
         })().catch((caught) => {
@@ -925,6 +985,29 @@ export function useDropConnection() {
     setPhase('scanning-offer');
   }, [closeSignaling, createPeer]);
 
+  /** 输入取件码接入：先切到输入面板，提交时再真正入房。 */
+  const startCodeJoin = useCallback(() => {
+    closeSignaling();
+    setError(null);
+    setPairingMode('lan');
+    setPhase('entering-code');
+  }, [closeSignaling]);
+
+  const joinByCode = useCallback(
+    async (code: string) => {
+      const trimmed = code.trim();
+      if (!isPickupCode(trimmed)) {
+        setError({
+          message: { zh: '取件码应为 6 位数字', en: 'A pickup code is 6 digits' },
+          hint: { zh: '请核对发送端屏幕上显示的取件码。', en: 'Double-check the code shown on the sender\'s screen.' },
+        });
+        return;
+      }
+      await joinViaLink(trimmed);
+    },
+    [joinViaLink],
+  );
+
   // 回调里要读到最新值，不能被 render 闭包冻住
   const updatePeerIp = useCallback((value: string) => {
     peerIpRef.current = value;
@@ -974,13 +1057,36 @@ export function useDropConnection() {
   /** 发送一组条目：kind 决定接收端的呈现与流程（散文件 / 目录 / 目录同步）。 */
   const sendItems = useCallback(
     (payload: { file: File; path: string[] }[], kind: BatchKind) => {
-      const dc = dcRef.current;
-      if (!dc || dc.readyState !== 'open' || payload.length === 0) return;
-      if (payload.length > MANIFEST_MAX_ENTRIES) {
+      if (payload.length === 0) return;
+      const tooMany = () =>
         addSys({
           zh: `一批最多 ${MANIFEST_MAX_ENTRIES} 个文件，请拆分后再发送`,
           en: `Up to ${MANIFEST_MAX_ENTRIES} files per batch. Split and send again.`,
         });
+      const dc = dcRef.current;
+      if (!dc || dc.readyState !== 'open') {
+        // FastSend 式「先选后发」：未连接时暂存，通道打开自动送达清单
+        if (pendingSendRef.current) {
+          addSys({
+            zh: '已有一批暂存内容在等待连接，这批送达后再接着准备',
+            en: 'A staged batch is already waiting for the connection. Prep the next one after it ships.',
+          });
+          return;
+        }
+        if (payload.length > MANIFEST_MAX_ENTRIES) {
+          tooMany();
+          return;
+        }
+        pendingSendRef.current = { payload, kind };
+        setPendingBatch({ count: payload.length, totalSize: payload.reduce((sum, e) => sum + e.file.size, 0), kind });
+        addSys({
+          zh: `已暂存 ${payload.length} 项，连接建立后自动送达`,
+          en: `Staged ${payload.length} item(s); they ship automatically once connected.`,
+        });
+        return;
+      }
+      if (payload.length > MANIFEST_MAX_ENTRIES) {
+        tooMany();
         return;
       }
       const batchId = nextId();
@@ -1053,6 +1159,13 @@ export function useDropConnection() {
     },
     [addSys],
   );
+
+  sendItemsRef.current = sendItems;
+
+  const clearPendingBatch = useCallback(() => {
+    pendingSendRef.current = null;
+    setPendingBatch(null);
+  }, []);
 
   const sendFiles = useCallback(
     (files: File[]) => {
@@ -1208,15 +1321,20 @@ export function useDropConnection() {
     pairingMode,
     pairingNotice,
     diagnostics,
+    roomCode,
+    pendingBatch,
     fsWritable: hasFsAccess(),
     setPeerIp: updatePeerIp,
     setStunEnabled: updateStunEnabled,
     startAsInitiator,
     startManualPairing,
     startAsJoiner,
+    startCodeJoin,
+    joinByCode,
     joinViaLink,
     consumeSignal,
     cancelPairing,
+    clearPendingBatch,
     sendText,
     sendScan,
     sendFiles,

@@ -6,7 +6,8 @@ export const LAN_INFO_PATH = '/api/lan-info';
 
 const ROOM_TTL_MS = 5 * 60 * 1000;
 const MAX_ROOMS = 100;
-const ROOM_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
+// 6 位数字取件码（FastSend 式）与 18 位链接房间号都要能通过
+const ROOM_PATTERN = /^[A-Za-z0-9_-]{6,64}$/;
 
 export function lanAddresses() {
   const addresses = [];

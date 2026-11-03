@@ -10,6 +10,7 @@ import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { shouldWarnHuge } from '@/lib/filedrop';
 import { flattenDirectory, pickDirectory, readDataTransfer } from '@/lib/fsaccess';
+import { formatBytes } from '@/lib/number';
 import { DQX_PREFIX } from '@/lib/qr-transfer';
 import type { DqxSession } from '@/hooks/useDqxSession';
 import { useDropConnection } from './useDropConnection';
@@ -41,9 +42,17 @@ export default function DropPanel({ session }: DropPanelProps) {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const fedRef = useRef<Set<string>>(new Set());
 
+  // FastSend 式「先选后发」：选好内容还没连接时，顺手生成取件码等待对方
+  const maybePair = () => {
+    if (conn.phase === 'idle' || conn.phase === 'closed') void conn.startAsInitiator();
+  };
+
   const sendFilesGuarded = (label: string, files: File[]) => {
     const total = files.reduce((sum, f) => sum + f.size, 0);
-    const run = () => conn.sendFiles(files);
+    const run = () => {
+      conn.sendFiles(files);
+      maybePair();
+    };
     if (shouldWarnHuge(total)) {
       setPendingHuge({ label, run });
       return;
@@ -65,6 +74,7 @@ export default function DropPanel({ session }: DropPanelProps) {
     });
     if (entries.length === 0) return;
     conn.sendItems(entries, 'dir');
+    maybePair();
   };
 
   const [syncBusy, setSyncBusy] = useState(false);
@@ -79,6 +89,7 @@ export default function DropPanel({ session }: DropPanelProps) {
         payload.push({ file: await entry.getFile(), path: [dir.name, ...key.split('/')] });
       }
       conn.sendItems(payload, 'syncDir');
+      maybePair();
     } finally {
       setSyncBusy(false);
     }
@@ -96,11 +107,13 @@ export default function DropPanel({ session }: DropPanelProps) {
       );
     } else {
       conn.sendItems(entries, 'dir');
+      maybePair();
     }
   };
 
   const connected = conn.phase === 'connected';
   const joinViaLink = conn.joinViaLink;
+  const joinByCode = conn.joinByCode;
 
   // 手机扫配对二维码后带着一次性房间号打开本页，自动完成 answer，无需电脑再扫回执。
   useEffect(() => {
@@ -109,12 +122,22 @@ export default function DropPanel({ session }: DropPanelProps) {
     void joinViaLink(pairCode);
   }, [pairCode, joinViaLink]);
 
+  // ?code=123456 深链：把取件码直接分享给对方，打开即入房。
+  const codeParam = searchParams.get('code');
   useEffect(() => {
-    if (!connected || !pairCode) return;
+    if (!codeParam || attemptedPairRef.current === codeParam) return;
+    attemptedPairRef.current = codeParam;
+    void joinByCode(codeParam);
+  }, [codeParam, joinByCode]);
+
+  useEffect(() => {
+    if (!connected) return;
     const next = new URLSearchParams(searchParams);
+    if (!next.has('pair') && !next.has('code')) return;
     next.delete('pair');
+    next.delete('code');
     setSearchParams(next, { replace: true });
-  }, [connected, pairCode, searchParams, setSearchParams]);
+  }, [connected, searchParams, setSearchParams]);
 
   // 双方都把 DQX 帧喂给共享收集器：手机扫码的一端也能直接看到还原原文，对端则同步重组。
   const acceptRef = useRef(session.accept);
@@ -144,8 +167,8 @@ export default function DropPanel({ session }: DropPanelProps) {
         tone="info"
         title={{ zh: '两台设备连接同一 Wi-Fi，数据点对点直传', en: 'Connect both devices to the same Wi-Fi; data goes peer-to-peer' }}
         hint={{
-          zh: '文件不经过任何服务器。连上后任一方勾选「本机充当对方的扫码器」即可扫码回传；也可以在上方生成文本二维码给手机扫，结果显示在「扫码回传」。',
-          en: 'Files never pass through a server. Once connected, either side can tick "Use this device as the peer\'s scanner" to forward hits; you can also generate a text QR above for the phone to scan, and the result appears under "Scanned results".',
+          zh: '文件不经过任何服务器。一方点「生成取件码」，另一方输入 6 位取件码或扫码即可接入；连上后可互传文本、文件，也能勾选「本机充当对方的扫码器」扫码回传。',
+          en: 'Files never pass through a server. One side taps "Generate pickup code"; the other joins with the 6-digit code or a QR scan. Once connected you can exchange text and files, or tick "Use this device as the peer\'s scanner" to forward hits.',
         }}
       />
 
@@ -192,8 +215,7 @@ export default function DropPanel({ session }: DropPanelProps) {
         </Panel>
       ) : null}
 
-      {connected ? (
-        <Panel bodyClassName="space-y-2">
+      <Panel bodyClassName="space-y-2">
           {pendingHuge ? (
             <ToolAlert
               tone="warning"
@@ -217,11 +239,31 @@ export default function DropPanel({ session }: DropPanelProps) {
               </div>
             </ToolAlert>
           ) : null}
+          {!connected && conn.pendingBatch ? (
+            <ToolAlert
+              tone="info"
+              title={t({
+                zh: `已暂存 ${conn.pendingBatch.count} 项 · ${formatBytes(conn.pendingBatch.totalSize)}`,
+                en: `Staged ${conn.pendingBatch.count} item(s) · ${formatBytes(conn.pendingBatch.totalSize)}`,
+              })}
+              hint={{
+                zh: '对方输入取件码或扫码接入后，这份清单会自动送达。想换内容可取消暂存重新选择。',
+                en: 'The manifest ships automatically once the peer joins with your pickup code. Clear it to pick different content.',
+              }}
+            >
+              <div className="mt-2">
+                <Button variant="ghost" size="sm" onClick={conn.clearPendingBatch}>
+                  {t({ zh: '取消暂存', en: 'Clear staged batch' })}
+                </Button>
+              </div>
+            </ToolAlert>
+          ) : null}
           <div
             className="space-y-2 rounded-card border border-dashed border-line p-2"
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => void handleDrop(event)}
           >
+          {connected ? (
           <Textarea
             value={composer}
             onChange={(event) => setComposer(event.target.value)}
@@ -246,6 +288,14 @@ export default function DropPanel({ session }: DropPanelProps) {
             className="text-sm"
             aria-label={t({ zh: '发送内容', en: 'Send content' })}
           />
+          ) : (
+            <p className="text-xs text-ink-2 px-1">
+              {t({
+                zh: '还没连接也能先选文件：生成取件码等对方输入接入，连上后清单自动送达（先选后发）。',
+                en: 'No connection needed to pick files first: generate a pickup code, and the manifest ships automatically once the peer joins (pick now, send on connect).',
+              })}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileInputRef}
@@ -269,7 +319,7 @@ export default function DropPanel({ session }: DropPanelProps) {
                 conn.sendText(composer);
                 setComposer('');
               }}
-              disabled={!composer.trim()}
+              disabled={!connected || !composer.trim()}
             >
               <Send className="h-3.5 w-3.5" aria-hidden="true" />
               {t({ zh: '发送', en: 'Send' })}
@@ -311,6 +361,7 @@ export default function DropPanel({ session }: DropPanelProps) {
           </div>
           </div>
 
+          {connected ? (
           <div className="space-y-3 border-t border-dashed border-line pt-3">
             <Checkbox
               checked={scanMode}
@@ -347,13 +398,13 @@ export default function DropPanel({ session }: DropPanelProps) {
               </Button>
             </div>
           </div>
-        </Panel>
-      ) : null}
+          ) : null}
+      </Panel>
 
       <p className="text-center text-[11px] text-ink-3">
         {t({
-          zh: '配对信息一次性有效；连接后保持页面打开即可反复互传文本、文件与扫码结果，无需重新配对。',
-          en: 'Pairing info works once. Keep both pages open to exchange text, files and scan results without pairing again.',
+          zh: '取件码使用一次即失效；连接后保持页面打开即可反复互传文本、文件与扫码结果，无需重新配对。',
+          en: 'A pickup code works once. Keep both pages open to exchange text, files and scan results without pairing again.',
         })}
       </p>
       <Badge tone="neutral" className="mx-auto block w-fit">

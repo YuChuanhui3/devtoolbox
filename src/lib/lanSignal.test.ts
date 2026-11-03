@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildJoinUrl, lanSocketUrl, makePairCode, resolveLanBase } from './lanSignal';
+import { buildJoinUrl, isPickupCode, lanSocketUrl, makePickupCode, resolveLanBase } from './lanSignal';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -13,9 +13,12 @@ describe('LAN one-scan pairing helpers', () => {
     expect(lanSocketUrl('https://toolbox.lan')).toBe('wss://toolbox.lan/__lan-signal');
   });
 
-  it('creates room codes accepted by the signaling server', () => {
-    expect(makePairCode()).toMatch(/^[a-z0-9]{18}$/);
-    expect(makePairCode()).not.toBe(makePairCode());
+  it('creates 6-digit pickup codes accepted by the signaling server', () => {
+    expect(makePickupCode()).toMatch(/^\d{6}$/);
+    expect(makePickupCode()).not.toBe(makePickupCode());
+    expect(isPickupCode(' 123456 ')).toBe(true);
+    expect(isPickupCode('12345')).toBe(false);
+    expect(isPickupCode('12345a')).toBe(false);
   });
 
   it('replaces localhost with an address reported by the LAN server', async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Camera, ChevronDown, Pause, QrCode } from 'lucide-react';
+import { Camera, ChevronDown, Keyboard, Pause, QrCode } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -10,6 +10,7 @@ import { CopyButton } from '@/components/tool/ToolActions';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { type Localized } from '@/i18n/locale';
+import { formatBytes } from '@/lib/number';
 import { buildQrSvg, createQrMatrix, QR_DEFAULT_STYLE } from '@/lib/qr';
 import { cn } from '@/lib/cn';
 import { isMdnsAddress, isValidIpv4, type CandidateInfo } from '@/lib/sdp';
@@ -173,9 +174,56 @@ function AdvancedPairing({ conn }: { conn: DropConnection }) {
   );
 }
 
+/** 取件码依赖内网信令服务；静态托管或信令故障时，离线 DTX 配对收在这个折叠区里备用。 */
+function OfflinePairing({ conn }: { conn: DropConnection }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (conn.pairingMode === 'manual') setOpen(true);
+  }, [conn.pairingMode]);
+
+  return (
+    <div className="rounded-xl border border-line bg-surface-2/40 px-3.5 py-2.5">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-2 text-left text-xs font-medium text-ink-2 transition-colors hover:text-ink"
+      >
+        {t({ zh: '高级 · 离线配对（没有内网信令服务时用）', en: 'Advanced · Offline pairing (when LAN signaling is unavailable)' })}
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-ink-3 transition-transform duration-200', open && 'rotate-180')} aria-hidden="true" />
+      </button>
+      {open ? (
+        <div className="mt-3 space-y-3">
+          <p className="text-[11px] leading-5 text-ink-3">
+            {t({
+              zh: '取件码需要 npm run start:lan 启动的局域网信令。静态托管或信令不可用时改走这里：一方发起、把连接信息交给对方，对方回传回执后建立连接（DTX 扫码 / 粘贴）。',
+              en: 'Pickup codes need the LAN signaling from npm run start:lan. On static hosting or if signaling fails, use this instead: one side starts, hands its connection info over, and the peer replies (DTX scan / paste).',
+            })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={() => void conn.startManualPairing()}>
+              {t({ zh: '发起离线配对', en: 'Start offline pairing' })}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={conn.startAsJoiner}>
+              <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+              {t({ zh: '扫码 / 粘贴加入', en: 'Scan / paste to join' })}
+            </Button>
+          </div>
+          <PasteBox label={{ zh: '已收到对方的配对信息？直接粘贴到这里（DTX…），自动加入', en: 'Got the peer\'s pairing info? Paste it here (DTX…) to join automatically' }} onSubmit={(text) => void conn.consumeSignal(text)} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** 配对阶段（未连接时）的共享流程：互传与手机扫码页都用它建立同一条 WebRTC 通道。 */
 export function PairingFlow({ conn }: { conn: DropConnection }) {
   const { t } = useI18n();
+  const [codeInput, setCodeInput] = useState('');
+  useEffect(() => {
+    if (conn.phase === 'entering-code') setCodeInput('');
+  }, [conn.phase]);
   if (conn.phase === 'connected') return null;
 
   return (
@@ -187,42 +235,87 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
         <Panel title={t({ zh: '开始配对', en: 'Start pairing' })} bodyClassName="space-y-3">
           <p className="text-sm text-ink-2">
             {t({
-              zh: '电脑点「发起配对」，手机用系统相机扫一次二维码即可自动连接；无法使用内网信令时会自动切换为离线配对。',
-              en: 'Start pairing on the computer and scan once with the phone camera to connect automatically. Offline pairing is used when LAN signaling is unavailable.',
+              zh: '一方生成 6 位取件码，另一方输入取件码或扫码接入；没有内网信令服务时会明确报错，可在下方「高级 · 离线配对」手动配对。',
+              en: 'One side generates a 6-digit pickup code; the other joins by typing it or scanning. Without LAN signaling the button reports the reason instead — pair manually under "Advanced · Offline pairing" below.',
             })}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={() => void conn.startAsInitiator()}>
               <QrCode className="h-4 w-4" aria-hidden="true" />
-              {t({ zh: '发起配对', en: 'Start pairing' })}
+              {t({ zh: '生成取件码', en: 'Get a pickup code' })}
             </Button>
-            <Button variant="secondary" onClick={conn.startAsJoiner}>
-              <Camera className="h-4 w-4" aria-hidden="true" />
-              {t({ zh: '扫码 / 粘贴加入', en: 'Scan / paste to join' })}
+            <Button variant="secondary" onClick={conn.startCodeJoin}>
+              <Keyboard className="h-4 w-4" aria-hidden="true" />
+              {t({ zh: '输入取件码', en: 'Enter a pickup code' })}
             </Button>
           </div>
-          <div className="border-t border-dashed border-line pt-3">
-            <PasteBox label={{ zh: '已收到对方的配对信息？直接粘贴到这里（DTX…），自动加入', en: 'Got the peer\'s pairing info? Paste it here (DTX…) to join automatically' }} onSubmit={(text) => void conn.consumeSignal(text)} />
-          </div>
+        </Panel>
+      ) : null}
+
+      {conn.phase === 'entering-code' ? (
+        <Panel
+          title={t({ zh: '输入对方的取件码', en: 'Enter the peer\'s pickup code' })}
+          subtitle={t({ zh: '6 位数字，显示在对方屏幕中央', en: 'Six digits shown in the middle of the peer\'s screen' })}
+          bodyClassName="space-y-3"
+        >
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void conn.joinByCode(codeInput);
+            }}
+          >
+            <Input
+              value={codeInput}
+              onChange={(event) => setCodeInput(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="123456"
+              aria-label={t({ zh: '取件码', en: 'Pickup code' })}
+              className="h-11 w-40 text-center font-mono text-xl tracking-[0.18em]"
+            />
+            <Button variant="primary" type="submit" disabled={codeInput.length !== 6}>
+              {t({ zh: '接入', en: 'Join' })}
+            </Button>
+            <Button variant="ghost" size="sm" type="button" onClick={conn.cancelPairing}>
+              {t({ zh: '取消', en: 'Cancel' })}
+            </Button>
+          </form>
+          <p className="text-[11px] text-ink-3">
+            {t({
+              zh: '两台设备需打开同一个局域网服务；手机也可以直接扫对方的二维码。',
+              en: 'Both devices should open the same LAN service; phones can just scan the peer\'s QR code.',
+            })}
+          </p>
         </Panel>
       ) : null}
 
       {conn.phase === 'waiting-phone' ? (
         <Panel
-          title={t({ zh: '手机扫一次即可连接', en: 'One scan to connect' })}
-          subtitle={t({ zh: '配对链接已包含一次性房间号，手机打开后自动交换连接信息，无需再扫回执', en: 'The link contains a one-time room. The phone exchanges connection info automatically — no reply scan needed' })}
+          title={t({ zh: '等待对方接入', en: 'Waiting for the peer' })}
+          subtitle={t({ zh: '对方输入下面 6 位取件码，或扫码打开链接，均可自动建立连接', en: 'The peer can type this 6-digit pickup code, or scan the QR, to connect automatically' })}
           bodyClassName="p-4"
         >
           <div className="space-y-3">
+            <div className="flex flex-col items-center gap-1.5">
+              <p className="text-[11px] text-ink-3">{t({ zh: '取件码', en: 'Pickup code' })}</p>
+              <p className="font-mono text-5xl font-semibold tracking-[0.22em] text-ink">{conn.roomCode}</p>
+              <CopyButton text={conn.roomCode} label={{ zh: '复制取件码', en: 'Copy pickup code' }} />
+            </div>
+            {conn.pendingBatch ? (
+              <Badge tone="accent" className="mx-auto block w-fit">
+                {t({
+                  zh: `已暂存 ${conn.pendingBatch.count} 项 · ${formatBytes(conn.pendingBatch.totalSize)}，连上后自动送达`,
+                  en: `${conn.pendingBatch.count} item(s) staged · ${formatBytes(conn.pendingBatch.totalSize)}, delivered automatically on connect`,
+                })}
+              </Badge>
+            ) : null}
             <QrCard
               signal={conn.mySignal}
-              hint={{ zh: '用手机系统相机扫码，或把配对链接发送到手机打开', en: 'Scan with the phone camera, or send the pairing link to the phone' }}
+              hint={{ zh: '手机扫码免输入；两台电脑则把取件码念给对方输入', en: 'Phones can scan instead of typing; on two computers just read the code out' }}
               copyLabel={{ zh: '复制配对链接', en: 'Copy pairing link' }}
             />
             <div className="flex flex-wrap justify-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => void conn.startManualPairing()}>
-                {t({ zh: '改用离线配对', en: 'Use offline pairing' })}
-              </Button>
               <Button variant="ghost" size="sm" onClick={conn.cancelPairing}>
                 {t({ zh: '取消', en: 'Cancel' })}
               </Button>
@@ -269,15 +362,17 @@ export function PairingFlow({ conn }: { conn: DropConnection }) {
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={() => void conn.startAsInitiator()}>
-              {t({ zh: '重新发起配对', en: 'Pair again' })}
+              {t({ zh: '重新生成取件码', en: 'New pickup code' })}
             </Button>
-            <Button variant="secondary" onClick={conn.startAsJoiner}>
-              {t({ zh: '扫码 / 粘贴加入', en: 'Scan / paste to join' })}
+            <Button variant="secondary" onClick={conn.startCodeJoin}>
+              <Keyboard className="h-4 w-4" aria-hidden="true" />
+              {t({ zh: '输入取件码', en: 'Enter a pickup code' })}
             </Button>
           </div>
         </Panel>
       ) : null}
 
+      <OfflinePairing conn={conn} />
       <AdvancedPairing conn={conn} />
     </div>
   );
