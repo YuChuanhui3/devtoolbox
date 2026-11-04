@@ -50,7 +50,7 @@ export default function HttpToolkitTool() {
         <RequestPanel active={mode === 'request'} />
       </LazyPanel>
       <LazyPanel active={mode === 'openapi'}>
-        <OpenApiPanel active={mode === 'openapi'} />
+        <OpenApiPanel active={mode === 'openapi'} onJumpToRequest={() => setMode('request')} />
       </LazyPanel>
       <LazyPanel active={mode === 'mock'}>
         <MockPanel active={mode === 'mock'} />
