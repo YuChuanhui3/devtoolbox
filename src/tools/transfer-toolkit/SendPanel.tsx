@@ -109,8 +109,12 @@ const INLINE_STAGE_INSET_PX = 64;
 const STAGE_MIN_PX = 176;
 /** 下载 PNG 的目标宽度：与上屏宽度无关，导出始终按整数格取到高分辨率。 */
 const PNG_EXPORT_PX = 1024;
-/** 放映舞台：Modal 面板宽 min(90vw,90vh)，再扣掉 body 内边距、边框与安全余量。 */
-const PRESENT_STAGE_INSET_PX = 32;
+/**
+ * 放映舞台预算宽度 = min(90vw,90vh) 减掉码框两侧实际占掉的宽度：面板边框 1×2 +
+ * body p-3 12×2 + 码框 p-2 8×2 = 42。少扣一点画布就会被 maxWidth:100% 挤小，
+ * 上屏每模块比预算更密，读数就成了假的。
+ */
+const PRESENT_STAGE_INSET_PX = 42;
 const STAGE_BUCKET_PX = 16;
 
 function stageWidthFor(presenting: boolean): number {
@@ -932,7 +936,7 @@ export function SendPanel({ active }: { active: boolean }) {
               })
             : t({ zh: `会话 ${sid}`, en: `Session ${sid}` })
         }
-        className="max-w-[min(90vw,90vh)]"
+        maxWidth="min(90vw,90vh)"
         bodyClassName="p-3"
       >
         {currentMatrix ? (

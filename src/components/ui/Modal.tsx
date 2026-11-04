@@ -12,6 +12,11 @@ export interface ModalProps {
   description?: ReactNode;
   children: ReactNode;
   className?: string;
+  /**
+   * 面板最大宽度。必须走行内样式：`cn` 只是 clsx，同名 tailwind 类（max-w-xl 与
+   * max-w-none）不会互相覆盖，写在 className 里的宽度会被基类的 max-w-xl 静默压回 576px。
+   */
+  maxWidth?: string | number;
   bodyClassName?: string;
   align?: 'center' | 'top';
 }
@@ -23,6 +28,7 @@ export function Modal({
   description,
   children,
   className,
+  maxWidth,
   bodyClassName,
   align = 'center',
 }: ModalProps) {
@@ -105,6 +111,7 @@ export function Modal({
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : undefined}
         tabIndex={-1}
+        style={maxWidth === undefined ? undefined : { maxWidth }}
         className={cn(
           'relative w-full max-w-xl animate-fade-in-up rounded-card border border-line bg-surface shadow-[0_25px_80px_rgba(8,12,20,0.35)] outline-none',
           className,
