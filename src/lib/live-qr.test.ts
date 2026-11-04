@@ -74,6 +74,7 @@ describe('startLiveQr', () => {
     expect(stats.some((item) => item.lastError?.includes('InvalidStateError'))).toBe(true);
     expect(onText).toHaveBeenCalledTimes(1);
     expect(stats[stats.length - 1].hits).toBe(1);
+    expect(stats[stats.length - 1].engines).toBe('jsQR+zxing');
     expect(stats[stats.length - 1].attempts).toBeGreaterThan(3);
   });
 

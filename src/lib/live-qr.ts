@@ -19,6 +19,8 @@ export interface LiveQrStats {
   height: number;
   /** 视频轨道已开但没有画面（readyState/videoWidth 长期为 0）。 */
   stalled: boolean;
+  /** 已就绪的解码引擎，例如 `jsQR+zxing`：读到 0 时先确认这里不是单引擎。 */
+  engines: string;
   lastError: string | null;
 }
 
@@ -146,6 +148,14 @@ export async function startLiveQr({ video, onText, onStats, intervalMs = 120 }: 
 
   const jsQr = await loadJsQr();
   const zxing = await loadZxing().catch(() => null);
+  const engines = [jsQr ? 'jsQR' : null, zxing ? 'zxing' : null].filter(Boolean).join('+');
+  if (!engines) {
+    release();
+    throw new ToolError(
+      { zh: '二维码解码引擎没能加载', en: 'The QR decoders failed to load' },
+      { zh: '多半是网络中断导致分包脚本没下载下来，刷新页面重试；仍不行就改用截图/录屏回收。', en: 'A lazily loaded chunk probably failed to download: reload the page, or fall back to screenshot salvage.' },
+    );
+  }
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context) {
@@ -159,6 +169,7 @@ export async function startLiveQr({ video, onText, onStats, intervalMs = 120 }: 
     width: video.videoWidth,
     height: video.videoHeight,
     stalled: false,
+    engines,
     lastError: null,
   };
   let stopped = false;

@@ -151,7 +151,7 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
 
           {stats ? (
             <p className="text-center text-[11px] tabular-nums text-ink-3">
-              {t({ zh: '解码尝试', en: 'Attempts' })} {stats.attempts} · {t({ zh: '读到码', en: 'Reads' })} {stats.hits}
+              {t({ zh: '解码尝试', en: 'Attempts' })} {stats.attempts} · {t({ zh: '读到码', en: 'Reads' })} {stats.hits} · {stats.engines}
               {stats.stalled
                 ? ` · ${t({ zh: '摄像头无画面', en: 'no picture' })}`
                 : ` · ${stats.width}×${stats.height}`}

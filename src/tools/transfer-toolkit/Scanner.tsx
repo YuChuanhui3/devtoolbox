@@ -115,7 +115,7 @@ export function Scanner({ active, onResult, mode = 'signal' }: ScannerProps) {
             : t({ zh: '同一张码 1.5 秒内只回传一次，可连续扫多张', en: 'The same code is forwarded once per 1.5 s, so you can keep scanning' })}</p>
       {status === 'running' && stats ? (
         <p className="text-center text-[11px] tabular-nums text-ink-3">
-          {t({ zh: '解码尝试', en: 'Attempts' })} {stats.attempts} · {t({ zh: '读到码', en: 'Reads' })} {stats.hits}
+          {t({ zh: '解码尝试', en: 'Attempts' })} {stats.attempts} · {t({ zh: '读到码', en: 'Reads' })} {stats.hits} · {stats.engines}
           {stats.stalled ? ` · ${t({ zh: '摄像头无画面', en: 'no picture' })}` : ` · ${stats.width}×${stats.height}`}
           {stats.lastError ? ` · ${stats.lastError}` : ''}
         </p>
