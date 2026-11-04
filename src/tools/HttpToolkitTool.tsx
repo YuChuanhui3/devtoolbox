@@ -7,6 +7,7 @@ import { RequestPanel } from './http-toolkit/RequestPanel';
 import { OpenApiPanel } from './http-toolkit/OpenApiPanel';
 import { MockPanel } from './http-toolkit/MockPanel';
 import { StressPanel } from './http-toolkit/StressPanel';
+import { WorkbenchProvider } from './http-toolkit/WorkbenchContext';
 
 type HttpToolkitMode = 'request' | 'openapi' | 'mock' | 'stress';
 
@@ -15,7 +16,8 @@ export default function HttpToolkitTool() {
   const [mode, setMode] = useToolkitMode<HttpToolkitMode>(['request', 'openapi', 'mock', 'stress'], 'request');
 
   return (
-    <div className="space-y-4">
+    <WorkbenchProvider>
+      <div className="space-y-4">
       <ToolkitTabs<HttpToolkitMode>
         value={mode}
         onChange={setMode}
@@ -63,6 +65,7 @@ export default function HttpToolkitTool() {
           en: 'One API workbench: Postman-style collections and environments, OpenAPI import, local mocking, and in-browser load testing · collections stay in your local browser, never uploaded, and switching tabs keeps each panel\'s input and results',
         })}
       </p>
-    </div>
+      </div>
+    </WorkbenchProvider>
   );
 }
