@@ -23,7 +23,7 @@ import { useHotkey } from '@/hooks/useHotkey';
 import { useI18n } from '@/i18n/I18nProvider';
 import { toToolError } from '@/lib/errors';
 import { bytesToBase64 } from '@/lib/base64';
-import { tl } from '@/i18n/locale';
+import { tl, type Localized } from '@/i18n/locale';
 import { formatBytes } from '@/lib/number';
 import { safeFilename, downloadAll, downloadBlob } from '@/lib/download';
 import {
@@ -39,14 +39,50 @@ import {
   type QrMatrix,
 } from '@/lib/qr';
 import {
+  DQX_LIMITS,
   gzipBytes,
   makeSessionId,
   splitFrames,
   tuneFrameBytes,
 } from '@/lib/qr-transfer';
+import { compressImage, loadImage, mimeToExtension, replaceExtension } from '@/lib/image';
 
 type SourceKind = 'text' | 'file';
 type Capacity = 'safe' | 'standard' | 'max';
+
+/**
+ * 图片重压预设：帧数只跟字节数成正比，而 JPEG/PNG/WebP 再 gzip 也只省 0-2%，
+ * 所以传图真正的杠杆是重编码（限宽 + 有损质量），不是压缩。maxWidth 0 = 不重压。
+ *
+ * 实测（Chrome，2400×1600 噪点图 —— 压缩的最坏情况，真实照片还要小几倍）：
+ * 1280px/0.62 → 290 KB → 行内 1321 帧、放映 203 帧；1600px/0.72 → 653 KB → 2973 / 456 帧。
+ * 默认落在「省帧数」：越界的代价是接收端一帧都不收，比图像稍软严重得多。
+ */
+const IMAGE_PRESETS = [
+  { id: 'tiny', maxWidth: 960, quality: 0.52 },
+  { id: 'lean', maxWidth: 1280, quality: 0.62 },
+  { id: 'balanced', maxWidth: 1600, quality: 0.72 },
+  { id: 'sharp', maxWidth: 2400, quality: 0.82 },
+  { id: 'off', maxWidth: 0, quality: 0.95 },
+] as const;
+type ImagePresetId = (typeof IMAGE_PRESETS)[number]['id'];
+
+const IMAGE_PRESET_LABELS: Record<Exclude<ImagePresetId, 'off'>, Localized> = {
+  tiny: { zh: '极省', en: 'Minimal' },
+  lean: { zh: '省帧数', en: 'Lean' },
+  balanced: { zh: '均衡', en: 'Balanced' },
+  sharp: { zh: '高清', en: 'Sharp' },
+};
+
+// GIF 重压会丢掉动画帧；其余位图都能靠 canvas 重编码换来数量级更少的帧。
+const REENCODABLE_IMAGE = /^image\/(jpeg|png|webp|bmp)$/;
+const REENCODABLE_EXTENSION = ['jpg', 'jpeg', 'png', 'webp', 'bmp'];
+
+function reencodableImage(file: File | null): boolean {
+  if (!file) return false;
+  if (REENCODABLE_IMAGE.test(file.type)) return true;
+  return REENCODABLE_EXTENSION.includes(file.name.split('.').pop()?.toLowerCase() ?? '');
+}
 
 /**
  * 各容量档的字节天花板；真正的约束是「每模块至少几 CSS 像素」——
@@ -137,6 +173,15 @@ interface Prepared {
   version: number;
 }
 
+/** 重压后的图片载荷：bytes 直接进切帧流程，note 用于把「换小了多少」摆在明面上。 */
+interface EncodedImage {
+  bytes: Uint8Array;
+  name: string;
+  fromBytes: number;
+  toBytes: number;
+  note: string;
+}
+
 /**
  * 探针的填充段必须和真实帧一样是「混合大小写 + 数字 + /+ 的 Base64」。
  * 全 'A' 会让编码器把整段切进 alphanumeric 模式（5.5 bit/字符），而真实帧的 Base64
@@ -155,6 +200,7 @@ function FrameControls({
   playing,
   onIndex,
   onPlaying,
+  playBlocked,
   extra,
 }: {
   index: number;
@@ -162,6 +208,7 @@ function FrameControls({
   playing: boolean;
   onIndex: (next: number) => void;
   onPlaying: (next: boolean) => void;
+  playBlocked?: boolean;
   extra?: ReactNode;
 }) {
   const { t } = useI18n();
@@ -170,7 +217,13 @@ function FrameControls({
       <Button variant="secondary" size="sm" onClick={() => onIndex((index - 1 + total) % total)} aria-label={t({ zh: '上一帧', en: 'Previous frame' })}>
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       </Button>
-      <Button variant={playing ? 'secondary' : 'primary'} size="sm" onClick={() => onPlaying(!playing)}>
+      <Button
+        variant={playing ? 'secondary' : 'primary'}
+        size="sm"
+        disabled={playBlocked}
+        title={playBlocked ? t({ zh: '帧数超过接收端上限，先按下方提示减帧', en: 'Frame count exceeds the receiver limit — cut frames first' }) : undefined}
+        onClick={() => onPlaying(!playing)}
+      >
         {playing ? <Pause className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
         {playing ? t({ zh: '暂停', en: 'Pause' }) : t({ zh: '播放', en: 'Play' })}
       </Button>
@@ -182,17 +235,24 @@ function FrameControls({
   );
 }
 
+/** splitFrames 之前的载荷字节：文本、原图/原文件，或重压后的图片。 */
+const EMPTY_BYTES = new Uint8Array(0);
+
 export function SendPanel({ active }: { active: boolean }) {
   const { t } = useI18n();
   const [source, setSource] = useState<SourceKind>('text');
   const [text, setText] = useState('');
-  const [file, setFile] = useState<{ name: string; bytes: Uint8Array } | null>(null);
+  const [file, setFile] = useState<{ name: string; bytes: Uint8Array; handle: File | null } | null>(null);
+  const [preset, setPreset] = useState<ImagePresetId>('lean');
+  const [encoded, setEncoded] = useState<EncodedImage | null>(null);
+  const [encodeNote, setEncodeNote] = useState<string | null>(null);
   const [gzip, setGzip] = useState(true);
   const [capacity, setCapacity] = useState<Capacity>('standard');
   const [ecc, setEcc] = useState<QrEcc>('M');
   const [presenting, setPresenting] = useState(false);
   const stageWidth = useStageWidth(presenting);
   const inlineStage = useStageWidth(false);
+  const presentStage = useStageWidth(true);
   const minModulePx = TIER_MIN_MODULE_PX[capacity];
   const [fps, setFps] = useState(2);
   const [loop, setLoop] = useState(true);
@@ -204,15 +264,74 @@ export function SendPanel({ active }: { active: boolean }) {
 
   const textBytes = useMemo(() => new TextEncoder().encode(text), [text]);
 
-  // —— 载荷：文本/文件 → 字节（可选 gzip） ——
+  // —— 图片重压：帧数只跟字节数成正比，先把图换小才是省帧的正解 ——
+  const canRecompress = reencodableImage(file?.handle ?? null);
+  const recompressing = source === 'file' && canRecompress && preset !== 'off';
+  useEffect(() => {
+    const handle = file?.handle;
+    if (!recompressing || !handle) {
+      setEncoded(null);
+      setEncodeNote(null);
+      return undefined;
+    }
+    let cancelled = false;
+    let bitmap: ImageBitmap | HTMLImageElement | null = null;
+    const settings = IMAGE_PRESETS.find((item) => item.id === preset)!;
+    setEncodeNote(t({ zh: '正在重压图片…', en: 'Re-encoding image…' }));
+    void (async () => {
+      try {
+        bitmap = await loadImage(handle);
+        const outcome = await compressImage(
+          bitmap,
+          { kind: 'smart' },
+          { maxWidth: settings.maxWidth, quality: settings.quality, background: '#ffffff' },
+        );
+        const bytes = new Uint8Array(await outcome.blob.arrayBuffer());
+        if (cancelled) return;
+        const extension = mimeToExtension(outcome.mime);
+        // 已经压得很死的图（如小尺寸调色板 PNG）重编码可能反而变大：那就别压，原图帧数更少
+        if (bytes.length >= handle.size) {
+          setEncoded(null);
+          setEncodeNote(
+            t({
+              zh: `重压后 ${formatBytes(bytes.length, 0)} 比原图 ${formatBytes(handle.size, 0)} 还大，按原图发送。`,
+              en: `Re-encoded to ${formatBytes(bytes.length, 0)}, bigger than the ${formatBytes(handle.size, 0)} original — sending it as-is.`,
+            }),
+          );
+          return;
+        }
+        setEncoded({
+          bytes,
+          name: replaceExtension(handle.name, extension),
+          fromBytes: handle.size,
+          toBytes: bytes.length,
+          note: `${outcome.width}×${outcome.height} · ${extension.toUpperCase()}`,
+        });
+        setEncodeNote(null);
+      } catch (error) {
+        if (cancelled) return;
+        setEncoded(null);
+        setEncodeNote(t(toToolError(error).localized));
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (bitmap && 'close' in bitmap) bitmap.close();
+    };
+    // t 只在语言切换时变，届时重算一次文案与产物即可
+  }, [file, recompressing, preset, t]);
+
+  const payloadSource = source === 'text' ? textBytes : (encoded?.bytes ?? file?.bytes ?? EMPTY_BYTES);
+
+  // —— 载荷：文本/文件 → 字节（可选 gzip；重压过的图片已是压缩格式，gzip 只白费一遍） ——
   useEffect(() => {
     let cancelled = false;
-    const raw = source === 'text' ? textBytes : (file?.bytes ?? new Uint8Array(0));
+    const raw = payloadSource;
     if (raw.length === 0) {
       setPayload({ bytes: new Uint8Array(0), error: null });
       return undefined;
     }
-    if (!gzip) {
+    if (!gzip || encoded) {
       setPayload({ bytes: raw, error: null });
       return undefined;
     }
@@ -226,9 +345,9 @@ export function SendPanel({ active }: { active: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [source, textBytes, file, gzip]);
+  }, [payloadSource, gzip, encoded]);
 
-  const fileName = source === 'text' ? (text ? 'text-utf8.txt' : undefined) : file?.name;
+  const fileName = source === 'text' ? (text ? 'text-utf8.txt' : undefined) : (encoded?.name ?? file?.name);
 
   // —— 单帧容量：用与真实帧等长的探针文本过 createQrMatrix，二分出最大载荷字节 ——
   const prepared = useMemo<Prepared | null>(() => {
@@ -258,7 +377,7 @@ export function SendPanel({ active }: { active: boolean }) {
         sid,
         frameBytes,
         fileName,
-        rawBytes: source === 'text' ? textBytes.length : file?.bytes.length,
+        rawBytes: payloadSource.length,
         gzipped: gzip && payload.bytes[0] === 0x1f && payload.bytes[1] === 0x8b,
       });
       const actual = String(split.frames.length).length;
@@ -275,10 +394,13 @@ export function SendPanel({ active }: { active: boolean }) {
       version = 0;
     }
     return { frames: split.frames, frameBytes: split.frameBytes, version };
-  }, [payload, sid, capacity, minModulePx, ecc, fileName, source, textBytes, file, gzip, stageWidth]);
+  }, [payload, sid, capacity, minModulePx, ecc, fileName, payloadSource, gzip, stageWidth]);
 
   const frames = prepared?.frames ?? [];
   const total = frames.length;
+  // 接收端按 maxTotalFrames 拒帧（parseFrame 直接判 null），所以超上限的码一帧都收不到，
+  // 与其让人扫半天，不如在这里就挡住播放并把出路摆出来。
+  const overFrameCap = total > DQX_LIMITS.maxTotalFrames;
 
   // 换内容、换档位/容错、或舞台宽度变了（放映开关、旋转屏幕）都是另一次传输：
   // 帧的切法随之改变，必须换 sid 并回到第 1 帧，否则接收端会把新帧判成旧会话的冲突帧丢掉。
@@ -296,6 +418,11 @@ export function SendPanel({ active }: { active: boolean }) {
   // —— 播放 ——
   useEffect(() => {
     if (!playing || !active || total === 0) return undefined;
+    // 帧数越界时不只在定时器里跳过：连播放态一起撤掉，否则按出来的会停不掉
+    if (overFrameCap) {
+      setPlaying(false);
+      return undefined;
+    }
     const timer = window.setInterval(() => {
       setIndex((current) => {
         if (current + 1 < total) return current + 1;
@@ -305,7 +432,7 @@ export function SendPanel({ active }: { active: boolean }) {
       });
     }, Math.max(125, 1000 / fps));
     return () => window.clearInterval(timer);
-  }, [playing, active, total, fps, loop]);
+  }, [playing, active, total, fps, loop, overFrameCap]);
 
   useHotkey(
     { key: 'ArrowRight', metaOrCtrl: true, enabled: active && total > 0 },
@@ -344,7 +471,10 @@ export function SendPanel({ active }: { active: boolean }) {
     const picked = files[0];
     if (!picked) return;
     void picked.arrayBuffer().then((buffer) => {
-      setFile({ name: picked.name, bytes: new Uint8Array(buffer) });
+      setEncoded(null);
+      setEncodeNote(null);
+      // 留一份 File 句柄：重压图片要靠它解码，只有字节是回不去原图的
+      setFile({ name: picked.name, bytes: new Uint8Array(buffer), handle: picked });
     });
   };
 
@@ -428,25 +558,72 @@ export function SendPanel({ active }: { active: boolean }) {
                 icon={<Upload className="h-5 w-5" aria-hidden="true" />}
                 title={t({ zh: '拖入要传输的文件', en: 'Drop the file to transfer' })}
                 hint={t({
-                  zh: '或点击选择 · 建议 < 200 KB；任何二进制都按字节原样切帧',
-                  en: 'Or click to choose · under ~200 KB recommended; any binary is chunked byte-for-byte',
+                  zh: '或点击选择 · 图片会先按所选档位重压（帧数只跟字节数成正比），其余二进制按字节切帧',
+                  en: 'Or click to choose · images are re-encoded at the preset you pick (frames scale with bytes), any other binary is chunked byte-for-byte',
                 })}
                 onFiles={onFiles}
               />
               {file ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-2/40 px-3 py-2 text-xs text-ink-2">
-                  <FileText className="h-3.5 w-3.5 text-ink-3" aria-hidden="true" />
-                  <span className="font-medium">{file.name}</span>
-                  <span className="text-ink-3">{formatBytes(file.bytes.length, 0)}</span>
-                  <Checkbox
-                    checked={gzip}
-                    onChange={setGzip}
-                    label={t({ zh: 'Gzip 压缩', en: 'Gzip' })}
-                    className="ml-auto text-xs"
-                  />
-                  <Button variant="ghost" size="sm" onClick={() => setFile(null)}>
-                    {t({ zh: '移除', en: 'Remove' })}
-                  </Button>
+                <div className="space-y-2 rounded-xl border border-line bg-surface-2/40 px-3 py-2 text-xs text-ink-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-ink-3" aria-hidden="true" />
+                    <span className="font-medium">{encoded?.name ?? file.name}</span>
+                    <span className="text-ink-3">{formatBytes(file.bytes.length, 0)}</span>
+                    <Checkbox
+                      checked={gzip && !encoded}
+                      onChange={setGzip}
+                      disabled={Boolean(encoded)}
+                      label={
+                        encoded
+                          ? t({ zh: '已重压，无需 Gzip', en: 'Re-encoded, no Gzip' })
+                          : t({ zh: 'Gzip 压缩', en: 'Gzip' })
+                      }
+                      className="ml-auto text-xs"
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => setFile(null)}>
+                      {t({ zh: '移除', en: 'Remove' })}
+                    </Button>
+                  </div>
+                  {canRecompress ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label htmlFor="dqx-image-preset" className="text-ink-3">
+                        {t({ zh: '图片重压', en: 'Re-encode' })}
+                      </label>
+                      <Select
+                        id="dqx-image-preset"
+                        name="dqx-image-preset"
+                        aria-label={t({ zh: '图片重压', en: 'Re-encode image' })}
+                        value={preset}
+                        onChange={(event) => setPreset(event.target.value as ImagePresetId)}
+                        wrapperClassName="w-[176px]"
+                      >
+                        {IMAGE_PRESETS.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.id === 'off'
+                              ? t({ zh: '原图（帧数最多）', en: 'Original (most frames)' })
+                              : `${t(IMAGE_PRESET_LABELS[item.id])} · ${item.maxWidth}px`}
+                          </option>
+                        ))}
+                      </Select>
+                      {encoded ? (
+                        <span className="font-mono text-[11px] text-ink-2">
+                          {formatBytes(encoded.fromBytes, 0)} → {formatBytes(encoded.toBytes, 0)}
+                          {encoded.fromBytes > 0 ? `（−${Math.round((1 - encoded.toBytes / encoded.fromBytes) * 100)}%）` : ''}
+                          {' · '}
+                          {encoded.note}
+                        </span>
+                      ) : encodeNote ? (
+                        <span className="text-[11px] text-ink-3">{encodeNote}</span>
+                      ) : null}
+                    </div>
+                  ) : file.handle?.type === 'image/gif' ? (
+                    <p className="text-[11px] leading-5 text-ink-3">
+                      {t({
+                        zh: 'GIF 重压会丢掉动画帧，按原图字节发送。',
+                        en: 'Re-encoding a GIF would drop its animation frames, so it goes out byte-for-byte.',
+                      })}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -545,6 +722,19 @@ export function SendPanel({ active }: { active: boolean }) {
             })}
           />
         ) : null}
+        {prepared && overFrameCap ? (
+          <ToolAlert
+            tone="error"
+            title={t({
+              zh: `帧数 ${total} 超过接收端上限 ${DQX_LIMITS.maxTotalFrames}，这些码一帧都不会被收下`,
+              en: `${total} frames exceed the receiver's limit of ${DQX_LIMITS.maxTotalFrames} — not one frame would be accepted`,
+            })}
+            hint={t({
+              zh: `每帧 ${formatBytes(prepared.frameBytes, 0)}，一轮最多载 ${formatBytes(prepared.frameBytes * DQX_LIMITS.maxTotalFrames, 0)}。按效果排序：①图片用上面「图片重压」换小；②点「放映」，舞台涨到约 ${Math.round(presentStage)}px，本档每帧可吃满 ${CAPACITY_BOUNDS[capacity][1]}B；③容量档换「极限」（上限 ${CAPACITY_BOUNDS.max[1]}B/帧）；④仍不够就拆成几次会话，或直接「下载载荷」用 U 盘带走。`,
+              en: `At ${formatBytes(prepared.frameBytes, 0)} per frame one pass carries at most ${formatBytes(prepared.frameBytes * DQX_LIMITS.maxTotalFrames, 0)}. In order of impact: 1) re-encode the image above; 2) press Present — the stage grows to about ${Math.round(presentStage)}px and this tier fills up to ${CAPACITY_BOUNDS[capacity][1]}B per frame; 3) switch to the Max tier (${CAPACITY_BOUNDS.max[1]}B/frame); 4) split into several sessions, or take Download payload and carry it on a USB stick.`,
+            })}
+          />
+        ) : null}
       </div>
 
       <Panel
@@ -604,6 +794,7 @@ export function SendPanel({ active }: { active: boolean }) {
               playing={playing}
               onIndex={setIndex}
               onPlaying={setPlaying}
+              playBlocked={overFrameCap}
               extra={
                 <>
                   <Button variant="secondary" size="sm" onClick={() => setPresenting(true)}>
@@ -680,6 +871,7 @@ export function SendPanel({ active }: { active: boolean }) {
               playing={playing}
               onIndex={setIndex}
               onPlaying={setPlaying}
+              playBlocked={overFrameCap}
               extra={
                 <Button variant="ghost" size="sm" onClick={() => setPresenting(false)}>
                   {t({ zh: '退出放映', en: 'Exit presentation' })}
