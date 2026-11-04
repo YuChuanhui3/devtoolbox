@@ -286,3 +286,12 @@ export function crispQrRect(moduleCount: number, cssWidth: number, dpr = 1): { s
   const size = total * cell;
   return { size, cssSize: size / ratio };
 }
+
+/**
+ * 码真正上屏的 CSS 宽度。取整到整数格会往小里走（预算 368px 给 77 格只剩 308px），
+ * 被舞台夹住时又只能更窄——密度读数必须按这个数算，按预算宽度报是在撒谎。
+ */
+export function renderedQrWidth(moduleCount: number, cssWidth: number, dpr = 1): number {
+  const { cssSize } = crispQrRect(moduleCount, cssWidth, dpr);
+  return Math.min(cssWidth, cssSize);
+}

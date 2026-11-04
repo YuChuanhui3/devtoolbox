@@ -10,6 +10,7 @@ import {
   maxModuleCountForScan,
   normalizeQrColor,
   normalizeQrSize,
+  renderedQrWidth,
   QR_DEFAULT_STYLE,
   QR_MAX_SIZE,
   QR_MIN_SIZE,
@@ -283,5 +284,29 @@ describe('crispQrRect', () => {
   test('异常 dpr 退回 1 倍', () => {
     expect(crispQrRect(69, 320, 0).size).toBe(crispQrRect(69, 320, 1).size);
     expect(crispQrRect(69, 320, Number.NaN).cssSize).toBe(crispQrRect(69, 320, 1).cssSize);
+  });
+});
+
+describe('renderedQrWidth', () => {
+  test('取整到整数格，比预算宽度更窄', () => {
+    // 预算 368px 给 77 格：floor(368/77)=4 → 实际上屏 308px，按 368 报密度会虚高 19%
+    expect(renderedQrWidth(69, 368, 1)).toBe(308);
+    expect(qrModuleCssPx(69, renderedQrWidth(69, 368, 1))).toBe(4);
+  });
+
+  test('小码被舞台夹住时不会超过舞台宽度', () => {
+    expect(renderedQrWidth(21, 60, 1)).toBe(60);
+  });
+
+  test('守住档位下限：预算允许的版本在整数格后仍够扫', () => {
+    for (const minModulePx of [3, 4, 6]) {
+      for (const dpr of [1, 2, 3]) {
+        const cap = maxModuleCountForScan(368, minModulePx);
+        for (let moduleCount = 21; moduleCount <= cap; moduleCount += 4) {
+          const rendered = qrModuleCssPx(moduleCount, renderedQrWidth(moduleCount, 368, dpr));
+          expect(rendered).toBeGreaterThanOrEqual(minModulePx);
+        }
+      }
+    }
   });
 });

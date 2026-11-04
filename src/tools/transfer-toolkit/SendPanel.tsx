@@ -34,6 +34,7 @@ import {
   isQrCapacityError,
   maxModuleCountForScan,
   renderQrToCanvas,
+  renderedQrWidth,
   QR_DEFAULT_STYLE,
   type QrEcc,
   type QrMatrix,
@@ -524,11 +525,14 @@ export function SendPanel({ active }: { active: boolean }) {
     }
   }, [frames, index, ecc]);
 
-  // 密度读数看最密的那一帧（末帧只会更疏），版本 → 模块数 = 4V+17，再加 8 格静区
+  // 密度读数看最密的那一帧（末帧只会更疏）。整数格会把每模块往小取，但版本→模块数并不单调：
+  // 同一版本可能用更少的模块（如 V7 可取 45 或 37），所以直接量当前这帧的矩阵。
   const scan = useMemo(() => {
-    if (!prepared || !prepared.version) return null;
-    return assessQrScan(4 * prepared.version + 17, stageWidth, minModulePx);
-  }, [prepared, stageWidth, minModulePx]);
+    if (!currentMatrix) return null;
+    const dpr = window.devicePixelRatio || 1;
+    const moduleCount = currentMatrix.moduleCount;
+    return assessQrScan(moduleCount, renderedQrWidth(moduleCount, stageWidth, dpr), minModulePx);
+  }, [currentMatrix, stageWidth, minModulePx]);
 
   const manifest = frames.join('\n');
   const estimatedSeconds = total > 0 ? total / fps : 0;
