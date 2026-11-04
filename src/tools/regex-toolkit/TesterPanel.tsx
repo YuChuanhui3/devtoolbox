@@ -13,6 +13,7 @@ import { SAMPLE_REGEX_PATTERN, SAMPLE_REGEX_TEXT } from '@/data/samples';
 import { escapeHtml } from '@/lib/text';
 import { errorHint } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import RegexMatchWorker from '@/lib/regex-match.worker?worker&inline';
 import {
   MAX_REGEX_MATCHES,
   REGEX_MATCH_DEADLINE_MS,
@@ -128,10 +129,7 @@ export function TesterPanel({ active: _active }: { active: boolean }) {
     setPending(true);
     const debounce = window.setTimeout(() => {
       if (!workerRef.current) {
-        const worker = new Worker(
-          new URL('../../lib/regex-match.worker.ts', import.meta.url),
-          { type: 'module' },
-        );
+        const worker = new RegexMatchWorker();
         worker.onmessage = (event: MessageEvent<{ seq: number; outcome: RegexMatchOutcome }>) => {
           if (event.data.seq !== seqRef.current) return;
           if (killTimerRef.current !== null) {

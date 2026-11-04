@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Localized } from '@/i18n/locale';
 import type { CodeGenOptions, CodeGenRequest, CodeGenResponse, CodeLanguage } from '@/lib/codegen';
+import JsonToCodeWorker from '@/workers/jsonToCode.worker?worker&inline';
 
 export interface GenerationError {
   message: Localized;
@@ -82,9 +83,7 @@ export function useCodeGenWorker() {
 
     let worker: Worker;
     try {
-      worker = new Worker(new URL('../workers/jsonToCode.worker.ts', import.meta.url), {
-        type: 'module',
-      });
+      worker = new JsonToCodeWorker();
     } catch {
       setState((previous) => ({
         ...previous,

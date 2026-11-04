@@ -143,6 +143,7 @@ IP 与网络地址工具箱（出口 IP / 归属地 / 定位地图 / IP↔数字
 npm install
 npm run dev          # 开发服务器，默认 http://localhost:5173
 npm run build        # 类型检查 + 生产构建
+npm run build:single # 打包成单个可双击打开的离线 HTML（dist-single/DevToolbox.html）
 npm run build:ghpages # 生成 sitemap + 以 /devtoolbox/ 子路径构建（GitHub Pages 用）
 npm run preview      # 预览生产构建
 npm run test         # 监听模式运行单元测试
@@ -233,6 +234,22 @@ npm run start:lan
 如使用其他子路径部署，需要同步调整 Vite `base`、`homepage` 与 sitemap 生成脚本中的路径前缀。
 
 构建期会由 `scripts/render-routes.ts` 为每个路由生成带「在线XX工具」关键词标题、描述与简介正文的静态 `index.html` 壳（目录 index），供不执行 JS 的搜索引擎抓取；真实用户由 React 接管，看到的仍是完整应用。搜索引擎提交：Google 已完成站长验证并提交 `sitemap.xml`；Bing 在 <https://www.bing.com/webmasters> 导入 Google 属性后提交同一 sitemap；百度在 <https://ziyuan.baidu.com> 提交（github.io 子路径收录慢，长期建议自定义域名）。
+
+### 单文件离线包（放进目录双击就能用）
+
+```bash
+npm run build:single   # 产物 dist-single/DevToolbox.html，约 5.3 MB，目录下不留其他文件
+npm run zip:single     # → DevToolbox-offline.zip，约 1.6 MB，解压后就是那一个 HTML
+```
+
+把这个 HTML 拷到内网共享目录、NAS 或 U 盘，双击即可打开；要经过网盘 / IM / 邮件传输就先 zip，体积降到约 30%。`vite.config.single.ts` 关掉代码分割（`inlineDynamicImports`）、`base` 改为相对路径、字体与图片全部转 data URI；`scripts/inline-single.ts` 再把唯一的一个 JS 与 CSS 写进 HTML，并清掉目录里的其余中间产物。
+
+体积主要来自各工具的懒加载依赖被并进了同一个文件：prettier 1.49 MB、terser 0.49 MB、@zxing + jsQR 0.57 MB、node-forge 0.28 MB、sql-formatter 0.28 MB、highlight.js 0.16 MB，其余库与应用代码约 1.9 MB。想再小只能按需排除工具（离线包不含懒加载，没有「不下载」这一说）。
+
+不能直接把 `dist/` 拷进去双击：`file://` 下浏览器以 `origin=null` 拒绝加载外链 `<script type="module">`，也不允许 `new Worker('file://…')`。因此正则匹配与代码生成两个 Worker 改用 `?worker&inline` 打包成 blob 线程，入口在 `file://` 下自动切换 `HashRouter`（深链形如 `DevToolbox.html#/tools/json-formatter`）。
+
+- Chrome / Edge 实测 `file://` 属于安全上下文（`isSecureContext=true`），摄像头、剪贴板、localStorage 均可用；Safari 对 `file://` 调用摄像头可能直接拒绝，要扫码请改用上面 HTTPS 部署的地址。
+- 依赖同源信令的「局域网互传 / 一次扫码配对」在离线包里不可用（没有服务器，会自动回退为双向离线配对）；二维码离线传输与其余纯前端工具不受影响。
 
 ## 浏览器兼容性
 
