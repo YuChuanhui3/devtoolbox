@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, FilePlus2, FolderPlus, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FilePlus2, FileUp, FolderPlus, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { Input } from '@/components/ui/Input';
+import { DownloadButton } from '@/components/tool/ToolActions';
 import { useI18n } from '@/i18n/I18nProvider';
 import { newId } from '@/lib/apiworkbench/id';
 import { removeFolder, updateFolder } from '@/lib/apiworkbench/tree';
+import { exportPostman } from '@/lib/apiworkbench/transfer';
 import type { L10n } from '@/i18n/locale';
 import type { WbCollection, WbFolder, WbRequest, WorkbenchDoc } from '@/lib/apiworkbench/types';
 
@@ -15,6 +17,7 @@ interface TreeProps {
   selectedRequestId: string | null;
   onSelectRequest: (collectionId: string, request: WbRequest) => void;
   onNewRequest: (collectionId: string, folderId: string) => void;
+  onImportPostman?: () => void;
 }
 
 interface FolderProps extends TreeProps {
@@ -209,17 +212,25 @@ export function CollectionTree(props: TreeProps) {
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-ink">{t({ zh: '集合', en: 'Collections' })}</span>
-        <Button variant="ghost" size="sm" onClick={addCollection} aria-label={t({ zh: '新建集合', en: 'New collection' })}>
-          <Plus className="h-3 w-3" aria-hidden="true" />
-          {t({ zh: '集合', en: 'Add' })}
-        </Button>
+        <span className="flex items-center gap-1">
+          {props.onImportPostman ? (
+            <Button variant="ghost" size="sm" onClick={props.onImportPostman} aria-label={t({ zh: '导入 Postman 集合', en: 'Import Postman collection' })}>
+              <FileUp className="h-3 w-3" aria-hidden="true" />
+              Postman
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="sm" onClick={addCollection} aria-label={t({ zh: '新建集合', en: 'New collection' })}>
+            <Plus className="h-3 w-3" aria-hidden="true" />
+            {t({ zh: '集合', en: 'Add' })}
+          </Button>
+        </span>
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-auto">
         {doc.collections.length === 0 ? (
           <p className="px-1 text-[11px] leading-5 text-ink-3">
             {t({
-              zh: '还没有集合。新建集合后可把请求存进去，也可以从 OpenAPI 页签一键生成。',
-              en: 'No collections yet. Create one to save requests, or generate them from the OpenAPI tab.',
+              zh: '还没有集合。新建集合后可把请求存进去，也可以从 OpenAPI 页签生成，或点上方的 Postman 按钮导入。',
+              en: 'No collections yet. Create one to save requests, generate them from the OpenAPI tab, or import via the Postman button above.',
             })}
           </p>
         ) : null}
@@ -252,6 +263,15 @@ export function CollectionTree(props: TreeProps) {
                   >
                     <FilePlus2 className="h-3 w-3" aria-hidden="true" />
                   </Button>
+                  <DownloadButton
+                    variant="ghost"
+                    size="sm"
+                    filename={`${collection.name || 'collection'}.postman_collection.json`}
+                    content={JSON.stringify(exportPostman(collection), null, 2)}
+                    mime="application/json;charset=utf-8"
+                    label={{ zh: '导出', en: 'Export' }}
+                    className="text-ink-3 hover:text-ink"
+                  />
                   <RowMenu
                     label={{ zh: '集合', en: 'collection' }}
                     onRename={() => setRenamingId(collection.id)}

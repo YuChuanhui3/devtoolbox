@@ -18,6 +18,7 @@ import { useWorkbench } from './WorkbenchContext';
 import { CollectionTree } from './CollectionTree';
 import { EnvironmentModal } from './EnvironmentModal';
 import { HistoryList } from './HistoryList';
+import { PostmanImportModal, type PostmanImportResult } from './PostmanImportModal';
 import { RequestEditor } from './RequestEditor';
 import { ResponseViewer, type ResponseView } from './ResponseViewer';
 
@@ -48,6 +49,7 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
   const [hint, setHint] = useState<Localized | undefined>();
   const [saving, setSaving] = useState(false);
   const [envModalOpen, setEnvModalOpen] = useState(false);
+  const [postmanImportOpen, setPostmanImportOpen] = useState(false);
 
   const collection = doc.collections.find((c) => c.id === editing.collectionId) ?? null;
   const scope = scopeFor(collection);
@@ -115,6 +117,18 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
     toast.success(t({ zh: '已保存到集合', en: 'Saved to collection' }));
   };
 
+  const importCollection = ({ collection, ignored, requestCount }: PostmanImportResult) => {
+    update((d) => ({ ...d, collections: [...d.collections, collection] }));
+    setPostmanImportOpen(false);
+    toast.success(t({ zh: `已导入「${collection.name}」，共 ${requestCount} 个请求`, en: `Imported "${collection.name}" with ${requestCount} requests` }));
+    if (ignored.length > 0) {
+      toast.info(t({
+        zh: `已跳过：${ignored.join('、')}（脚本、GraphQL 体等不导入）`,
+        en: `Skipped: ${ignored.join(', ')} (scripts, GraphQL bodies, etc.)`,
+      }));
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -147,6 +161,7 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
                 setError(null);
               }}
               onNewRequest={(collectionId, folderId) => setEditing({ request: blankRequest(), collectionId, folderId })}
+              onImportPostman={() => setPostmanImportOpen(true)}
             />
           </div>
           <HistoryList
@@ -201,6 +216,7 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
       </div>
 
       <EnvironmentModal open={envModalOpen} onClose={() => setEnvModalOpen(false)} />
+      <PostmanImportModal open={postmanImportOpen} onClose={() => setPostmanImportOpen(false)} onImported={importCollection} />
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({
