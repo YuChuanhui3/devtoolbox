@@ -89,16 +89,27 @@ async function typePayload() {
   await waitFor(() => expect(screen.getByText('帧数')).toBeInTheDocument());
 }
 
-/** 走真实的手选文件路径（ImageDropzone → onFiles → arrayBuffer），只把图片内容换成指定大小的占位字节。 */
-async function dropImage(name: string, bytes: number) {
+/** 走真实的手选文件路径（ImageDropzone → onFiles → arrayBuffer），内容换成给定的头部 + 指定大小的随机字节。 */
+async function dropFile(name: string, mime: string, bytes: number, head: number[] = []) {
   fireEvent.click(screen.getByRole('tab', { name: '文件' }));
   const input = document.querySelector<HTMLInputElement>('input[type=file]');
   expect(input).not.toBeNull();
-  fireEvent.change(input as HTMLInputElement, {
-    target: { files: [new File([new Uint8Array(bytes)], name, { type: 'image/jpeg' })] },
-  });
+  const body = new Uint8Array(Math.max(0, bytes - head.length));
+  // crypto.getRandomValues 单次上限 64KB，且测试要可复现：自己填伪随机
+  let state = 0x9e3779b9;
+  for (let i = 0; i < body.length; i += 1) {
+    state = Math.imul(state ^ (state >>> 15), 0x85ebca6b) >>> 0;
+    body[i] = (state ^ (state >>> 13)) & 0xff;
+  }
+  body.set(Uint8Array.from(head));
+  fireEvent.change(input as HTMLInputElement, { target: { files: [new File([body], name, { type: mime })] } });
   await waitFor(() => expect(screen.getByText(name)).toBeInTheDocument());
 }
+
+const dropImage = (name: string, bytes: number) => dropFile(name, 'image/jpeg', bytes);
+
+/** 载荷类型的哨兵靠头部魔术号，所以给容器文件造一个 ZIP 头。 */
+const dropContainer = (name: string, bytes: number) => dropFile(name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', bytes, [0x50, 0x4b, 0x03, 0x04]);
 
 describe('SendPanel 密度预算', () => {
   test('标准档按行内显示宽度切帧：每模块像素守住下限', async () => {
@@ -171,5 +182,36 @@ describe('SendPanel 图片重压', () => {
     expect(gzipBox).toBeEnabled();
     fireEvent.click(gzipBox);
     expect(statValue('载荷')).toBe('20 KiB');
+  });
+});
+
+describe('SendPanel 载荷类型提示', () => {
+  const JSON_TEXT = JSON.stringify({ rows: Array.from({ length: 1200 }, (_, i) => ({ id: i, name: `客户-${i}` })) });
+
+  test('文本 + Gzip：把实测比例摆在明面上，勾选项不再重复吹数字', async () => {
+    render(<Harness />);
+    fireEvent.change(screen.getByPlaceholderText(/粘贴要传输/), { target: { value: JSON_TEXT } });
+
+    await waitFor(() => expect(screen.getByText(/文本 Gzip 实测/)).toBeInTheDocument());
+    expect(screen.getByText(/文本 Gzip 实测.*（−\d+%）/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Gzip 压缩' })).toBeInTheDocument();
+    // 扫多久比「多少帧」更能劝退人：读数要按 fps 折算成时间
+    expect(statValue('预计耗时')).toMatch(/\d+(\.\d)? (秒|分)/);
+  });
+
+  test('文本没勾 Gzip：给的是经验值，不是实测', async () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('checkbox', { name: /Gzip 压缩/ }));
+    fireEvent.change(screen.getByPlaceholderText(/粘贴要传输/), { target: { value: JSON_TEXT } });
+
+    await waitFor(() => expect(screen.getByText(/勾上 Gzip 实测能省 80-86%/)).toBeInTheDocument());
+    expect(screen.queryByText(/文本 Gzip 实测/)).not.toBeInTheDocument();
+  });
+
+  test('zip / Office 容器：照实报「内部已经压过」，涨了也不藏着', async () => {
+    render(<Harness />);
+    await dropContainer('book.xlsx', 60_000);
+
+    await waitFor(() => expect(screen.getByText(/容器内部已经压过，Gzip 实测/)).toBeInTheDocument());
   });
 });

@@ -42,8 +42,10 @@ import {
   DQX_LIMITS,
   gzipBytes,
   makeSessionId,
+  sniffPayloadKind,
   splitFrames,
   tuneFrameBytes,
+  type PayloadKind,
 } from '@/lib/qr-transfer';
 import { compressImage, loadImage, mimeToExtension, replaceExtension } from '@/lib/image';
 
@@ -349,6 +351,72 @@ export function SendPanel({ active }: { active: boolean }) {
 
   const fileName = source === 'text' ? (text ? 'text-utf8.txt' : undefined) : (encoded?.name ?? file?.name);
 
+  // —— 载荷类型：只改「这句该怎么说」，不改任何行为 ——
+  const payloadKind = useMemo<PayloadKind | null>(
+    () => (payloadSource.length === 0 ? null : source === 'text' ? 'text' : sniffPayloadKind(payloadSource)),
+    [payloadSource, source],
+  );
+
+  // 帧数只跟字节数成正比，而「再压一遍值不值」完全取决于载荷是不是已经压过：
+  // 文本实测省 80-86%，zip/Office 容器只有 ~13%，图像基本 0。没勾 Gzip 就给经验值，
+  // 勾了就把实测数字摆出来（容器可能反而涨，也照实说）。
+  const compressionHint = useMemo<Localized | null>(() => {
+    if (!payloadKind || encoded || payload.bytes.length === 0) return null;
+    const before = payloadSource.length;
+    if (!gzip) {
+      if (payloadKind === 'text') {
+        return {
+          zh: '文本类：勾上 Gzip 实测能省 80-86%，帧数除以五到六倍。',
+          en: 'Text: gzip typically saves 80-86% — five to six times fewer frames.',
+        };
+      }
+      if (payloadKind === 'container') {
+        return {
+          zh: 'zip / Office 容器（docx、xlsx、pptx、jar…）内部已经 deflate 过，再 Gzip 约省 10-15%，仍值得勾上。',
+          en: 'ZIP/Office containers (docx, xlsx, pptx, jar…) are already deflated; re-gzipping still buys 10-15%, so keep it checked.',
+        };
+      }
+      if (payloadKind === 'image') {
+        // 能重压的图片，那一行已经在「图片重压」旁边；只有 GIF 这类压不动的才在这里说话
+        return canRecompress
+          ? null
+          : {
+              zh: '图像字节已经压死，Gzip 帮不上；要减帧只能换更小的图。',
+              en: 'Image bytes are already packed, so gzip adds nothing — use a smaller picture to cut frames.',
+            };
+      }
+      return null;
+    }
+    const after = payload.bytes.length;
+    const measured = `${formatBytes(before, 0)} → ${formatBytes(after, 0)}（${after <= before ? '−' : '+'}${Math.round(
+      Math.abs(after / before - 1) * 100,
+    )}%）`;
+    if (payloadKind === 'container') {
+      return after >= before
+        ? {
+            zh: `容器内部已经压过，Gzip 实测 ${measured}：再压不划算。要减帧只能抽掉包里的媒体，或改走「局域网互传」。`,
+            en: `The container is already packed — gzip measured ${measured}. Strip its media or use LAN transfer to cut frames.`,
+          }
+        : {
+            zh: `容器内部已经压过，Gzip 实测 ${measured}；想再降一个量级得抽掉包里的媒体，或改走「局域网互传」。`,
+            en: `Already-deflated container: gzip measured ${measured}. An order of magnitude more means stripping its media or switching to LAN transfer.`,
+          };
+    }
+    if (payloadKind === 'image') {
+      return {
+        zh: `图像 Gzip 实测 ${measured}：字节已经压死，减帧靠重压或换更小的图，不靠压缩。`,
+        en: `Image gzip measured ${measured} — bytes are already packed; re-encode or shrink instead.`,
+      };
+    }
+    if (payloadKind === 'text') {
+      return {
+        zh: `文本 Gzip 实测 ${measured}，帧数按同比例往下走。`,
+        en: `Text gzip measured ${measured}; frames drop by the same factor.`,
+      };
+    }
+    return null;
+  }, [payloadKind, encoded, gzip, payloadSource, payload.bytes, canRecompress]);
+
   // —— 单帧容量：用与真实帧等长的探针文本过 createQrMatrix，二分出最大载荷字节 ——
   const prepared = useMemo<Prepared | null>(() => {
     if (payload.bytes.length === 0) return null;
@@ -543,7 +611,7 @@ export function SendPanel({ active }: { active: boolean }) {
                     <Checkbox
                       checked={gzip}
                       onChange={setGzip}
-                      label={t({ zh: 'Gzip 压缩（JSON 可省 60-80% 帧数）', en: 'Gzip (JSON typically saves 60-80% of frames)' })}
+                      label={t({ zh: 'Gzip 压缩', en: 'Gzip' })}
                       className="text-xs"
                     />
                   </div>
@@ -628,6 +696,7 @@ export function SendPanel({ active }: { active: boolean }) {
               ) : null}
             </div>
           )}
+          {compressionHint ? <p className="text-[11px] leading-5 text-ink-3">{t(compressionHint)}</p> : null}
         </Panel>
 
         <Panel
@@ -755,8 +824,19 @@ export function SendPanel({ active }: { active: boolean }) {
                 { label: t({ zh: '版本', en: 'Version' }), value: prepared.version ? `V${prepared.version}` : '-' },
                 { label: t({ zh: '模块', en: 'Module' }), value: scan ? `${scan.modulePx.toFixed(2)}px` : '-' },
                 {
-                  label: t({ zh: '预计', en: 'Est.' }),
-                  value: `${estimatedSeconds >= 60 ? `${Math.floor(estimatedSeconds / 60)}m${Math.round(estimatedSeconds % 60)}s` : `${estimatedSeconds.toFixed(1)}s`}`,
+                  label: t({ zh: '预计耗时', en: 'Est. time' }),
+                  // 越界的话一轮根本扫不完，估时就没有意义，只标「拦住」
+                  value: overFrameCap
+                    ? t({ zh: '已被上限拦住', en: 'blocked by cap' })
+                    : estimatedSeconds >= 60
+                      ? t({
+                          zh: `${Math.floor(estimatedSeconds / 60)} 分 ${Math.round(estimatedSeconds % 60)} 秒`,
+                          en: `${Math.floor(estimatedSeconds / 60)}m ${Math.round(estimatedSeconds % 60)}s`,
+                        })
+                      : t({
+                          zh: `${estimatedSeconds.toFixed(1)} 秒`,
+                          en: `${estimatedSeconds.toFixed(1)}s`,
+                        }),
                 },
               ]}
             />

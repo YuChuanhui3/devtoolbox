@@ -350,6 +350,56 @@ export function textToGzipPayload(text: string): Promise<Uint8Array> {
   return gzipBytes(new TextEncoder().encode(text));
 }
 
+/** 载荷的类型：决定「再压一遍值不值」这句话该怎么说。 */
+export type PayloadKind = 'text' | 'container' | 'image' | 'other';
+
+const CONTAINER_MAGICS: number[][] = [
+  [0x50, 0x4b, 0x03, 0x04], // ZIP —— zip / docx / xlsx / pptx / jar / apk / epub
+  [0x50, 0x4b, 0x05, 0x06],
+  [0x50, 0x4b, 0x07, 0x08],
+  [0x52, 0x61, 0x72, 0x21], // RAR
+  [0x37, 0x7a, 0xbc, 0xaf], // 7z
+  [0xfd, 0x37, 0x7a, 0x58, 0x5a], // xz
+  [0x1f, 0x8b], // gzip
+  [0x42, 0x5a, 0x68], // bzip2
+  [0x28, 0xb5, 0x2f, 0xfd], // zstd
+];
+
+const IMAGE_MAGICS: number[][] = [
+  [0x89, 0x50, 0x4e, 0x47], // PNG
+  [0xff, 0xd8, 0xff], // JPEG
+  [0x47, 0x49, 0x46, 0x38], // GIF
+  [0x42, 0x4d], // BMP
+];
+
+function startsWith(bytes: Uint8Array, magic: number[]): boolean {
+  return bytes.length >= magic.length && magic.every((byte, i) => bytes[i] === byte);
+}
+
+/**
+ * 只看头部若干字节做类型判断——传输入口要的是「值不值得再压」，不是完整文件识别。
+ * 文本用「没有 NUL + 控制字符极少」判定，而不是可见字符比例：中文文本（UTF-8 或 GBK）
+ * 大量字节 ≥0x80，按 ASCII 比例会把它们当成二进制；也不用严格 UTF-8 解码，
+ * 采样正好切断在一个多字节字符中间就会误判。
+ */
+export function sniffPayloadKind(bytes: Uint8Array): PayloadKind {
+  if (bytes.length === 0) return 'other';
+  const head = bytes.subarray(0, 16);
+  if (startsWith(head, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes.subarray(8, 12), [0x57, 0x45, 0x42, 0x50])) {
+    return 'image'; // RIFF....WEBP
+  }
+  if (IMAGE_MAGICS.some((magic) => startsWith(head, magic))) return 'image';
+  if (CONTAINER_MAGICS.some((magic) => startsWith(head, magic))) return 'container';
+
+  const sample = bytes.subarray(0, 1024);
+  if (sample.includes(0)) return 'other';
+  let control = 0;
+  for (const byte of sample) {
+    if (byte < 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d) control += 1;
+  }
+  return control / sample.length <= 0.02 ? 'text' : 'other';
+}
+
 /**
  * 二分搜索能生成二维码的最大帧字节数。validate 传入「一帧最大文本」的容量探测函数
  * （UI 侧用 createQrMatrix 实现），库本身保持无 QR 依赖以便纯单测。

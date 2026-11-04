@@ -9,6 +9,7 @@ import {
   inflatePayloadBytes,
   makeSessionId,
   parseFrame,
+  sniffPayloadKind,
   splitFrames,
   tuneFrameBytes,
 } from './qr-transfer';
@@ -235,5 +236,40 @@ describe('tuneFrameBytes', () => {
     expect(tuneFrameBytes(60, 3000, validate)).toBe(744);
     expect(tuneFrameBytes(60, 700, validate)).toBe(699);
     expect(tuneFrameBytes(60, 100, () => false)).toBe(0);
+  });
+});
+
+describe('sniffPayloadKind', () => {
+  const head = (magic: number[], filler = 0x00) => Uint8Array.from([...magic, filler, filler]);
+
+  it('reads containers as already-packed', () => {
+    // docx / xlsx / pptx 都是 ZIP 容器；jar、apk、epub 同理
+    expect(sniffPayloadKind(head([0x50, 0x4b, 0x03, 0x04]))).toBe('container');
+    expect(sniffPayloadKind(head([0x52, 0x61, 0x72, 0x21]))).toBe('container'); // RAR
+    expect(sniffPayloadKind(head([0x37, 0x7a, 0xbc, 0xaf]))).toBe('container'); // 7z
+    expect(sniffPayloadKind(head([0x1f, 0x8b]))).toBe('container'); // gzip
+  });
+
+  it('reads bitmaps as images, including RIFF....WEBP', () => {
+    expect(sniffPayloadKind(head([0x89, 0x50, 0x4e, 0x47]))).toBe('image');
+    expect(sniffPayloadKind(head([0xff, 0xd8, 0xff]))).toBe('image');
+    const webp = new Uint8Array(16);
+    webp.set([0x52, 0x49, 0x46, 0x46, 8, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]);
+    expect(sniffPayloadKind(webp)).toBe('image');
+  });
+
+  it('sees UTF-8 Chinese and GBK-ish text as text, not binary', () => {
+    expect(sniffPayloadKind(bytes('{"客户":["张三","李四"]}\n'))).toBe('text');
+    // GBK 里大量字节 ≥0x80，按 ASCII 比例判会把它当二进制
+    const gbk = Uint8Array.from(Array.from({ length: 400 }, (_, i) => (i % 90 === 0 ? 0x0a : 0x80 + (i % 100))));
+    expect(sniffPayloadKind(gbk)).toBe('text');
+  });
+
+  it('falls back to other for real binary and empty payloads', () => {
+    const elf = new Uint8Array(256);
+    elf.set([0x7f, 0x45, 0x4c, 0x46]);
+    elf[4] = 0x00;
+    expect(sniffPayloadKind(elf)).toBe('other');
+    expect(sniffPayloadKind(new Uint8Array(0))).toBe('other');
   });
 });
