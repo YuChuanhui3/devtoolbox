@@ -3,6 +3,7 @@ import { Camera, Video } from 'lucide-react';
 import { ToolError } from '@/lib/errors';
 import { useI18n } from '@/i18n/I18nProvider';
 import { tl, type L10n, type Localized } from '@/i18n/locale';
+import { startLiveQr, type LiveQrStats } from '@/lib/live-qr';
 import { isSignalText } from '@/lib/sdp';
 
 interface ScannerProps {
@@ -20,48 +21,50 @@ export function Scanner({ active, onResult, mode = 'signal' }: ScannerProps) {
   const stopRef = useRef<(() => void) | null>(null);
   const [status, setStatus] = useState<'idle' | 'starting' | 'running' | 'error'>('idle');
   const [message, setMessage] = useState<Localized>('');
+  const [stats, setStats] = useState<LiveQrStats | null>(null);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
   const lastCodeRef = useRef<{ text: string; at: number }>({ text: '', at: 0 });
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) return undefined;
     let cancelled = false;
     setStatus('starting');
+    setStats(null);
     setMessage({ zh: '正在开启摄像头…', en: 'Starting camera…' });
 
     (async () => {
+      const video = videoRef.current;
+      if (!video) return;
       try {
-        const { BrowserMultiFormatReader } = await import('@zxing/browser');
-        if (cancelled) return;
-        const reader = new BrowserMultiFormatReader(new Map(), { delayBetweenScanAttempts: 150 });
-        const controls = await reader.decodeFromVideoDevice(
-          undefined,
-          videoRef.current ?? undefined,
-          (result, _err, ctrl) => {
-            if (!result) return;
-            const text = result.getText();
+        const stop = await startLiveQr({
+          video,
+          onStats: (next) => {
+            if (!cancelled) setStats(next);
+          },
+          onText: (text) => {
+            if (cancelled) return;
             if (mode === 'signal') {
               if (!isSignalText(text)) return;
-              ctrl.stop();
+              stopRef.current?.();
               stopRef.current = null;
               setStatus('running');
               onResultRef.current(text);
               return;
             }
-            // 摄像头每 150ms 重复解到同一张码，去重后才算一次新扫码
+            // 同一张码会被连续读到很多次，去重后才算一次新扫码
             const now = Date.now();
             if (text === lastCodeRef.current.text && now - lastCodeRef.current.at < 1500) return;
             lastCodeRef.current = { text, at: now };
             setStatus('running');
             onResultRef.current(text);
           },
-        );
+        });
         if (cancelled) {
-          controls.stop();
+          stop();
           return;
         }
-        stopRef.current = () => controls.stop();
+        stopRef.current = stop;
         setStatus('running');
         setMessage(
           mode === 'signal'
@@ -110,6 +113,13 @@ export function Scanner({ active, onResult, mode = 'signal' }: ScannerProps) {
           : mode === 'signal'
             ? t({ zh: '扫码失败时，可展开下方「粘贴连接信息」兜底', en: 'If scanning fails, use the "paste connection info" fallback below' })
             : t({ zh: '同一张码 1.5 秒内只回传一次，可连续扫多张', en: 'The same code is forwarded once per 1.5 s, so you can keep scanning' })}</p>
+      {status === 'running' && stats ? (
+        <p className="text-center text-[11px] tabular-nums text-ink-3">
+          {t({ zh: '解码尝试', en: 'Attempts' })} {stats.attempts} · {t({ zh: '读到码', en: 'Reads' })} {stats.hits}
+          {stats.stalled ? ` · ${t({ zh: '摄像头无画面', en: 'no picture' })}` : ` · ${stats.width}×${stats.height}`}
+          {stats.lastError ? ` · ${stats.lastError}` : ''}
+        </p>
+      ) : null}
     </div>
   );
 }

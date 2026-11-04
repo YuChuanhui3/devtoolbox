@@ -7,6 +7,7 @@ import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { tl, type L10n, type Localized } from '@/i18n/locale';
 import { ToolError } from '@/lib/errors';
+import { startLiveQr, type LiveQrStats } from '@/lib/live-qr';
 import { parseFrame } from '@/lib/qr-transfer';
 import { DqxResult, SessionProgress } from './DqxResult';
 import type { DqxSession } from '@/hooks/useDqxSession';
@@ -25,35 +26,39 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
   const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const stopRef = useRef<(() => void) | null>(null);
-  const lastRef = useRef<{ key: string; confirmed: boolean }>({ key: '', confirmed: false });
   const acceptRef = useRef(session.accept);
   acceptRef.current = session.accept;
 
   const [scanning, setScanning] = useState(false);
   const [status, setStatus] = useState<'idle' | 'starting' | 'running' | 'error'>('idle');
   const [message, setMessage] = useState<Localized>('');
+  const [stats, setStats] = useState<LiveQrStats | null>(null);
   const [manual, setManual] = useState('');
   const [mismatch, setMismatch] = useState<{ sid: string; crc: string } | null>(null);
 
-  // 双读确认：同一帧连续两次被完整读出才入账，挡掉相机错读。
+  // 双读确认：同一帧被完整读出两次才入账，挡掉相机错读。
+  // 按帧号计数而不是「只看上一次读到的是谁」：发送端切帧时两帧的读数交错，
+  // 只看最后一键会让每一帧都停在“第一次读到”，结果一个都进不了账。
+  const readsRef = useRef(new Map<string, number>());
   const handleResult = (text: string) => {
     const frame = parseFrame(text);
     if (!frame) return;
     const key = `${frame.sid}:${frame.index}`;
-    if (lastRef.current.key !== key) {
-      lastRef.current = { key, confirmed: false };
-      return;
-    }
-    if (lastRef.current.confirmed) return;
-    lastRef.current.confirmed = true;
+    if (readsRef.current.size > 512) readsRef.current.clear();
+    const reads = (readsRef.current.get(key) ?? 0) + 1;
+    readsRef.current.set(key, reads);
+    // 第二次读到才入账（挡掉错读），第三次起算重复读，丢掉
+    if (reads !== 2) return;
     acceptRef.current(text);
   };
 
   const stopScan = () => {
     stopRef.current?.();
     stopRef.current = null;
+    readsRef.current.clear();
     setScanning(false);
     setStatus('idle');
+    setStats(null);
   };
 
   useEffect(() => {
@@ -70,17 +75,19 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
   }, [lastEvent]);
 
   const startScan = async () => {
+    const video = videoRef.current;
+    if (!video) return;
     setScanning(true);
     setStatus('starting');
+    setStats(null);
     setMessage({ zh: '正在开启摄像头…', en: 'Starting camera…' });
     try {
-      const { BrowserMultiFormatReader } = await import('@zxing/browser');
-      const reader = new BrowserMultiFormatReader(new Map(), { delayBetweenScanAttempts: 120 });
-      const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current ?? undefined, (result) => {
-        if (!result) return;
-        handleResult(result.getText());
+      const stop = await startLiveQr({
+        video,
+        onText: handleResult,
+        onStats: setStats,
       });
-      stopRef.current = () => controls.stop();
+      stopRef.current = stop;
       setStatus('running');
       setMessage({ zh: '对准对方屏幕上的二维码序列', en: 'Point at the QR sequence on the other screen' });
     } catch (caught) {
@@ -90,6 +97,7 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
         zh: `${tl(err.localized, 'zh')}：${tl(err.hint ?? SCAN_HINT, 'zh')}`,
         en: `${tl(err.localized, 'en')}: ${tl(err.hint ?? SCAN_HINT, 'en')}`,
       });
+      setScanning(false);
     }
   };
 
@@ -125,12 +133,57 @@ export function ReceivePanel({ active, session }: ReceivePanelProps) {
                 {t({ zh: '开始扫码', en: 'Start scan' })}
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={session.reset} disabled={sessions.length === 0}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                readsRef.current.clear();
+                session.reset();
+              }}
+              disabled={sessions.length === 0}
+            >
               {t({ zh: '清空重来', en: 'Reset' })}
             </Button>
           </div>
           {status === 'error' ? (
             <ToolAlert tone="warning" title={{ zh: '摄像头不可用', en: 'Camera unavailable' }} hint={SCAN_HINT} />
+          ) : null}
+
+          {stats ? (
+            <p className="text-center text-[11px] tabular-nums text-ink-3">
+              {t({ zh: '解码尝试', en: 'Attempts' })} {stats.attempts} · {t({ zh: '读到码', en: 'Reads' })} {stats.hits}
+              {stats.stalled
+                ? ` · ${t({ zh: '摄像头无画面', en: 'no picture' })}`
+                : ` · ${stats.width}×${stats.height}`}
+              {stats.lastError ? ` · ${stats.lastError}` : ''}
+            </p>
+          ) : null}
+          {stats && stats.attempts > 15 && stats.hits === 0 ? (
+            <ToolAlert
+              tone="warning"
+              title={t({ zh: '摄像头在跑，但一个二维码都没读到', en: 'Camera is running but no QR code is being read' })}
+              hint={
+                stats.stalled
+                  ? t({
+                      zh: '画面一直没到位：把页面切到前台、重新点「开始扫码」；仍无解就改用截图/录屏回收。',
+                      en: 'The picture never arrived: bring this tab to the foreground and start again, or fall back to screenshot salvage.',
+                    })
+                  : t({
+                      zh: '通常是离得太远、对不上焦或屏幕太暗：靠近一些让码占满取景框，或对端点「放映」把码放大，再试自动对焦。',
+                      en: 'Usually too far, out of focus or the screen is too dim: move closer so the code fills the frame, or have the peer hit Present to enlarge it.',
+                    })
+              }
+            />
+          ) : null}
+          {stats && stats.hits > 0 && sessions.length === 0 ? (
+            <ToolAlert
+              tone="warning"
+              title={t({ zh: `读到 ${stats.hits} 次，但都不是 DQX 帧`, en: `${stats.hits} codes read, none of them DQX frames` })}
+              hint={t({
+                zh: '确认对准的是「发送」页生成的 DQX1 码，而不是配对码或别的二维码。',
+                en: 'Make sure the camera is on the DQX1 code from the Send tab, not a pairing code or some other QR.',
+              })}
+            />
           ) : null}
 
           <div className="space-y-1.5 border-t border-line pt-3">
