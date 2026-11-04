@@ -195,8 +195,8 @@ export function MockPanel({ active: _active }: { active: boolean }) {
       <Panel
         title={t({ zh: '导出快照 / 部署 Worker', en: 'Snapshot export / Worker deploy' })}
         subtitle={t({
-          zh: '把启用的路由导出为 JSON，粘贴进 workers/api-mock 后即可部署成你自己的假后端，供本机以外的程序访问。',
-          en: 'Export the enabled routes as JSON, paste it into workers/api-mock, and deploy your own fake backend reachable from outside this page.',
+          zh: '把启用的路由导出为 JSON，粘贴进 workers/api-mock 后即可部署成你自己的假后端，供本机以外的程序访问；本仓库跑 dev server 时也可用 /__mock/<路径> 预览同一逻辑。',
+          en: 'Export the enabled routes as JSON, paste it into workers/api-mock, and deploy your own fake backend reachable from outside this page; with this repo\'s dev server you can also preview the same logic under /__mock/<path>.',
         })}
         bodyClassName="space-y-2"
       >

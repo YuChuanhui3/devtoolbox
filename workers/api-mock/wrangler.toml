@@ -1,0 +1,9 @@
+name = "api-mock"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# 从「API 工作台 → Mock → 导出快照」粘贴到此处（单行 JSON，只含启用路由）。
+# 路由多了想免重新部署，可改用 KV：wrangler kv namespace create MOCK，
+# 把快照写成 key=routes，然后在 index.js 里读 env.MOCK_KV 替代 env.MOCK_CONFIG。
+[vars]
+MOCK_CONFIG = '{"mockSnapshot":1,"name":"demo","routes":[{"method":"GET","path":"/users/:id","status":200,"headers":[],"body":"{\"id\":\"{{params.id}}\",\"trace\":\"{{$uuid}}\"}","delayMs":0}]}'
