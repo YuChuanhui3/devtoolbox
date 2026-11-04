@@ -30,7 +30,7 @@ interface HeaderRow {
   value: string;
 }
 
-export default function HttpSimulatorTool() {
+export function RequestPanel({ active: _active }: { active: boolean }) {
   const { t } = useI18n();
   const [mode, setMode] = useState<FetchMode>('direct');
   const [method, setMethod] = useState('GET');

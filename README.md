@@ -22,7 +22,7 @@ DevToolbox is a free, open-source online toolbox for developers: **34 browser-ba
 | Category | Count | Representative tools |
 |---|---|---|
 | Encoding & Encryption 编码加密 | 3 | Codec Toolkit (Base64/URL/Unicode/Hex/JS-escape/Base32-62/Gzip/Morse on one shared input), Hash & Password Toolkit (MD5/SHA, bcrypt/scrypt, htpasswd), Cipher Toolkit (AES, DES/3DES/RC4, RSA, JWT) |
-| Developer Utilities 开发调试 | 12 | Developer Reference handbook (status codes/headers/methods/ports/MIME/Linux/MQTT), Random Toolkit (UUID/number/password), Regex Toolkit, Link Parser Toolkit (vmess/thunder/magnet/Type7), Dev Calc Toolkit (radix/size/CRC/PPI), Code Formatter Toolkit, Identity Generator, plus timestamp, URL parser, color, cron, diff, SSL cert, HTTP simulator, curl-to-code, text & code diff toolkit |
+| Developer Utilities 开发调试 | 12 | Developer Reference handbook (status codes/headers/methods/ports/MIME/Linux/MQTT), Random Toolkit (UUID/number/password), Regex Toolkit, Link Parser Toolkit (vmess/thunder/magnet/Type7), Dev Calc Toolkit (radix/size/CRC/PPI), Code Formatter Toolkit, Identity Generator, plus timestamp, URL parser, color, cron, diff, SSL cert, API workbench, curl-to-code, text & code diff toolkit |
 | Data Formats 数据格式 | 2 | JSON Toolkit (format/minify/validate + JSONPath query + Schema + structural diff + nine-format converter JSON/XML/YAML/CSV/NDJSON/Markdown/SQL/Properties/Query with batch file conversion, all on one shared input), JSON to Java/TS/Go entities |
 | Network Tools 网络工具 | 10 | IP Toolkit (egress IP, geo lookup, subnet mask, IP↔number, random IP/MAC), Site Diagnosis Toolkit (DNS/NS/links/SEO/headers/WebCheck on one shared URL), UA Toolkit, Webmaster Toolkit (robots.txt + shields badge), Browser Toolkit (env info + cookies), curl to code, WebSocket tester, File Transfer Toolkit (LAN WebRTC drop, phone-as-QR-scanner, air-gapped QR send / receive / salvage) |
 | Image Tools 图像处理 | 4 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator |
@@ -94,7 +94,7 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 ### 开发调试（12）
 
-开发速查手册（HTTP 状态码 / 请求头 / 方法 / 常用端口 / MIME / Linux 命令 / MQTT 七类合一）、随机生成工具箱（UUID / 随机数 / 密码）、正则工具箱（测试 + 转义）、链接解析工具箱（VMess/SS/SSR / 迅雷 / 种子磁力 / Cisco Type7）、开发换算计算工具箱（进制 / 文件大小 / CRC / PPI）、代码格式化工具箱（SQL + HTML/CSS/JS/TS/JSON/YAML/Markdown 格式化，含 HTML 实体转义与标签清理）、虚拟身份生成（银行卡 / 多国地址），以及时间戳转换、URL 地址解析、颜色转换、Cron 解析、自签名证书、模拟 HTTP 请求、curl 转代码。
+开发速查手册（HTTP 状态码 / 请求头 / 方法 / 常用端口 / MIME / Linux 命令 / MQTT 七类合一）、随机生成工具箱（UUID / 随机数 / 密码）、正则工具箱（测试 + 转义）、链接解析工具箱（VMess/SS/SSR / 迅雷 / 种子磁力 / Cisco Type7）、开发换算计算工具箱（进制 / 文件大小 / CRC / PPI）、代码格式化工具箱（SQL + HTML/CSS/JS/TS/JSON/YAML/Markdown 格式化，含 HTML 实体转义与标签清理）、虚拟身份生成（银行卡 / 多国地址），以及时间戳转换、URL 地址解析、颜色转换、Cron 解析、自签名证书、API 工作台、curl 转代码。
 
 ### Markdown（1）
 
