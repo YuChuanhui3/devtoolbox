@@ -8,10 +8,11 @@ import { useToast } from '@/components/ui/Toast';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { Localized } from '@/i18n/locale';
 import { toToolError } from '@/lib/errors';
-import { FETCH_MODES, proxyFetch, type FetchMode } from '@/lib/net';
+import { FETCH_MODES, type FetchMode } from '@/lib/net';
 import { newId } from '@/lib/apiworkbench/id';
 import { blankRequest, newCollection, putRequest } from '@/lib/apiworkbench/tree';
-import { collectMissing, interpolate } from '@/lib/apiworkbench/vars';
+import { collectMissing } from '@/lib/apiworkbench/vars';
+import { sendWbRequest } from '@/lib/apiworkbench/send';
 import type { WbHistoryEntry, WbRequest } from '@/lib/apiworkbench/types';
 import { useWorkbench } from './WorkbenchContext';
 import { CollectionTree } from './CollectionTree';
@@ -70,29 +71,13 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
     setHint(undefined);
     setResult(null);
     try {
-      const headers: Record<string, string> = {};
-      for (const row of req.headers) {
-        if (row.enabled && row.key.trim()) headers[interpolate(row.key, scope).text] = interpolate(row.value, scope).text;
-      }
-      if (req.auth.type === 'basic') {
-        const token = typeof btoa === 'function'
-          ? btoa(`${interpolate(req.auth.username ?? '', scope).text}:${interpolate(req.auth.password ?? '', scope).text}`)
-          : Buffer.from(`${req.auth.username ?? ''}:${req.auth.password ?? ''}`).toString('base64');
-        headers.Authorization = `Basic ${token}`;
-      } else if (req.auth.type === 'bearer' && req.auth.token) {
-        headers.Authorization = `Bearer ${interpolate(req.auth.token, scope).text}`;
-      }
-      const withBody = req.body.mode !== 'none' && req.body.text && req.method !== 'GET' && req.method !== 'HEAD';
-      if (withBody && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) {
-        headers['Content-Type'] = req.body.mode === 'json' ? 'application/json' : req.body.mode === 'form' ? 'application/x-www-form-urlencoded' : 'text/plain';
-      }
-      const response = await proxyFetch(interpolate(req.url, scope).text, {
+      const response = await sendWbRequest(req, {
+        scope,
+        mockEnabled: doc.mockEnabled,
+        mockRoutes: doc.mockRoutes,
         mode,
-        method: req.method,
-        headers: Object.keys(headers).length ? headers : undefined,
-        body: withBody ? interpolate(req.body.text, scope).text : undefined,
       });
-      setResult({ ...response, via: mode });
+      setResult(response);
       const entry: WbHistoryEntry = {
         id: newId(),
         at: Date.now(),
@@ -101,7 +86,7 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
         ms: response.ms,
         bytes: response.bytes,
         bodyExcerpt: response.text.slice(0, 4000),
-        via: mode,
+        via: response.via,
       };
       update((d) => ({ ...d, history: [entry, ...d.history].slice(0, 100) }));
     } catch (caught) {
@@ -139,7 +124,15 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
           ariaLabel={t({ zh: '请求通道', en: 'Request channel' })}
           options={FETCH_MODES.map((item) => ({ value: item.id, label: t(MODE_LABEL[item.id] ?? item.label) }))}
         />
-        <p className="px-1 pt-1 text-[11px] text-ink-3">{t(MODE_NOTE[mode])}</p>
+        <p className="px-1 pt-1 text-[11px] text-ink-3">
+          {t(MODE_NOTE[mode])}
+          {doc.mockEnabled
+            ? t({
+                zh: `。Mock 拦截已开启：命中 ${doc.mockRoutes.filter((r) => r.enabled).length} 条启用路由中的任一条即本地作答`,
+                en: `. Mock interception is on: a hit on any of ${doc.mockRoutes.filter((r) => r.enabled).length} enabled routes is answered locally`,
+              })
+            : ''}
+        </p>
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[230px_minmax(0,1fr)]">
