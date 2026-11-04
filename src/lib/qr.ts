@@ -52,6 +52,12 @@ export interface QrRect {
   height: number;
 }
 
+/**
+ * 单张码（配对码、回传码、生成器预览）可扫的每模块下限：手机在 30cm 外大致能分辨 4px。
+ * 分帧传输另有档位下限（稳妥 6 / 标准 4 / 极限 3），那里的极限档靠放映把宽度换回来。
+ */
+export const SCAN_MIN_MODULE_PX = 4;
+
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 const QR_CAPACITY_ERROR_MESSAGE: L10n = { zh: '内容超出二维码容量', en: 'Content exceeds the QR code capacity' };

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Panel } from '@/components/ui/Panel';
 import { Textarea } from '@/components/ui/Textarea';
 import { CopyButton } from '@/components/tool/ToolActions';
+import { QrZoomFrame } from '@/components/tool/QrZoomFrame';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { type Localized } from '@/i18n/locale';
@@ -19,11 +20,19 @@ import { isMdnsAddress, isValidIpv4, type CandidateInfo } from '@/lib/sdp';
 import { Scanner } from './Scanner';
 import type { DropConnection } from './useDropConnection';
 
+/**
+ * 行内配对码的显示宽度（沿用原布局的 240px 方框）。DTX2 压缩后仍有 449–521B，
+ * 也就是 V14–V16、73–81 模块，240px 上只有 2.7–3.0px/模块，低于可扫下限——
+ * 所以配对码必须留着「放大」这条路，而不是把 SVG 的像素尺寸调大（那不影响上屏宽度）。
+ */
+const PAIR_QR_INLINE_PX = 240;
+
 function QrCard({ signal, hint, copyLabel = { zh: '复制连接信息', en: 'Copy connection info' } }: { signal: string; hint: Localized; copyLabel?: Localized }) {
   const { t } = useI18n();
-  const svg = useMemo(() => {
+  const qr = useMemo(() => {
     try {
-      return buildQrSvg(createQrMatrix(signal, 'L'), { ...QR_DEFAULT_STYLE, size: 260 });
+      const matrix = createQrMatrix(signal, 'L');
+      return { svg: buildQrSvg(matrix, { ...QR_DEFAULT_STYLE, size: PAIR_QR_INLINE_PX }), moduleCount: matrix.moduleCount };
     } catch {
       return null;
     }
@@ -31,12 +40,12 @@ function QrCard({ signal, hint, copyLabel = { zh: '复制连接信息', en: 'Cop
 
   return (
     <div className="flex flex-col items-center gap-2">
-      {svg ? (
-        <div
-          className="rounded-card border border-line bg-white p-2 shadow-card [&>svg]:block [&>svg]:h-[240px] [&>svg]:w-[240px]"
-          dangerouslySetInnerHTML={{ __html: svg }}
-          role="img"
-          aria-label={t({ zh: '配对二维码', en: 'Pairing QR code' })}
+      {qr ? (
+        <QrZoomFrame
+          svg={qr.svg}
+          moduleCount={qr.moduleCount}
+          inlineWidth={PAIR_QR_INLINE_PX}
+          remedy={{ zh: '改用「复制连接信息」让对方粘贴。', en: 'or copy the connection info for the peer to paste.' }}
         />
       ) : (
         <ToolAlert

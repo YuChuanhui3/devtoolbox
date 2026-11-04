@@ -66,6 +66,18 @@ describe('TextQrBoard', () => {
     expect(screen.getByText('输入文本后自动生成')).toBeInTheDocument();
   });
 
+  test('密度按 240px 码框实测，而不是猜版本号', () => {
+    renderWithProviders(<TextQrBoard />);
+    // 400 字符 = V13（69 模块），旧的 version>=20 判断对它沉默，而 224px 里只有 2.90px/模块
+    fireEvent.change(screen.getByLabelText('二维码文本内容'), { target: { value: 'x'.repeat(400) } });
+
+    expect(screen.getByText(/每模块只有 \d\.\d\dpx（需要 ≥4px）/)).toHaveClass('text-warn');
+    expect(screen.getByRole('button', { name: '放大' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('二维码文本内容'), { target: { value: 'https://example.com/短' } });
+    expect(screen.getByText(/每模块 \d+\.\d\dpx，高于 4px，够扫/)).toBeInTheDocument();
+  });
+
   test('explains when the text exceeds a single QR code', () => {
     renderWithProviders(<TextQrBoard />);
     fireEvent.change(screen.getByLabelText('二维码文本内容'), { target: { value: 'x'.repeat(5000) } });

@@ -20,6 +20,7 @@ import {
   SampleButton,
 } from '@/components/tool/ToolActions';
 import { InputPanel, StatsBar } from '@/components/tool/EditorPanels';
+import { QrZoomFrame } from '@/components/tool/QrZoomFrame';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { toolPath } from '@/data/tools';
@@ -41,6 +42,9 @@ import {
   type QrEcc,
   type QrStyle,
 } from '@/lib/qr';
+
+/** 预览框的 CSS 宽度：密度只由它决定，与导出尺寸无关。 */
+const PREVIEW_WIDTH_PX = 320;
 
 interface QrResult {
   matrix: ReturnType<typeof createQrMatrix> | null;
@@ -89,7 +93,6 @@ export default function QrGeneratorTool() {
 
   const { matrix, svg, error } = result;
   const bytes = useMemo(() => utf8ByteLength(input), [input]);
-  const dense = matrix !== null && matrix.version >= 20;
   const eccHint = t(QR_ECC_OPTIONS.find((option) => option.value === style.ecc)!.description);
 
   const updateStyle = <K extends keyof QrStyle>(key: K, value: QrStyle[K]) => {
@@ -307,28 +310,21 @@ export default function QrGeneratorTool() {
         >
           {matrix ? (
             <div className="space-y-4">
-              <div
-                className="mx-auto w-full max-w-[320px] overflow-hidden rounded-xl border border-line [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
-                dangerouslySetInnerHTML={{ __html: svg }}
+              <QrZoomFrame
+                svg={svg}
+                moduleCount={matrix.moduleCount}
+                inlineWidth={PREVIEW_WIDTH_PX}
+                remedy={{
+                  zh: '或缩短内容、换 L 级容错，长内容改用「二维码发送」分帧。',
+                  en: 'or shorten the content / use L error correction; for long payloads split it with QR Send.',
+                }}
               />
-
-              {dense ? (
-                <ToolAlert
-                  tone="warning"
-                  title={t({ zh: '内容较密，二维码版本较高', en: 'Dense content, high QR version' })}
-                  hint={t({
-                    zh: '建议缩短内容、增大尺寸，或切换到 L 级容错以提升扫描成功率。',
-                    en: 'Shorten the content, increase the size, or switch to L error correction for more reliable scans.',
-                  })}
-                />
-              ) : (
-                <p className="text-center text-[11px] leading-5 text-ink-3">
-                  {t({
-                    zh: '下载 PNG 会按所选尺寸输出；SVG 为矢量图，可无损放大用于印刷。',
-                    en: 'PNG downloads use the selected size; SVG is vector and scales losslessly for print.',
-                  })}
-                </p>
-              )}
+              <p className="text-center text-[11px] leading-5 text-ink-3">
+                {t({
+                  zh: '「尺寸」只决定下载分辨率，不影响屏幕上的码宽；要更清楚就点「放大」，或直接下载 SVG 打印。',
+                  en: '"Size" only sets the download resolution, not the width on this screen — press Zoom, or download the SVG and print it.',
+                })}
+              </p>
             </div>
           ) : error ? (
             <div

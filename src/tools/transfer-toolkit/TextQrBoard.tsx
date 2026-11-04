@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Textarea } from '@/components/ui/Textarea';
+import { QrZoomFrame } from '@/components/tool/QrZoomFrame';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { cn } from '@/lib/cn';
@@ -12,6 +13,9 @@ import { formatBytes } from '@/lib/number';
 import { buildQrSvg, createQrMatrix, QR_DEFAULT_STYLE, utf8ByteLength } from '@/lib/qr';
 
 const TOUCH_DEVICE = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+
+/** 码框被网格限制在 240px，密度判断必须按这个上屏宽度算。 */
+const QR_BOARD_INLINE_PX = 240;
 
 /**
  * 本机把文本编码成二维码，让对方用「本机充当对方的扫码器」连续扫描。
@@ -27,7 +31,7 @@ export function TextQrBoard() {
     try {
       // 单张二维码取 L 级容错，尽量容纳更长的文本；超出容量时交给下方错误提示。
       const matrix = createQrMatrix(text, 'L');
-      return { svg: buildQrSvg(matrix, { ...QR_DEFAULT_STYLE, ecc: 'L', size: 320 }), matrix, error: null };
+      return { svg: buildQrSvg(matrix, { ...QR_DEFAULT_STYLE, ecc: 'L', size: QR_BOARD_INLINE_PX }), matrix, error: null };
     } catch (error) {
       return { svg: '', matrix: null, error: toToolError(error) };
     }
@@ -81,9 +85,11 @@ export function TextQrBoard() {
 
           <div className="flex flex-col items-center gap-2">
             {matrix ? (
-              <div
-                className="w-full max-w-[240px] rounded-card border border-line bg-white p-2 shadow-card [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
-                dangerouslySetInnerHTML={{ __html: svg }}
+              <QrZoomFrame
+                svg={svg}
+                moduleCount={matrix.moduleCount}
+                inlineWidth={QR_BOARD_INLINE_PX}
+                remedy={{ zh: '改用「二维码发送」分帧传输。', en: 'switch to QR Send to split it into frames.' }}
               />
             ) : (
               <div className="flex aspect-square w-full max-w-[240px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line bg-surface-2/40 px-6 text-center">
@@ -97,18 +103,10 @@ export function TextQrBoard() {
             )}
             <p className="text-center text-[11px] leading-5 text-ink-3">
               {t({
-                zh: '让对方勾选「本机充当对方的扫码器」后扫描此码。文本过长时改用「二维码发送」分帧传输。',
-                en: 'Have the peer tick "Use this device as the peer\'s scanner" and scan this code. For long text, use QR Send to split it into frames.',
+                zh: '让对方勾选「本机充当对方的扫码器」后扫描此码。',
+                en: 'Have the peer tick "Use this device as the peer\'s scanner" and scan this code.',
               })}
             </p>
-            {matrix && matrix.version >= 20 ? (
-              <p className="text-center text-[11px] leading-5 text-warn">
-                {t({
-                  zh: '内容较密，手机上可能难以识别；建议缩短文本，或改用「二维码发送」分帧传输。',
-                  en: 'This QR is dense and may be hard for a phone to read. Shorten the text or use QR Send to split it into frames.',
-                })}
-              </p>
-            ) : null}
           </div>
         </div>
       ) : (
