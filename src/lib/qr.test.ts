@@ -2,13 +2,19 @@ import { describe, expect, test, vi } from 'vitest';
 import { ToolError } from './errors';
 import { tl } from '@/i18n/locale';
 import {
+  assessQrScan,
   buildQrSvg,
   canvasToPngBlob,
+  crispQrRect,
   createQrMatrix,
+  maxModuleCountForScan,
   normalizeQrColor,
   normalizeQrSize,
   QR_DEFAULT_STYLE,
+  QR_MAX_SIZE,
+  QR_MIN_SIZE,
   qrDownloadName,
+  qrModuleCssPx,
   qrRects,
   renderQrToCanvas,
   utf8ByteLength,
@@ -218,5 +224,64 @@ describe('canvas export', () => {
       toBlob: (callback: BlobCallback) => callback(null),
     } as unknown as HTMLCanvasElement;
     await expect(canvasToPngBlob(failure)).rejects.toBeInstanceOf(ToolError);
+  });
+});
+
+describe('qrModuleCssPx / maxModuleCountForScan', () => {
+  test('按显示宽度算每模块像素，与 canvas 后备尺寸无关', () => {
+    expect(qrModuleCssPx(117, 320)).toBeCloseTo(2.56, 2); // V25 塞进 320px：密到扫不出
+    expect(qrModuleCssPx(177, 320)).toBeCloseTo(1.73, 2); // V40
+    expect(qrModuleCssPx(177, 1024)).toBeGreaterThan(qrModuleCssPx(177, 320));
+    expect(qrModuleCssPx(21, 0)).toBe(0);
+    expect(qrModuleCssPx(21, Number.NaN)).toBe(0);
+  });
+
+  test('显示宽度与每模块下限决定容量上限', () => {
+    expect(maxModuleCountForScan(320, 4)).toBe(72); // → V13（69 模块）
+    expect(maxModuleCountForScan(320, 6)).toBe(45); // → V7（45 模块）
+    expect(maxModuleCountForScan(320, 3)).toBe(98); // → V20（97 模块）
+    expect(maxModuleCountForScan(700, 4)).toBeGreaterThanOrEqual(165); // → 放映可放到 V37+
+    expect(maxModuleCountForScan(0, 4)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(maxModuleCountForScan(320, 0)).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  test('assessQrScan 在达标/恰好低于下限处给出结论', () => {
+    const ok = assessQrScan(69, 320, 4);
+    expect(ok.totalModules).toBe(77);
+    expect(ok.modulePx).toBeCloseTo(320 / 77, 4);
+    expect(ok.ok).toBe(true);
+
+    const dense = assessQrScan(73, 320, 4);
+    expect(dense.modulePx).toBeLessThan(4);
+    expect(dense.ok).toBe(false);
+
+    expect(assessQrScan(69, 0, 4).ok).toBe(false);
+  });
+
+  test('同一内容在窄显示宽度下判为不可扫，放宽宽度后通过', () => {
+    const matrix = createQrMatrix('a'.repeat(1000), 'M');
+    expect(assessQrScan(matrix.moduleCount, 320, 4).ok).toBe(false);
+    expect(assessQrScan(matrix.moduleCount, 640, 4).ok).toBe(true);
+  });
+});
+
+describe('crispQrRect', () => {
+  test('格宽取整数，backing 是模块总数的整数倍', () => {
+    const total = 117 + 8; // V25
+    const { size, cssSize } = crispQrRect(117, 320, 2);
+    expect(size % total).toBe(0);
+    expect(size / total).toBe(5); // floor(320*2 / 125)
+    expect(cssSize * 2).toBeCloseTo(size, 6);
+  });
+
+  test('夹在支持的画布尺寸范围内', () => {
+    expect(crispQrRect(177, 4096, 3).size).toBeLessThanOrEqual(QR_MAX_SIZE);
+    expect(crispQrRect(21, 60, 1).size).toBeGreaterThanOrEqual(QR_MIN_SIZE);
+    expect(crispQrRect(21, 60, 1).size % (21 + 8)).toBe(0);
+  });
+
+  test('异常 dpr 退回 1 倍', () => {
+    expect(crispQrRect(69, 320, 0).size).toBe(crispQrRect(69, 320, 1).size);
+    expect(crispQrRect(69, 320, Number.NaN).cssSize).toBe(crispQrRect(69, 320, 1).cssSize);
   });
 });

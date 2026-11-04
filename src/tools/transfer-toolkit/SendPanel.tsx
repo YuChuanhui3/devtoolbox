@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Maximize2,
   Pause,
   Play,
   RotateCcw,
@@ -13,6 +14,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Segmented } from '@/components/ui/Segmented';
 import { Select } from '@/components/ui/Select';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { Modal } from '@/components/ui/Modal';
 import { ImageDropzone } from '@/components/tool/ImageDropzone';
 import { InputPanel, StatsBar } from '@/components/tool/EditorPanels';
 import { CopyButton, DownloadButton } from '@/components/tool/ToolActions';
@@ -25,13 +27,16 @@ import { tl } from '@/i18n/locale';
 import { formatBytes } from '@/lib/number';
 import { safeFilename, downloadAll, downloadBlob } from '@/lib/download';
 import {
+  assessQrScan,
   canvasToPngBlob,
   createQrMatrix,
+  crispQrRect,
   isQrCapacityError,
-  normalizeQrSize,
+  maxModuleCountForScan,
   renderQrToCanvas,
   QR_DEFAULT_STYLE,
   type QrEcc,
+  type QrMatrix,
 } from '@/lib/qr';
 import {
   gzipBytes,
@@ -43,17 +48,138 @@ import {
 type SourceKind = 'text' | 'file';
 type Capacity = 'safe' | 'standard' | 'max';
 
-/** 各容量档的二分上界（载荷字节/帧）；实际还受「显示尺寸下模块 ≥4px」封顶。 */
+/**
+ * 各容量档的字节天花板；真正的约束是「每模块至少几 CSS 像素」——
+ * 相机分辨的是屏幕上的物理模块尺寸，canvas 后备像素再多也没用。
+ */
 const CAPACITY_BOUNDS: Record<Capacity, [number, number]> = {
   safe: [60, 800],
   standard: [60, 1500],
   max: [60, 2400],
 };
 
+const TIER_MIN_MODULE_PX: Record<Capacity, number> = { safe: 6, standard: 4, max: 3 };
+
+/**
+ * 行内舞台宽度：右侧 420px 列减去 Panel 的 p-4 与码框的 p-2，实测约 372px，
+ * 取 16 的倍数留一点余量。窄屏手机上按视口估算收缩。
+ */
+const INLINE_STAGE_PX = 368;
+/** 行内面板被页面与 Panel 内边距挤掉的宽度（粗略估算，窄屏手机上会把码挤小）。 */
+const INLINE_STAGE_INSET_PX = 64;
+/** 舞台宽度下限：再窄也只按它切帧，避免极窄视口把每帧压到几乎没有载荷。 */
+const STAGE_MIN_PX = 176;
+/** 下载 PNG 的目标宽度：与上屏宽度无关，导出始终按整数格取到高分辨率。 */
+const PNG_EXPORT_PX = 1024;
+/** 放映舞台：Modal 面板宽 min(90vw,90vh)，再扣掉 body 内边距、边框与安全余量。 */
+const PRESENT_STAGE_INSET_PX = 32;
+const STAGE_BUCKET_PX = 16;
+
+function stageWidthFor(presenting: boolean): number {
+  const smaller = Math.min(window.innerWidth, window.innerHeight);
+  if (!Number.isFinite(smaller) || smaller <= 0) return INLINE_STAGE_PX;
+  if (presenting) return smaller * 0.9 - PRESENT_STAGE_INSET_PX;
+  return Math.min(INLINE_STAGE_PX, window.innerWidth - INLINE_STAGE_INSET_PX);
+}
+
+/** 分桶后的舞台宽度：拖动窗口/旋转屏幕不会让帧序列逐像素重切。 */
+function stageBucketWidth(presenting: boolean): number {
+  const raw = stageWidthFor(presenting);
+  return Math.max(STAGE_MIN_PX, Math.floor(raw / STAGE_BUCKET_PX) * STAGE_BUCKET_PX);
+}
+
+function useStageWidth(presenting: boolean): number {
+  const [width, setWidth] = useState(() => stageBucketWidth(presenting));
+  useEffect(() => {
+    const sync = () => setWidth(stageBucketWidth(presenting));
+    sync();
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', sync);
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('orientationchange', sync);
+    };
+  }, [presenting]);
+  return width;
+}
+
+/** 一帧二维码按显示宽度取整数格绘制：1 模块 = 整数设备像素，不重采样就不会发糊。 */
+function QrStage({ matrix, stageWidth, label, className }: { matrix: QrMatrix; stageWidth: number; label: string; className?: string }) {
+  const dpr = window.devicePixelRatio || 1;
+  const { size, cssSize } = useMemo(() => crispQrRect(matrix.moduleCount, stageWidth, dpr), [matrix.moduleCount, stageWidth, dpr]);
+  const source = useMemo(() => renderQrToCanvas(matrix, { ...QR_DEFAULT_STYLE, size }), [matrix, size]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const target = canvasRef.current;
+    if (!target) return;
+    target.width = source.width;
+    target.height = source.height;
+    const context = target.getContext('2d');
+    if (!context) return;
+    context.imageSmoothingEnabled = false;
+    context.clearRect(0, 0, target.width, target.height);
+    context.drawImage(source, 0, 0);
+  }, [source]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{ width: cssSize, maxWidth: '100%', aspectRatio: '1 / 1' }}
+      aria-label={label}
+    />
+  );
+}
+
 interface Prepared {
   frames: string[];
   frameBytes: number;
   version: number;
+}
+
+/**
+ * 探针的填充段必须和真实帧一样是「混合大小写 + 数字 + /+ 的 Base64」。
+ * 全 'A' 会让编码器把整段切进 alphanumeric 模式（5.5 bit/字符），而真实帧的 Base64
+ * 走 byte 模式（8 bit/字符）——探针以为装得下的长度，真实帧会密上两个版本，正好是「太密扫不出」的第二条根因。
+ */
+function probeFiller(frameBytes: number): string {
+  const pattern = new Uint8Array(Math.max(0, frameBytes));
+  for (let i = 0; i < pattern.length; i += 1) pattern[i] = (i * 31 + 7) % 256;
+  return bytesToBase64(pattern).replace(/=+$/, '');
+}
+
+/** 逐帧控制条：行内面板与放映共用，放映时只是把码放大、不换一套交互。 */
+function FrameControls({
+  index,
+  total,
+  playing,
+  onIndex,
+  onPlaying,
+  extra,
+}: {
+  index: number;
+  total: number;
+  playing: boolean;
+  onIndex: (next: number) => void;
+  onPlaying: (next: boolean) => void;
+  extra?: ReactNode;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1.5">
+      <Button variant="secondary" size="sm" onClick={() => onIndex((index - 1 + total) % total)} aria-label={t({ zh: '上一帧', en: 'Previous frame' })}>
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      <Button variant={playing ? 'secondary' : 'primary'} size="sm" onClick={() => onPlaying(!playing)}>
+        {playing ? <Pause className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
+        {playing ? t({ zh: '暂停', en: 'Pause' }) : t({ zh: '播放', en: 'Play' })}
+      </Button>
+      <Button variant="secondary" size="sm" onClick={() => onIndex((index + 1) % total)} aria-label={t({ zh: '下一帧', en: 'Next frame' })}>
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      {extra}
+    </div>
+  );
 }
 
 export function SendPanel({ active }: { active: boolean }) {
@@ -64,7 +190,10 @@ export function SendPanel({ active }: { active: boolean }) {
   const [gzip, setGzip] = useState(true);
   const [capacity, setCapacity] = useState<Capacity>('standard');
   const [ecc, setEcc] = useState<QrEcc>('M');
-  const [displaySize, setDisplaySize] = useState(512);
+  const [presenting, setPresenting] = useState(false);
+  const stageWidth = useStageWidth(presenting);
+  const inlineStage = useStageWidth(false);
+  const minModulePx = TIER_MIN_MODULE_PX[capacity];
   const [fps, setFps] = useState(2);
   const [loop, setLoop] = useState(true);
   const [sid, setSid] = useState(() => makeSessionId());
@@ -110,11 +239,11 @@ export function SendPanel({ active }: { active: boolean }) {
     const fits = (bytes: number, digits: number) => {
       if (bytes < 3) return false;
       const position = `${'0'.repeat(digits)}of${'0'.repeat(digits)}`;
-      const probe = `DQX1:${sid}${metaProbe}:${position}:${'A'.repeat(Math.ceil((bytes / 3) * 4))}:01234567`;
+      const probe = `DQX1:${sid}${metaProbe}:${position}:${probeFiller(bytes)}:01234567`;
       try {
-        // 显示尺寸下模块不足 4px 时，相机与 zxing 都会开始漏检——容量要为此让路
+        // 密度上限按「码实际显示的那一步宽度」算：每模块低于下限像素时相机与 zxing 都会漏检
         const matrix = createQrMatrix(probe, ecc);
-        return matrix.moduleCount + 8 <= Math.floor(normalizeQrSize(displaySize) / 4);
+        return matrix.moduleCount <= maxModuleCountForScan(stageWidth, minModulePx);
       } catch (error) {
         return !isQrCapacityError(error);
       }
@@ -140,21 +269,24 @@ export function SendPanel({ active }: { active: boolean }) {
     if (!split) return null;
     let version = 0;
     try {
-      version = createQrMatrix(split.frames[split.frames.length - 1], ecc).version;
+      // 取第 1 帧而不是末帧：末帧只装余下的零头，密度偏低，读数会骗人
+      version = createQrMatrix(split.frames[0], ecc).version;
     } catch {
       version = 0;
     }
     return { frames: split.frames, frameBytes: split.frameBytes, version };
-  }, [payload, sid, capacity, ecc, fileName, source, textBytes, file, gzip, displaySize]);
+  }, [payload, sid, capacity, minModulePx, ecc, fileName, source, textBytes, file, gzip, stageWidth]);
 
   const frames = prepared?.frames ?? [];
   const total = frames.length;
 
-  // 换内容/换压缩开关就是另一次传输：必须换 sid，否则接收端会把新帧当成旧会话的冲突帧丢掉。
+  // 换内容、换档位/容错、或舞台宽度变了（放映开关、旋转屏幕）都是另一次传输：
+  // 帧的切法随之改变，必须换 sid 并回到第 1 帧，否则接收端会把新帧判成旧会话的冲突帧丢掉。
   useEffect(() => {
     setSid(makeSessionId());
     setIndex(0);
-  }, [payload.bytes]);
+    setPlaying(false);
+  }, [payload.bytes, capacity, ecc, stageWidth]);
 
   // —— 帧号钳制 ——
   useEffect(() => {
@@ -193,23 +325,11 @@ export function SendPanel({ active }: { active: boolean }) {
     }
   }, [frames, index, ecc]);
 
-  const display = useMemo(() => {
-    if (!currentMatrix) return null;
-    return renderQrToCanvas(currentMatrix, { ...QR_DEFAULT_STYLE, size: displaySize });
-  }, [currentMatrix, displaySize]);
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const target = canvasRef.current;
-    if (!target || !display) return;
-    target.width = display.width;
-    target.height = display.height;
-    const context = target.getContext('2d');
-    if (!context) return;
-    context.imageSmoothingEnabled = false;
-    context.clearRect(0, 0, target.width, target.height);
-    context.drawImage(display, 0, 0);
-  }, [display]);
+  // 密度读数看最密的那一帧（末帧只会更疏），版本 → 模块数 = 4V+17，再加 8 格静区
+  const scan = useMemo(() => {
+    if (!prepared || !prepared.version) return null;
+    return assessQrScan(4 * prepared.version + 17, stageWidth, minModulePx);
+  }, [prepared, stageWidth, minModulePx]);
 
   const manifest = frames.join('\n');
   const estimatedSeconds = total > 0 ? total / fps : 0;
@@ -234,7 +354,9 @@ export function SendPanel({ active }: { active: boolean }) {
     try {
       const items = [];
       for (let i = 0; i < frames.length; i += 1) {
-        const canvas = renderQrToCanvas(createQrMatrix(frames[i], ecc), { ...QR_DEFAULT_STYLE, size: displaySize });
+        const matrix = createQrMatrix(frames[i], ecc);
+        const { size } = crispQrRect(matrix.moduleCount, PNG_EXPORT_PX, 1);
+        const canvas = renderQrToCanvas(matrix, { ...QR_DEFAULT_STYLE, size });
         const blob = await canvasToPngBlob(canvas);
         items.push({ filename: `dqx-${sid}-${String(i).padStart(3, '0')}of${total}.png`, blob });
       }
@@ -353,10 +475,13 @@ export function SendPanel({ active }: { active: boolean }) {
               />
               <p className="mt-1 text-[11px] leading-5 text-ink-3">
                 {capacity === 'max'
-                  ? t({ zh: '允许到 V40 密度：请调大显示尺寸并保证屏幕清晰', en: 'Up to V40 density: raise the display size and keep the screen sharp' })
+                  ? t({
+                      zh: `每模块需 ≥${minModulePx}px：行内窄屏会自动切出更疏的帧，点「放映」才吃得到极限吞吐`,
+                      en: `Needs ≥${minModulePx}px per module: a narrow panel splits sparser frames on its own — hit Present to actually reach Max throughput`,
+                    })
                   : capacity === 'safe'
-                    ? t({ zh: '小容量多帧：手机隔一两米也能扫', en: 'Smaller frames: scannable from a meter or two' })
-                    : t({ zh: '日常屏幕/相机的平衡选择，帧数更少', en: 'A balanced choice for typical screens, with fewer frames' })}
+                    ? t({ zh: `每模块 ≥${minModulePx}px：隔一两米也能扫，代价是帧数最多`, en: `≥${minModulePx}px per module: scannable from a meter or two, at the cost of the most frames` })
+                    : t({ zh: `每模块 ≥${minModulePx}px：对着屏幕扫的日常平衡档`, en: `≥${minModulePx}px per module: the everyday balance for scanning a screen` })}
               </p>
             </div>
             <div>
@@ -399,34 +524,24 @@ export function SendPanel({ active }: { active: boolean }) {
             </div>
             <div className="flex items-end gap-4 pb-1">
               <Checkbox checked={loop} onChange={setLoop} label={t({ zh: '循环播放', en: 'Loop' })} className="text-xs" />
-              <label htmlFor="dqx-size" className="flex items-end gap-1.5 text-xs text-ink-3">
-                {t({ zh: '显示尺寸', en: 'Display' })}
-                <Select
-                  id="dqx-size"
-                  value={displaySize}
-                  onChange={(event) => setDisplaySize(Number(event.target.value))}
-                  className="h-8 text-xs"
-                  wrapperClassName="w-24"
-                >
-                  {[256, 512, 1024].map((size) => (
-                    <option key={size} value={size}>
-                      {size}px
-                    </option>
-                  ))}
-                </Select>
-              </label>
             </div>
           </div>
+          <p className="mt-3 border-t border-dashed border-line pt-2.5 text-[11px] leading-5 text-ink-3">
+            {t({
+              zh: '每帧装多少字节由码实际显示的那一步宽度自动决定：屏幕越小切得越细。要少扫几帧就点「放映」，把码放大到接近全屏（会重开一个新会话）。',
+              en: 'Bytes per frame follow the width the code is actually shown at — a smaller stage splits finer. Hit Present to grow the code to near-full-screen and send fewer frames (this starts a new session).',
+            })}
+          </p>
         </Panel>
 
         {payload.error ? <ToolAlert tone="warning" title={payload.error} /> : null}
         {!prepared && payload.bytes.length > 0 ? (
           <ToolAlert
             tone="error"
-            title={t({ zh: '当前容量档无法成帧', en: 'No frame fits the current capacity tier' })}
+            title={t({ zh: '这一步太窄，装不下任何一帧', en: 'This stage is too narrow to fit even one frame' })}
             hint={t({
-              zh: '帧头过长或容错过高：请换「极限」容量或 L/M 容错。',
-              en: 'Frame header too long or ECC too high: switch to Max capacity or L/M error correction.',
+              zh: `舞台只有 ${Math.round(stageWidth)}px，而每模块 ≥${minModulePx}px 的要求把帧文本挤没了：把容量档降到「标准/极限」、容错降到 L，或点「放映」换个更宽的舞台。`,
+              en: `The stage is only ${Math.round(stageWidth)}px, so the ≥${minModulePx}px-per-module rule leaves no room for payload: drop to the Standard/Max tier, use L error correction, or press Present for a wider stage.`,
             })}
           />
         ) : null}
@@ -448,6 +563,7 @@ export function SendPanel({ active }: { active: boolean }) {
                 { label: t({ zh: '每帧字节', en: 'B/frame' }), value: formatBytes(prepared.frameBytes, 0) },
                 { label: t({ zh: '载荷', en: 'Payload' }), value: formatBytes(payload.bytes.length, 0) },
                 { label: t({ zh: '版本', en: 'Version' }), value: prepared.version ? `V${prepared.version}` : '-' },
+                { label: t({ zh: '模块', en: 'Module' }), value: scan ? `${scan.modulePx.toFixed(2)}px` : '-' },
                 {
                   label: t({ zh: '预计', en: 'Est.' }),
                   value: `${estimatedSeconds >= 60 ? `${Math.floor(estimatedSeconds / 60)}m${Math.round(estimatedSeconds % 60)}s` : `${estimatedSeconds.toFixed(1)}s`}`,
@@ -459,29 +575,50 @@ export function SendPanel({ active }: { active: boolean }) {
       >
         {prepared ? (
           <div className="space-y-3">
-            <canvas
-              ref={canvasRef}
-              className="mx-auto block w-full max-w-[320px] rounded-xl border border-line bg-white"
-              aria-label={t({ zh: '当前二维码帧', en: 'Current QR frame' })}
+            {currentMatrix ? (
+              <div className="flex justify-center rounded-xl border border-line bg-white p-2">
+                <QrStage
+                  matrix={currentMatrix}
+                  stageWidth={inlineStage}
+                  className="block rounded-lg"
+                  label={t({ zh: '当前二维码帧', en: 'Current QR frame' })}
+                />
+              </div>
+            ) : null}
+            {scan && !scan.ok ? (
+              <ToolAlert
+                tone="warning"
+                title={t({
+                  zh: `每模块只有 ${scan.modulePx.toFixed(2)}px，手机很难扫出来`,
+                  en: `Only ${scan.modulePx.toFixed(2)}px per module — a phone can barely resolve it`,
+                })}
+                hint={t({
+                  zh: `当前档位要求每模块 ≥${minModulePx}px：点「放映」把码放大，或降低容量档/容错级别重切帧。`,
+                  en: `This tier wants ≥${minModulePx}px per module: press Present to enlarge the code, or lower the capacity tier / error correction to re-split the frames.`,
+                })}
+              />
+            ) : null}
+            <FrameControls
+              index={index}
+              total={total}
+              playing={playing}
+              onIndex={setIndex}
+              onPlaying={setPlaying}
+              extra={
+                <>
+                  <Button variant="secondary" size="sm" onClick={() => setPresenting(true)}>
+                    <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t({ zh: '放映', en: 'Present' })}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={startOver}>
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t({ zh: '新会话', en: 'New session' })}
+                  </Button>
+                </>
+              }
             />
-            <div className="flex items-center justify-center gap-1.5">
-              <Button variant="secondary" size="sm" onClick={() => setIndex((i) => (i - 1 + total) % total)} aria-label={t({ zh: '上一帧', en: 'Previous frame' })}>
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              </Button>
-              <Button variant={playing ? 'secondary' : 'primary'} size="sm" onClick={() => setPlaying((p) => !p)}>
-                {playing ? <Pause className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
-                {playing ? t({ zh: '暂停', en: 'Pause' }) : t({ zh: '播放', en: 'Play' })}
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setIndex((i) => (i + 1) % total)} aria-label={t({ zh: '下一帧', en: 'Next frame' })}>
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={startOver}>
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                {t({ zh: '新会话', en: 'New session' })}
-              </Button>
-            </div>
             <p className="text-center text-[11px] text-ink-3">
-              {t({ zh: '⌘/Ctrl + ←/→ 也可逐帧步进；对端摄像头对准屏幕即可自动收集', en: '⌘/Ctrl + ←/→ also steps frames; just point the other camera at the screen' })}
+              {t({ zh: '⌘/Ctrl + ←/→ 也可逐帧步进；对端摄像头对准屏幕上最大的那张码即可自动收集', en: '⌘/Ctrl + ←/→ also steps frames; point the peer camera at the largest copy of the code' })}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-1.5 border-t border-line pt-3">
               <CopyButton text={manifest} label={t({ zh: '复制帧清单', en: 'Copy frames' })} />
@@ -511,6 +648,57 @@ export function SendPanel({ active }: { active: boolean }) {
           </div>
         )}
       </Panel>
+
+      <Modal
+        open={presenting}
+        onClose={() => setPresenting(false)}
+        title={t({ zh: `放映中 · 第 ${index + 1}/${total} 帧`, en: `Presenting · frame ${index + 1}/${total}` })}
+        description={
+          scan
+            ? t({
+                zh: `会话 ${sid} · 舞台 ${Math.round(stageWidth)}px · 每模块 ${scan.modulePx.toFixed(2)}px`,
+                en: `Session ${sid} · ${Math.round(stageWidth)}px stage · ${scan.modulePx.toFixed(2)}px per module`,
+              })
+            : t({ zh: `会话 ${sid}`, en: `Session ${sid}` })
+        }
+        className="max-w-[min(90vw,90vh)]"
+        bodyClassName="p-3"
+      >
+        {currentMatrix ? (
+          <div className="space-y-3">
+            <div className="flex justify-center rounded-xl bg-white p-2">
+              <QrStage
+                matrix={currentMatrix}
+                stageWidth={stageWidth}
+                className="block rounded-lg"
+                label={t({ zh: '放映中的二维码帧', en: 'Presented QR frame' })}
+              />
+            </div>
+            <FrameControls
+              index={index}
+              total={total}
+              playing={playing}
+              onIndex={setIndex}
+              onPlaying={setPlaying}
+              extra={
+                <Button variant="ghost" size="sm" onClick={() => setPresenting(false)}>
+                  {t({ zh: '退出放映', en: 'Exit presentation' })}
+                </Button>
+              }
+            />
+            <p className="text-center text-[11px] leading-5 text-ink-3">
+              {t({
+                zh: 'Esc 退出放映，⌘/Ctrl + ←/→ 逐帧步进。舞台变宽后每帧装得更多，帧序列会重切并开一个新会话，接收端会跟着收新帧。',
+                en: 'Esc exits, ⌘/Ctrl + ←/→ steps. A wider stage carries more per frame, so frames are re-split under a new session and the peer starts collecting the new ones.',
+              })}
+            </p>
+          </div>
+        ) : (
+          <p className="py-10 text-center text-sm text-ink-3">
+            {t({ zh: '还没有可放映的二维码：先准备内容。', en: 'Nothing to present yet: prepare the content first.' })}
+          </p>
+        )}
+      </Modal>
     </div>
   );
 }

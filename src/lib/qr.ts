@@ -229,3 +229,54 @@ export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 export function qrDownloadName(size: number, extension: 'png' | 'svg'): string {
   return `qrcode-${normalizeQrSize(size)}.${extension}`;
 }
+
+export interface QrScannability {
+  /** 含左右上下静区的模块总数，即画布被划分成多少格。 */
+  totalModules: number;
+  /** 实际显示宽度下每模块的 CSS 像素。 */
+  modulePx: number;
+  minModulePx: number;
+  ok: boolean;
+}
+
+/**
+ * 每模块的 CSS 像素。相机分辨的是屏幕上的物理尺寸，与 canvas 后备像素无关，
+ * 因此可扫性只能用「实际上屏宽度」做判断（CSS px 是 DPI 无关的代理量）。
+ */
+export function qrModuleCssPx(moduleCount: number, cssWidth: number): number {
+  const total = moduleCount + QR_MARGIN * 2;
+  if (total <= 0 || !(cssWidth > 0)) return 0;
+  return cssWidth / total;
+}
+
+/** 给定显示宽度与每模块下限，允许的最大模块数（已扣除静区）。 */
+export function maxModuleCountForScan(cssWidth: number, minModulePx: number): number {
+  if (!(cssWidth > 0) || !(minModulePx > 0)) return Number.MAX_SAFE_INTEGER;
+  return Math.floor(cssWidth / minModulePx) - QR_MARGIN * 2;
+}
+
+export function assessQrScan(moduleCount: number, cssWidth: number, minModulePx: number): QrScannability {
+  const modulePx = qrModuleCssPx(moduleCount, cssWidth);
+  return {
+    totalModules: moduleCount + QR_MARGIN * 2,
+    modulePx,
+    minModulePx,
+    ok: modulePx >= minModulePx,
+  };
+}
+
+/**
+ * 无重采样的画布尺寸：格宽取整数，backing = 模块总数 × 格宽，再按 dpr 反推 CSS 尺寸，
+ * 这样一个模块正好占整数个设备像素（固定 512 之类会把码缩到 CSS 宽度上、边缘发糊）。
+ */
+export function crispQrRect(moduleCount: number, cssWidth: number, dpr = 1): { size: number; cssSize: number } {
+  const total = moduleCount + QR_MARGIN * 2;
+  if (total <= 0) return { size: QR_DEFAULT_SIZE, cssSize: QR_DEFAULT_SIZE };
+  const ratio = Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
+  const maxCell = Math.max(1, Math.floor(QR_MAX_SIZE / total));
+  const minCell = Math.min(Math.ceil(QR_MIN_SIZE / total), maxCell);
+  const wanted = Math.floor((Math.max(0, cssWidth) * ratio) / total);
+  const cell = Math.min(maxCell, Math.max(minCell, wanted));
+  const size = total * cell;
+  return { size, cssSize: size / ratio };
+}
