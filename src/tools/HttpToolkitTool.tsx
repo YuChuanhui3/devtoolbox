@@ -1,19 +1,20 @@
-import { FlaskConical, Gauge, Layers, FileText } from 'lucide-react';
+import { FlaskConical, Gauge, Layers, FileText, Webhook } from 'lucide-react';
 import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { RequestPanel } from './http-toolkit/RequestPanel';
+import { WebSocketPanel } from './http-toolkit/WebSocketPanel';
 import { OpenApiPanel } from './http-toolkit/OpenApiPanel';
 import { MockPanel } from './http-toolkit/MockPanel';
 import { StressPanel } from './http-toolkit/StressPanel';
 import { WorkbenchProvider } from './http-toolkit/WorkbenchContext';
 
-type HttpToolkitMode = 'request' | 'openapi' | 'mock' | 'stress';
+type HttpToolkitMode = 'request' | 'websocket' | 'openapi' | 'mock' | 'stress';
 
 export default function HttpToolkitTool() {
   const { t } = useI18n();
-  const [mode, setMode] = useToolkitMode<HttpToolkitMode>(['request', 'openapi', 'mock', 'stress'], 'request');
+  const [mode, setMode] = useToolkitMode<HttpToolkitMode>(['request', 'websocket', 'openapi', 'mock', 'stress'], 'request');
 
   return (
     <WorkbenchProvider>
@@ -27,6 +28,11 @@ export default function HttpToolkitTool() {
             value: 'request',
             label: t({ zh: '请求', en: 'Request' }),
             icon: <Layers className="h-3.5 w-3.5" aria-hidden="true" />,
+          },
+          {
+            value: 'websocket',
+            label: 'WebSocket',
+            icon: <Webhook className="h-3.5 w-3.5" aria-hidden="true" />,
           },
           {
             value: 'openapi',
@@ -49,6 +55,9 @@ export default function HttpToolkitTool() {
       <LazyPanel active={mode === 'request'}>
         <RequestPanel active={mode === 'request'} />
       </LazyPanel>
+      <LazyPanel active={mode === 'websocket'}>
+        <WebSocketPanel active={mode === 'websocket'} />
+      </LazyPanel>
       <LazyPanel active={mode === 'openapi'}>
         <OpenApiPanel active={mode === 'openapi'} onJumpToRequest={() => setMode('request')} />
       </LazyPanel>
@@ -61,8 +70,8 @@ export default function HttpToolkitTool() {
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({
-          zh: 'Postman 式集合与环境、OpenAPI 导入、本地 Mock、浏览器内压测合为一个 API 工作台 · 集合与数据保存在本机浏览器，不上传；切换页签不会丢失各自的输入与结果',
-          en: 'One API workbench: Postman-style collections and environments, OpenAPI import, local mocking, and in-browser load testing · collections stay in your local browser, never uploaded, and switching tabs keeps each panel\'s input and results',
+          zh: 'Postman 式集合与环境、WebSocket 长连接调试、OpenAPI 导入、本地 Mock、浏览器内压测合为一个 API 工作台 · 集合与数据保存在本机浏览器，不上传；切换页签不会丢失各自的输入与结果',
+          en: 'One API workbench: Postman-style collections and environments, WebSocket debugging, OpenAPI import, local mocking, and in-browser load testing · collections stay in your local browser, never uploaded, and switching tabs keeps each panel\'s input and results',
         })}
       </p>
       </div>

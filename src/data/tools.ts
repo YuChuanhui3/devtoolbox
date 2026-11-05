@@ -529,30 +529,19 @@ const RAW_TOOLS: ToolMeta[] = [
     name: 'API 工作台',
     nameEn: 'API Workbench',
     category: 'network',
-    description: 'Postman 式集合与环境、OpenAPI / Swagger 导入生成请求、本地 Mock 挡板与可部署 Worker、接口并发压测与延迟分位统计。',
-    descriptionEn: 'A Postman-style workbench: collections and environments, OpenAPI / Swagger import, local mock routes plus a deployable Worker mock, and concurrent load testing with latency percentile reports.',
-    tags: ['http', '请求', '调试', 'api', 'post', 'get', 'swagger', 'openapi', 'mock', '压测', 'postman', 'jmeter'],
-    aliases: ['http请求', '模拟请求', '在线请求', 'api调试', 'api工作台', '在线postman', '接口测试', '接口调试', 'swagger', 'openapi', 'mock接口', '假接口', '挡板', 'jmeter', '压测工具', 'http压测', '接口压测'],
+    description: 'Postman 式集合与环境、WebSocket 长连接收发、OpenAPI / Swagger 导入生成请求、本地 Mock 挡板与可部署 Worker、接口并发压测与延迟分位统计。',
+    descriptionEn: 'A Postman-style workbench: collections and environments, ws / wss long-connection debugging, OpenAPI / Swagger import, local mock routes plus a deployable Worker mock, and concurrent load testing with latency percentile reports.',
+    tags: ['http', '请求', '调试', 'api', 'post', 'get', 'swagger', 'openapi', 'mock', '压测', 'postman', 'jmeter', 'websocket', 'ws', 'wss', '长连接'],
+    aliases: ['http请求', '模拟请求', '在线请求', 'api调试', 'api工作台', '在线postman', '接口测试', '接口调试', 'swagger', 'openapi', 'mock接口', '假接口', '挡板', 'jmeter', '压测工具', 'http压测', '接口压测', '模拟websocket', 'websocket测试', 'websocket客户端', 'ws在线', 'ws测试', 'wss', '长连接测试'],
     sensitive: true,
     subFeatures: [
       { id: 'request', name: { zh: '请求', en: 'Request' }, keywords: ['http', 'get', 'post', '请求头', 'curl', '集合', 'collection', '环境变量', 'history'] },
+      { id: 'websocket', name: { zh: 'WebSocket', en: 'WebSocket' }, keywords: ['websocket', 'ws', 'wss', '长连接', '子协议', 'subprotocol', '实时', '推送', '消息'] },
       { id: 'openapi', name: { zh: 'OpenAPI', en: 'OpenAPI' }, keywords: ['swagger', '接口文档', 'yaml', 'rest', 'open api'] },
       { id: 'mock', name: { zh: 'Mock', en: 'Mock' }, keywords: ['模拟数据', '假接口', '挡板', 'mockserver', 'mock 服务'] },
       { id: 'stress', name: { zh: '压测', en: 'Stress' }, keywords: ['jmeter', '负载', '并发', 'rps', 'benchmark', '压测'] },
     ],
     icon: 'Send',
-    priority: 'P1',
-  },
-  {
-    id: 'websocket-client',
-    name: '模拟 WebSocket 请求',
-    nameEn: 'WebSocket Request Simulator',
-    category: 'network',
-    description: '连接任意 ws / wss 地址，收发消息并记录连接事件与关闭码。',
-    descriptionEn: 'Connect to any ws / wss address, send and receive messages, and log connection events and close codes.',
-    tags: ['websocket', 'ws', 'wss', '模拟', '长连接'],
-    aliases: ['websocket测试', 'ws在线', '模拟websocket'],
-    icon: 'Webhook',
     priority: 'P1',
   },
   {
@@ -778,6 +767,7 @@ export const LEGACY_TOOL_IDS: Record<string, string> = {
   'robots-generator': 'webmaster-toolkit',
   'browser-info': 'browser-toolkit',
   'cookie-viewer': 'browser-toolkit',
+  'websocket-client': 'http-simulator',
 };
 
 export const resolveToolId = (id: string): string => LEGACY_TOOL_IDS[id] ?? id;
@@ -867,6 +857,7 @@ export const LEGACY_TOOL_MODES: Record<string, string> = {
   'cookie-viewer': 'cookie',
   'file-drop': 'drop',
   'qr-transfer': 'send',
+  'websocket-client': 'websocket',
 };
 
 /** 旧工具 ID → 工具箱页签内的子功能（`?sub=`），如 /tools/html-entities 直达 HTML 实体转义。 */

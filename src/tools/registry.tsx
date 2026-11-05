@@ -47,7 +47,6 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'browser-toolkit': lazy(() => import('./BrowserToolkitTool')),
   'curl-code': lazy(() => import('./CurlCodeTool')),
   'http-simulator': lazy(() => import('./HttpToolkitTool')),
-  'websocket-client': lazy(() => import('./WebSocketClientTool')),
   'site-diagnosis-toolkit': lazy(() => import('./SiteDiagnosisToolkitTool')),
   'page-refresh': lazy(() => import('./PageRefreshTool')),
   'transfer-toolkit': lazy(() => import('./TransferToolkitTool')),
