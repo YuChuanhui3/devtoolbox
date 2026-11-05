@@ -27,14 +27,33 @@ export interface TimedResponse {
   text: string;
   bytes: number;
   ms: number;
+  /**
+   * 二进制响应的原始字节，仅在调用方要了 `wantBlob` 且体积不超上限时给出。
+   * 只活在内存里：不进历史、不进 localStorage，换一次请求就被换掉。
+   */
+  blob?: Blob;
 }
 
 export interface ProxyRequestOptions {
   method?: string;
   headers?: Record<string, string>;
-  body?: string;
+  /** FormData 只走直连；代理通道不携带 multipart。 */
+  body?: string | FormData;
   timeoutMs?: number;
   mode?: FetchMode;
+  /** 图片/PDF 需要字节才能预览；别的调用方只要文本，不必留一份 Blob。 */
+  wantBlob?: boolean;
+}
+
+/** 值得保留字节的响应类型。SVG 也在这里：当作图片渲染不会执行其中的脚本。 */
+const BLOB_PREVIEW_PATTERN = /^(image\/|application\/pdf\b)/i;
+
+/** 上限存在的理由：压测会并发打同一个资源，不设限就是一屏的巨型 Blob。 */
+export const MAX_BLOB_BYTES = 8 * 1024 * 1024;
+
+/** 拿不到（或不打算）解码时的正文占位，免得把二进制当文本糊在界面上。 */
+function binaryPlaceholder(bytes: number): string {
+  return `[binary ${bytes} bytes]`;
 }
 
 /** 通过直连或公共代理抓取 URL，返回文本与可读响应头。 */
@@ -51,7 +70,19 @@ export async function proxyFetch(target: string, options: ProxyRequestOptions = 
       body: options.body,
       signal: controller.signal,
     });
-    const text = await response.text();
+    const collectBlob = Boolean(options.wantBlob) && BLOB_PREVIEW_PATTERN.test(response.headers.get('content-type') ?? '');
+    let text: string;
+    let bytes: number;
+    let blob: Blob | undefined;
+    if (collectBlob) {
+      const buffer = await response.arrayBuffer();
+      bytes = buffer.byteLength;
+      text = binaryPlaceholder(bytes);
+      if (bytes <= MAX_BLOB_BYTES) blob = new Blob([buffer], { type: response.headers.get('content-type') ?? 'application/octet-stream' });
+    } else {
+      text = await response.text();
+      bytes = new TextEncoder().encode(text).length;
+    }
     const headers: [string, string][] = [];
     response.headers.forEach((value, key) => headers.push([key, value]));
     return {
@@ -59,8 +90,9 @@ export async function proxyFetch(target: string, options: ProxyRequestOptions = 
       ok: response.ok,
       headers,
       text,
-      bytes: new TextEncoder().encode(text).length,
+      bytes,
       ms: Math.round(performance.now() - start),
+      ...(blob ? { blob } : {}),
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {

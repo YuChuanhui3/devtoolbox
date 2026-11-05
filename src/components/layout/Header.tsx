@@ -27,14 +27,14 @@ export function Header({ onOpenMenu, onOpenSettings, onShowShortcuts }: HeaderPr
   });
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-bg/85 backdrop-blur-xl no-print">
+    <header className="sticky top-0 z-50 border-b border-line bg-surface no-print">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-3 px-3 sm:px-5">
         <Link
           to="/"
           className="group flex shrink-0 items-center gap-2.5"
           aria-label={t({ zh: 'DevToolbox 首页', en: 'DevToolbox home' })}
         >
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-xl [background-image:var(--btn-grad)] text-white shadow-[0_6px_16px_rgba(33,150,243,0.28)] transition-transform duration-500 ease-in-out group-hover:-translate-y-0.5">
+          <span className="relative flex h-9 w-9 items-center justify-center rounded-md [background-image:var(--btn-grad)] text-white shadow-[0_6px_16px_rgba(33,150,243,0.28)] transition-transform duration-500 ease-in-out group-hover:-translate-y-0.5">
             <Braces className="h-4.5 w-4.5" aria-hidden="true" />
           </span>
           <span className="hidden flex-col leading-none sm:flex">
@@ -49,7 +49,7 @@ export function Header({ onOpenMenu, onOpenSettings, onShowShortcuts }: HeaderPr
           <button
             type="button"
             onClick={openSearch}
-            className="hidden h-9 items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-xs text-ink-3 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:text-ink hover:shadow-float sm:flex"
+            className="hidden h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-xs text-ink-3 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:text-ink hover:shadow-float sm:flex"
           >
             <Search className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="w-28 text-left lg:w-40">
@@ -81,7 +81,7 @@ export function Header({ onOpenMenu, onOpenSettings, onShowShortcuts }: HeaderPr
             rel="noreferrer noopener"
             aria-label={t({ zh: '在 GitHub 查看源码', en: 'View source on GitHub' })}
             title={t({ zh: '在 GitHub 查看源码', en: 'View source on GitHub' })}
-            className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors duration-300 ease-in-out hover:bg-surface-2 hover:text-ink sm:inline-flex"
+            className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-md text-ink-2 transition-colors duration-300 ease-in-out hover:bg-surface-2 hover:text-ink sm:inline-flex"
           >
             <Github className="h-4.5 w-4.5" aria-hidden="true" />
           </a>

@@ -12,7 +12,8 @@ class FakeWebSocket {
   url: string;
   protocols: string[];
   readyState = 0;
-  sent: string[] = [];
+  binaryType = 'blob';
+  sent: Array<string | Uint8Array> = [];
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: unknown }) => void) | null = null;
   onerror: (() => void) | null = null;
@@ -24,7 +25,7 @@ class FakeWebSocket {
     FakeWebSocket.instances.push(this);
   }
 
-  send(data: string) {
+  send(data: string | Uint8Array) {
     this.sent.push(data);
   }
 
@@ -42,7 +43,7 @@ class FakeWebSocket {
     });
   }
 
-  emit(data: string) {
+  emit(data: unknown) {
     act(() => {
       this.onmessage?.({ data });
     });
@@ -89,6 +90,14 @@ function setUrl(value: string) {
 function pickSavedConnection(name: string) {
   fireEvent.click(screen.getByLabelText('已保存的连接'));
   fireEvent.click(screen.getByRole('option', { name }));
+}
+
+function connectedSocket(url = 'wss://echo.test/ws') {
+  setUrl(url);
+  fireEvent.click(screen.getByRole('button', { name: '连接' }));
+  const socket = FakeWebSocket.instances[0];
+  socket.open();
+  return socket;
 }
 
 function logLine(matcher: (text: string) => boolean) {
@@ -173,5 +182,69 @@ describe('WebSocketPanel', () => {
       const saved = JSON.parse(localStorage.getItem(WORKBENCH_STORAGE_KEY) ?? '{}');
       expect(saved.sockets[0].url).toBe('wss://orders.test/ws?v=2');
     });
+  });
+
+  test('二进制帧可切文本/Base64/十六进制看法，字节统计按真实长度', () => {
+    renderPanel();
+    const socket = connectedSocket();
+    expect(socket.binaryType).toBe('arraybuffer');
+
+    socket.emit(new TextEncoder().encode('hello').buffer);
+    expect(logLine((text) => text === 'hello')).toBeDefined();
+    expect(screen.getByText('5 B')).toBeInTheDocument();
+
+    socket.emit(new Uint8Array([0, 0x11, 0xab]).buffer);
+    expect(logLine((text) => text.includes('[二进制 3 B · 非 UTF-8]'))).toBeDefined();
+    expect(screen.getByText('收到 2 条')).toBeInTheDocument();
+    // 8 = hello 的 5 字节 + 那一帧的 3 字节，摘要文字的长度不算数
+    expect(screen.getByText('8 B')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Base64' }));
+    expect(logLine((text) => text === 'ABGr')).toBeDefined();
+    expect(logLine((text) => text === 'aGVsbG8=')).toBeDefined();
+    fireEvent.click(screen.getByRole('tab', { name: '十六进制' }));
+    expect(logLine((text) => text === '00 11 ab')).toBeDefined();
+    expect(logLine((text) => text === '68 65 6c 6c 6f')).toBeDefined();
+    // 换看法不影响文本行
+    expect(logLine((text) => text.includes('连接已建立'))).toBeDefined();
+  });
+
+  test('十六进制模式按字节发出，非法输入拦在发送之前', () => {
+    renderPanel();
+    const socket = connectedSocket();
+    fireEvent.click(screen.getByRole('tab', { name: '二进制帧（十六进制）' }));
+    fireEvent.change(screen.getByLabelText('消息内容'), { target: { value: '0x00 11 22 ab' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    expect(socket.sent).toHaveLength(1);
+    expect(socket.sent[0]).toBeInstanceOf(Uint8Array);
+    expect([...(socket.sent[0] as Uint8Array)]).toEqual([0, 17, 34, 171]);
+    expect(logLine((text) => text.includes('[二进制 4 B · 非 UTF-8]'))).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('消息内容'), { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    expect(screen.getByText(/十六进制内容不合法/)).toBeInTheDocument();
+    expect(socket.sent).toHaveLength(1);
+  });
+
+  test('复用记录带着发送格式，十六进制历史不会被当文本发出去', () => {
+    renderPanel();
+    const socket = connectedSocket();
+    fireEvent.change(screen.getByLabelText('消息内容'), { target: { value: 'plain text' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    expect(socket.sent[0]).toBe('plain text');
+
+    fireEvent.click(screen.getByRole('tab', { name: '二进制帧（十六进制）' }));
+    fireEvent.change(screen.getByLabelText('消息内容'), { target: { value: 'de ad' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    expect([...(socket.sent[1] as Uint8Array)]).toEqual([0xde, 0xad]);
+
+    // 手动切回文本帧，再从历史里挑那串十六进制：格式必须跟着历史条目一起回来
+    fireEvent.click(screen.getByRole('tab', { name: '文本帧' }));
+    fireEvent.click(screen.getByLabelText('复用上次的消息'));
+    fireEvent.click(screen.getByRole('option', { name: 'HEX de ad' }));
+    expect(screen.getByRole('tab', { name: '二进制帧（十六进制）' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('消息内容')).toHaveValue('de ad');
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    expect([...(socket.sent[2] as Uint8Array)]).toEqual([0xde, 0xad]);
   });
 });

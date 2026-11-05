@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import { ToolError } from '../errors';
-import { exportPostman, importPostman } from './transfer';
+import { tl, type Localized } from '@/i18n/locale';
+import { MAX_SCRIPT_CHARS } from './scriptEngine';
+import { exportPostman, importPostman, postmanNoteText } from './transfer';
 import { walkRequests, blankRequest, newCollection } from './tree';
+
+/** 断言只看中文那半，`Localized` 本身可能是字符串。 */
+const zh = (value: Localized): string => tl(value, 'zh');
 
 const V21_FIXTURE = JSON.stringify({
   info: { name: 'Demo API', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' },
@@ -54,8 +59,59 @@ describe('importPostman', () => {
       { id: expect.any(String), key: 'env', value: 'staging', enabled: true, secret: true },
       { id: expect.any(String), key: 'unused', value: '', enabled: false },
     ]);
-    expect(ignored).toEqual(['request-script']);
+    expect(ignored).toEqual([]);
+    // 请求级 event 现在是搬进来了，不是「跳过」
+    expect(list.testScript).toBe('pm.test("x", () => pm.expect(1).to.be(1));');
+    expect(list.preScript).toBeUndefined();
     expect(walkRequests(collection.root)).toHaveLength(3);
+  });
+
+  test('脚本映射：预请求/测试各归位，多余的说清楚', () => {
+    const { collection, ignored } = importPostman(JSON.stringify({
+      info: { name: 'scripts' },
+      item: [
+        {
+          name: 'S',
+          event: [
+            { listen: 'prerequest', script: { exec: ['pm.variables.set("a", "1");'] } },
+            { listen: 'test', script: { exec: ['pm.test("t", () => {});', 'pm.test("u", () => {});'] } },
+            { listen: 'test', script: { exec: 'pm.test("second", () => {});' } },
+            { listen: 'finalize', script: { exec: 'noop();' } },
+          ],
+          request: { method: 'GET', url: 'https://a' },
+        },
+      ],
+    }));
+    const s = collection.root.requests[0];
+    expect(s.preScript).toBe('pm.variables.set("a", "1");');
+    expect(s.testScript).toBe('pm.test("t", () => {});\npm.test("u", () => {});');
+    expect(ignored).toEqual(['duplicate-script', 'unsupported-event']);
+  });
+
+  test('脚本导出成 event 后再导回来，内容不丢', () => {
+    const request = { ...blankRequest(), name: 'R', preScript: 'pm.variables.set("a","1");', testScript: 'pm.test("t", () => {});' };
+    const collection = newCollection('Round trip');
+    collection.root.requests.push(request);
+    const exported = JSON.stringify(exportPostman(collection));
+    const again = importPostman(exported);
+    expect(again.ignored).toEqual([]);
+    expect(again.collection.root.requests[0].preScript).toBe(request.preScript);
+    expect(again.collection.root.requests[0].testScript).toBe(request.testScript);
+  });
+
+  test('超过上限的脚本截到上限并说明', () => {
+    const { collection, ignored } = importPostman(JSON.stringify({
+      info: { name: 'big' },
+      item: [{ name: 'B', event: [{ listen: 'test', script: { exec: 'x'.repeat(MAX_SCRIPT_CHARS + 10) } }], request: { method: 'GET', url: 'https://a' } }],
+    }));
+    expect(collection.root.requests[0].testScript).toHaveLength(MAX_SCRIPT_CHARS);
+    expect(ignored).toEqual(['script-truncated']);
+  });
+
+  test('导入说明是本机语言，不是机器码', () => {
+    expect(zh(postmanNoteText('method-TEAPOT'))).toContain('TEAPOT');
+    expect(zh(postmanNoteText('folder-script'))).toContain('文件夹');
+    expect(zh(postmanNoteText('whatever'))).toBe('whatever');
   });
 
   test('集合级 basic auth 继承给未单独声明的请求', () => {
@@ -90,7 +146,18 @@ describe('importPostman', () => {
     expect(() => importPostman('not json')).toThrow(ToolError);
     expect(() => importPostman('{"info":{}}')).toThrow(ToolError);
     expect(() => importPostman(JSON.stringify({ info: { name: 'empty' }, item: [] }))).toThrow(/没有可导入的请求/);
-    expect(() => importPostman(JSON.stringify({ info: { name: 'x' }, item: [{ name: 'T', request: { method: 'TEAPOT', url: 'https://a' } }] }))).toThrow(/没有可导入的请求/);
+    // 数字开头的动词连合法名词都算不上，只能跳过并说清。
+    expect(() => importPostman(JSON.stringify({ info: { name: 'x' }, item: [{ name: 'T', request: { method: '1ABC', url: 'https://a' } }] }))).toThrow(/没有可导入的请求/);
+  });
+
+  test('自定义动词按 customMethod 收下，不再当不支持丢掉', () => {
+    const { collection, ignored } = importPostman(JSON.stringify({
+      info: { name: 'WebDAV' },
+      item: [{ name: 'Probe', request: { method: 'PROPFIND', url: 'https://a/.well-known' } }],
+    }));
+    const probe = collection.root.requests[0];
+    expect([probe.method, probe.customMethod]).toEqual(['GET', 'PROPFIND']);
+    expect(ignored).toEqual([]);
   });
 });
 
@@ -117,5 +184,25 @@ describe('exportPostman', () => {
     const after = walkRequests(revived.root);
     expect(after.map((r) => [r.method, r.url, r.body.text])).toEqual(before.map((r) => [r.method, r.url, r.body.text]));
     expect(after.find((r) => r.name === 'Create user')?.auth).toEqual({ type: 'bearer', token: 'tkn-123' });
+  });
+
+  test('参数表格并进 raw URL，自定义动词不被写回 GET', () => {
+    const collection = newCollection('Params');
+    collection.root.requests = [
+      {
+        ...blankRequest(),
+        name: 'Search',
+        method: 'GET',
+        customMethod: 'PROPFIND',
+        url: 'https://api.test/dav',
+        params: [{ key: 'q', value: 'a b', enabled: true }],
+      },
+    ];
+    const exported = exportPostman(collection);
+    const item = (exported.item as Record<string, Record<string, unknown>>[])[0];
+    expect(item.request).toMatchObject({ method: 'PROPFIND', url: { raw: 'https://api.test/dav?q=a b' } });
+    const back = importPostman(JSON.stringify(exported)).collection.root.requests[0];
+    // Postman 只在 raw URL 里放查询串，所以回导后 URL 与表格是同一份内容的两种视图。
+    expect([back.customMethod, back.url, back.params]).toEqual(['PROPFIND', 'https://api.test/dav?q=a b', [{ key: 'q', value: 'a b', enabled: true }]]);
   });
 });

@@ -10,13 +10,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const BASE_CLASS =
-  'inline-flex items-center justify-center gap-1.5 rounded-full font-medium whitespace-nowrap transition-all duration-300 ease-in-out disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  'inline-flex items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-colors duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  primary:
-    'btn-shine text-accent-contrast shadow-[0_6px_18px_rgba(33,150,243,0.28)] [background-image:var(--btn-grad)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(33,150,243,0.32)] active:translate-y-0',
-  secondary:
-    'border border-line-strong bg-surface text-ink shadow-card hover:-translate-y-0.5 hover:border-accent/40 hover:bg-surface-2 hover:shadow-float active:translate-y-0',
+  primary: 'bg-accent text-accent-contrast hover:bg-accent-strong',
+  secondary: 'border border-line-strong bg-surface text-ink hover:border-accent/40 hover:bg-surface-2',
   ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
   danger: 'bg-danger-soft text-danger hover:bg-danger hover:text-white',
 };

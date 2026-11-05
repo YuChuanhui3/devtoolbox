@@ -1,17 +1,16 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronRight, Download, FilePlus2, FileUp, FolderOpen, FolderPlus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useRef, useState, type RefObject } from 'react';
+import { ChevronDown, ChevronRight, Download, FilePlus2, FileUp, FolderOpen, PackageOpen, FolderPlus, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
+import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
-import { useToast } from '@/components/ui/Toast';
 import { useI18n } from '@/i18n/I18nProvider';
-import { downloadText, safeFilename } from '@/lib/download';
 import { newId } from '@/lib/apiworkbench/id';
-import { removeFolder, updateFolder } from '@/lib/apiworkbench/tree';
-import { exportPostman } from '@/lib/apiworkbench/transfer';
+import { filterFolder, removeFolder, updateFolder } from '@/lib/apiworkbench/tree';
 import type { L10n } from '@/i18n/locale';
 import type { WbCollection, WbFolder, WbRequest, WorkbenchDoc } from '@/lib/apiworkbench/types';
+import { CollectionExportModal } from './CollectionExportModal';
 
 interface TreeProps {
   doc: WorkbenchDoc;
@@ -19,7 +18,9 @@ interface TreeProps {
   selectedRequestId: string | null;
   onSelectRequest: (collectionId: string, request: WbRequest) => void;
   onNewRequest: (collectionId: string, folderId: string) => void;
-  onImportPostman?: () => void;
+  onImport?: () => void;
+  /** 侧栏搜索框，快捷键 Cmd/Ctrl+K 聚焦的是同一个节点。 */
+  searchRef?: RefObject<HTMLInputElement | null>;
 }
 
 interface FolderProps extends TreeProps {
@@ -200,9 +201,11 @@ const METHOD_TONE: Record<string, 'success' | 'accent' | 'warning' | 'danger' | 
 
 export function CollectionTree(props: TreeProps) {
   const { t } = useI18n();
-  const toast = useToast();
   const { doc, update } = props;
+  const fallbackRef = useRef<HTMLInputElement>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [exporting, setExporting] = useState<WbCollection | null>(null);
 
   const addCollection = () => {
     const name = t({ zh: '新集合', en: 'New collection' });
@@ -215,15 +218,20 @@ export function CollectionTree(props: TreeProps) {
     }));
   };
 
+  const shown = doc.collections.flatMap((collection) => {
+    const root = filterFolder(collection.root, query);
+    return root ? [{ collection, root }] : [];
+  });
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-ink">{t({ zh: '集合', en: 'Collections' })}</span>
         <span className="flex items-center gap-1">
-          {props.onImportPostman ? (
-            <Button variant="ghost" size="sm" onClick={props.onImportPostman} aria-label={t({ zh: '导入 Postman 集合', en: 'Import Postman collection' })}>
+          {props.onImport ? (
+            <Button variant="ghost" size="sm" onClick={props.onImport} aria-label={t({ zh: '导入集合（Postman / Hoppscotch / HAR）', en: 'Import collections (Postman / Hoppscotch / HAR)' })}>
               <FileUp className="h-3 w-3" aria-hidden="true" />
-              Postman
+              {t({ zh: '导入', en: 'Import' })}
             </Button>
           ) : null}
           <Button variant="ghost" size="sm" onClick={addCollection} aria-label={t({ zh: '新建集合', en: 'New collection' })}>
@@ -232,16 +240,45 @@ export function CollectionTree(props: TreeProps) {
           </Button>
         </span>
       </div>
+      <div className="relative mb-2">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" aria-hidden="true" />
+        <Input
+          ref={props.searchRef ?? fallbackRef}
+          size="sm"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t({ zh: '搜名称或 URL', en: 'Search name or URL' })}
+          mono
+          className="pl-8 pr-8"
+          aria-label={t({ zh: '搜索集合内请求', en: 'Search requests' })}
+        />
+        {query ? (
+          <IconButton
+            label={t({ zh: '清空搜索', en: 'Clear search' })}
+            size="sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2"
+            onClick={() => setQuery('')}
+          >
+            <X className="h-3 w-3" aria-hidden="true" />
+          </IconButton>
+        ) : null}
+      </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-auto">
         {doc.collections.length === 0 ? (
+          <div className="wb-collections-empty">
+            <PackageOpen size={64} strokeWidth={.6} aria-hidden="true" />
+            <span>{t({ zh: '集合为空', en: 'Collections are empty' })}</span>
+            <p>{t({ zh: '导入或创建一个集合', en: 'Import or create a collection' })}</p>
+            {props.onImport ? <Button variant="primary" size="sm" onClick={props.onImport} aria-label={t({ zh: '从空集合导入', en: 'Import into empty collections' })}><FileUp size={14} />{t({ zh: '导入', en: 'Import' })}</Button> : null}
+            <Button variant="secondary" size="sm" onClick={addCollection}><Plus size={14} />{t({ zh: '新建', en: 'Add new' })}</Button>
+          </div>
+        ) : null}
+        {doc.collections.length > 0 && shown.length === 0 ? (
           <p className="rounded-card border border-dashed border-line-strong px-2.5 py-3 text-[11px] leading-5 text-ink-3">
-            {t({
-              zh: '还没有集合。新建集合后可把请求存进去，也可以从 OpenAPI 页签生成，或点上方的 Postman 按钮导入。',
-              en: 'No collections yet. Create one to save requests, generate them from the OpenAPI tab, or import via the Postman button above.',
-            })}
+            {t({ zh: `没有匹配「${query}」的请求。`, en: `Nothing matches "${query}".` })}
           </p>
         ) : null}
-        {doc.collections.map((collection) => (
+        {shown.map(({ collection, root }) => (
           <div key={collection.id} className="group rounded-xl border border-line bg-surface-2/40 p-1.5">
             <div className="flex items-center gap-1 px-1">
               {renamingId === collection.id ? (
@@ -273,15 +310,8 @@ export function CollectionTree(props: TreeProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    aria-label={t({ zh: '导出', en: 'Export' })}
-                    onClick={() => {
-                      downloadText(
-                        safeFilename(`${collection.name || 'collection'}.postman_collection.json`, 'collection.json'),
-                        JSON.stringify(exportPostman(collection), null, 2),
-                        'application/json;charset=utf-8',
-                      );
-                      toast.success(t({ zh: '已开始下载', en: 'Download started' }));
-                    }}
+                    aria-label={t({ zh: '导出集合', en: 'Export collection' })}
+                    onClick={() => setExporting(collection)}
                   >
                     <Download className="h-3 w-3" aria-hidden="true" />
                   </Button>
@@ -295,10 +325,11 @@ export function CollectionTree(props: TreeProps) {
                 </span>
               ) : null}
             </div>
-            <FolderNode {...props} collection={collection} folder={collection.root} depth={0} />
+            <FolderNode {...props} collection={collection} folder={root} depth={0} />
           </div>
         ))}
       </div>
+      <CollectionExportModal open={exporting !== null} collection={exporting} onClose={() => setExporting(null)} />
     </div>
   );
 }

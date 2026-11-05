@@ -21,6 +21,27 @@ export function mergeVarScopes(...levels: WbVar[][]): Record<string, string> {
   return scope;
 }
 
+/**
+ * 同样按「后层覆盖前层」并成一张变量表，但保留行本身（启用位、secret 位、顺序）。
+ * 环境继承链要用这张表：脚本读的是行，不只是值。
+ */
+export function mergeVarLists(...levels: WbVar[][]): WbVar[] {
+  const index = new Map<string, number>();
+  const out: WbVar[] = [];
+  for (const vars of levels) {
+    for (const v of vars) {
+      const key = v.key.trim();
+      if (!key) continue;
+      const at = index.get(key);
+      if (at === undefined) {
+        index.set(key, out.length);
+        out.push({ ...v });
+      } else out[at] = { ...v };
+    }
+  }
+  return out;
+}
+
 export interface InterpolateResult {
   text: string;
   missing: string[];

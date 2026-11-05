@@ -19,13 +19,18 @@ import { toToolError } from '@/lib/errors';
 import { interpolate } from '@/lib/apiworkbench/vars';
 import {
   appendEvent,
+  binaryView,
   countEvents,
+  describeBinaryFrame,
   describeCloseCode,
   formatPayload,
   normalizeWsUrl,
+  parseHexInput,
   parseProtocols,
   reduceSession,
   sessionStats,
+  type BinaryFrame,
+  type BinaryViewMode,
   type SessionAction,
   type SocketSessionState,
   type WsEvent,
@@ -50,6 +55,7 @@ const TEMPORARY = '__temporary__';
 const MAX_RECENT_SENT = 20;
 
 type LogFilter = 'all' | WsEventDirection;
+type SendMode = 'text' | 'hex';
 
 const DIRECTION_TONE: Record<WsEventDirection, string> = {
   in: 'text-ok',
@@ -63,10 +69,6 @@ function formatClock(at: number, locale: string) {
 
 function formatBytes(bytes: number) {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
-}
-
-function binarySize(data: Blob | ArrayBuffer) {
-  return data instanceof Blob ? data.size : data.byteLength;
 }
 
 export function WebSocketPanel({ active: _active }: { active: boolean }) {
@@ -86,22 +88,30 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
   const [pretty, setPretty] = useState(true);
   const [error, setError] = useState<Localized | null>(null);
   const [notice, setNotice] = useState<Localized | null>(null);
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recent, setRecent] = useState<Array<{ text: string; mode: SendMode }>>([]);
   const [openedAt, setOpenedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [lastCloseCode, setLastCloseCode] = useState<number | null>(null);
+  const [sendMode, setSendMode] = useState<SendMode>('text');
+  const [viewMode, setViewMode] = useState<BinaryViewMode>('text');
 
   const socketRef = useRef<WebSocket | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const log = useCallback((direction: WsEventDirection, text: string) => {
+  const log = useCallback((direction: WsEventDirection, text: string, binary?: BinaryFrame) => {
     const at = Date.now();
-    setEvents((current) => appendEvent(current, { time: formatClock(at, locale), direction, text, at }));
+    setEvents((current) => appendEvent(current, { time: formatClock(at, locale), direction, text, at, ...(binary ? { binary } : {}) }));
   }, [locale]);
 
   const transition = useCallback((action: SessionAction) => {
     setSession((current) => reduceSession(current, action));
   }, []);
+
+  /** 二进制帧的一行摘要，既是日志里 replace 的正文，也是「文本」模式下解不开时的兜底。 */
+  const binarySummary = (frame: BinaryFrame) => t({
+    zh: `[二进制 ${frame.bytes} B${frame.text === null ? ' · 非 UTF-8' : ''}]`,
+    en: `[binary ${frame.bytes} B${frame.text === null ? ' · not UTF-8' : ''}]`,
+  });
 
   // 卸载时必须先摘掉 handler 再 close，否则关闭事件会打到已卸载的 state 上。
   useEffect(() => {
@@ -180,6 +190,8 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
     }
     transition('connect');
     log('sys', t({ zh: `正在连接 ${target}…`, en: `Connecting to ${target}…` }));
+    // 收 Blob 只能知道大小；改成 ArrayBuffer，二进制帧才谈得上按文本/Base64/十六进制看。
+    socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
       transition('open');
@@ -190,8 +202,12 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
       }));
     };
     socket.onmessage = (event) => {
-      if (typeof event.data === 'string') log('in', event.data);
-      else log('in', t({ zh: `[二进制 ${binarySize(event.data)} B]`, en: `[binary ${binarySize(event.data)} B]` }));
+      if (typeof event.data === 'string') {
+        log('in', event.data);
+        return;
+      }
+      const frame = describeBinaryFrame(event.data as ArrayBuffer);
+      log('in', binarySummary(frame), frame);
     };
     socket.onerror = () => {
       socketRef.current = null;
@@ -231,15 +247,28 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
       }));
       return;
     }
+    let payload: string | Uint8Array = text;
+    if (sendMode === 'hex') {
+      try {
+        payload = parseHexInput(text);
+      } catch (caught) {
+        setError(toToolError(caught).localized);
+        return;
+      }
+    }
     try {
-      socket.send(text);
+      socket.send(payload);
     } catch (caught) {
       setError(toToolError(caught).localized);
       return;
     }
     setError(null);
-    log('out', text);
-    setRecent((current) => [text, ...current.filter((item) => item !== text)].slice(0, MAX_RECENT_SENT));
+    if (typeof payload === 'string') log('out', payload);
+    else {
+      const frame = describeBinaryFrame(payload);
+      log('out', binarySummary(frame), frame);
+    }
+    setRecent((current) => [{ text, mode: sendMode }, ...current.filter((item) => !(item.text === text && item.mode === sendMode))].slice(0, MAX_RECENT_SENT));
   };
 
   const selected = doc.sockets.find((item) => item.id === socketId) ?? null;
@@ -280,7 +309,12 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
   const counts = countEvents(events);
   const stats = sessionStats(events);
   const visible = filter === 'all' ? events : events.filter((event) => event.direction === filter);
-  const allText = events.map((event) => `[${event.time}] ${event.direction.toUpperCase()} ${event.text}`).join('\n');
+  /** 二进制帧不走 JSON 缩进：那一行摘要不是 JSON，帧内容按所选看法展示。 */
+  const shownFor = (event: WsEvent) => (event.binary
+    ? { text: binaryView(event.binary, viewMode, event.text), isJson: false }
+    : pretty ? formatPayload(event.text) : { text: event.text, isJson: false });
+  const hasBinary = events.some((event) => event.binary);
+  const allText = events.map((event) => `[${event.time}] ${event.direction.toUpperCase()} ${shownFor(event).text}`).join('\n');
 
   return (
     <div className="space-y-4">
@@ -370,7 +404,23 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">
-          <Panel title={t({ zh: '发送消息', en: 'Send message' })} bodyClassName="space-y-3">
+          <Panel
+            title={t({ zh: '发送消息', en: 'Send message' })}
+            subtitle={sendMode === 'hex'
+              ? t({ zh: '十六进制按字节发出：允许空格、换行与 0x 前缀，变量先插值', en: 'Hexadecimal input goes out as raw bytes: spaces, newlines and 0x prefixes are accepted, variables interpolate first' })
+              : t({ zh: 'Enter 发送，Shift+Enter 换行；变量先插值', en: 'Enter sends, Shift+Enter breaks the line; variables interpolate first' })}
+            bodyClassName="space-y-3"
+          >
+            <Segmented<SendMode>
+              value={sendMode}
+              onChange={setSendMode}
+              size="sm"
+              ariaLabel={t({ zh: '发送格式', en: 'Send format' })}
+              options={[
+                { value: 'text', label: t({ zh: '文本帧', en: 'Text frame' }) },
+                { value: 'hex', label: t({ zh: '二进制帧（十六进制）', en: 'Binary frame (hex)' }) },
+              ]}
+            />
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -384,12 +434,16 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
               mono
               disabled={!connected}
               aria-label={t({ zh: '消息内容', en: 'Message content' })}
+              placeholder={sendMode === 'hex' ? t({ zh: '00 11 22 ab 或 001122ab', en: '00 11 22 ab or 001122ab' }) : undefined}
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Select
                 value=""
                 onChange={(e) => {
-                  if (e.target.value) setMessage(e.target.value);
+                  const picked = recent[Number(e.target.value)];
+                  if (!picked) return;
+                  setMessage(picked.text);
+                  setSendMode(picked.mode);
                 }}
                 aria-label={t({ zh: '复用上次的消息', en: 'Reuse a recent message' })}
                 size="sm"
@@ -398,7 +452,7 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
               >
                 <option value="">{t({ zh: '复用上次的消息', en: 'Reuse a recent message' })}</option>
                 {recent.map((item, index) => (
-                  <option key={index} value={item}>{item.slice(0, 48)}</option>
+                  <option key={index} value={index}>{`${item.mode === 'hex' ? 'HEX ' : ''}${item.text.slice(0, 40)}`}</option>
                 ))}
               </Select>
               <Button variant="primary" onClick={send} disabled={!connected}>
@@ -460,6 +514,19 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
               ]}
             />
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {hasBinary ? (
+                <Segmented<BinaryViewMode>
+                  value={viewMode}
+                  onChange={setViewMode}
+                  size="sm"
+                  ariaLabel={t({ zh: '二进制帧看法', en: 'Binary frame view' })}
+                  options={[
+                    { value: 'text', label: t({ zh: '文本', en: 'Text' }) },
+                    { value: 'base64', label: 'Base64' },
+                    { value: 'hex', label: t({ zh: '十六进制', en: 'Hex' }) },
+                  ]}
+                />
+              ) : null}
               <span className="flex items-center gap-2">
                 <Switch label={t({ zh: '自动滚动', en: 'Auto scroll' })} checked={autoScroll} onChange={setAutoScroll} />
                 <span className="text-xs text-ink-2">{t({ zh: '自动滚动', en: 'Auto scroll' })}</span>
@@ -483,7 +550,7 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
           ) : (
             <div ref={listRef} className="max-h-[460px] divide-y divide-line overflow-auto">
               {visible.map((event, index) => {
-                const shown = pretty ? formatPayload(event.text) : { text: event.text, isJson: false };
+                const shown = shownFor(event);
                 return (
                   <div key={`${event.at}-${index}`} className="flex items-start gap-3 px-4 py-2">
                     <span className="mt-0.5 shrink-0 font-mono text-[11px] text-ink-3">{event.time}</span>

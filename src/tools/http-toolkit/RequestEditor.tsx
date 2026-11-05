@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Import, Plus, Send, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { CopyButton } from '@/components/tool/ToolActions';
+import { CopyIconButton } from '@/components/tool/ToolActions';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Segmented } from '@/components/ui/Segmented';
@@ -11,20 +11,39 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useToolkitSub } from '@/hooks/useToolkitSub';
 import { toToolError } from '@/lib/errors';
-import { WB_METHODS } from '@/lib/apiworkbench/types';
+import { paramsFromUrlEdit } from '@/lib/apiworkbench/params';
+import { CUSTOM_METHOD_PATTERN, WB_METHODS, type WbMethod, type WbRequest } from '@/lib/apiworkbench/types';
 import { parseCurlToRequest, toCurl } from '@/lib/apiworkbench/transfer';
 import type { Localized } from '@/i18n/locale';
-import type { WbBodyMode, WbRequest } from '@/lib/apiworkbench/types';
+import { RequestAuthEditor } from './RequestAuthEditor';
+import { RequestBodyEditor } from './RequestBodyEditor';
+import { RequestParamsEditor } from './RequestParamsEditor';
+import { CodegenPanel } from './CodegenPanel';
+import { ScriptEditor } from './ScriptEditor';
 
-type Section = 'headers' | 'body' | 'auth';
+type Section = 'params' | 'headers' | 'body' | 'auth' | 'scripts' | 'postscript' | 'code';
+
+/** `?mode=request&sub=…` 里可寻址的编辑区；graphql 是 Body 的一种模式，所以落到 body。 */
+const SUBS = ['params', 'headers', 'body', 'auth', 'graphql', 'scripts', 'postscript', 'code'] as const;
 
 /** 表头行与数据行共用同一套列宽：启用 / 名称 / 值 / 删除。 */
 const HEADER_COLS =
   'grid min-w-0 items-center gap-1.5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,200px)_minmax(0,1fr)_auto]';
 
+/** Select 里代表「改用自定义动词」的哨兵值，不是合法 HTTP 方法，所以不会和列表撞车。 */
+const CUSTOM_METHOD = '__custom__';
+
 interface EditorProps {
   request: WbRequest;
+  /** 合并后的变量作用域，Auth 取令牌时要用。 */
+  scope: Record<string, string>;
+  /** 代理通道带不动 multipart，得提前在 Body 区说明。 */
+  proxying: boolean;
+  /** 脚本沙箱的失控上限，本次会话内的状态，不进存档。 */
+  deadlineMs: number;
+  onDeadlineChange: (ms: number) => void;
   onChange: (next: WbRequest) => void;
   onSend: () => void;
   onSave: () => void;
@@ -33,14 +52,33 @@ interface EditorProps {
   onImported: (req: WbRequest) => void;
 }
 
-export function RequestEditor({ request, onChange, onSend, onSave, saving, missing, onImported }: EditorProps) {
+export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadlineChange, onChange, onSend, onSave, saving, missing, onImported }: EditorProps) {
   const { t } = useI18n();
-  const [section, setSection] = useState<Section>('headers');
+  const sub = useToolkitSub(SUBS);
+  const [section, setSection] = useState<Section>(() => (sub === null ? 'params' : sub === 'graphql' ? 'body' : sub));
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState<Localized | null>(null);
 
+  /** 深链在面板已经挂载时也要生效；反过来不写回 URL，点页签不该改地址栏。 */
+  useEffect(() => {
+    if (!sub) return;
+    setSection(sub === 'graphql' ? 'body' : sub);
+    // `?sub=graphql` 说的是「就要写 GraphQL 请求体」，和点一下模式页签等价，所以顺手切过去。
+    if (sub === 'graphql' && request.body.mode !== 'graphql') {
+      onChange({
+        ...request,
+        body: { ...request.body, mode: 'graphql', graphql: request.body.graphql ?? { query: '', variables: '', operationName: '' } },
+      });
+    }
+  }, [sub]);
+
   const patch = (next: Partial<WbRequest>) => onChange({ ...request, ...next });
+
+  const editUrl = (url: string) => {
+    const params = paramsFromUrlEdit(url, request.params ?? []);
+    patch({ url, params: params.length ? params : undefined });
+  };
 
   const doImport = () => {
     try {
@@ -53,29 +91,50 @@ export function RequestEditor({ request, onChange, onSend, onSave, saving, missi
     }
   };
 
-  const bodyDisabled = request.body.mode === 'none';
+  const enabledParams = (request.params ?? []).filter((p) => p.enabled).length;
+  const scriptCount = (request.preScript?.trim() ? 1 : 0) + (request.testScript?.trim() ? 1 : 0);
 
   return (
-    <div className="min-w-0 space-y-3">
-      <Input
+    <div className="wb-request-editor min-w-0 space-y-3">
+      <div className="wb-request-identity"><Select size="sm" value={request.body.mode === 'graphql' ? 'graphql' : 'rest'}
+        aria-label={t({ zh: '请求协议', en: 'Request protocol' })}
+        onChange={(e) => { patch({ body: { ...request.body, mode: e.target.value === 'graphql' ? 'graphql' : 'none' } }); if (e.target.value === 'graphql') setSection('body'); }}>
+        <option value="rest">◎ REST</option><option value="graphql">◇ GraphQL</option>
+      </Select><Input
         value={request.name}
         onChange={(e) => patch({ name: e.target.value })}
         aria-label={t({ zh: '请求名称', en: 'Request name' })}
       />
-      <div className="flex flex-wrap items-center gap-2">
+      </div>
+      <div className="wb-urlbar flex flex-wrap items-center gap-2">
         <Select
-          value={request.method}
-          onChange={(e) => patch({ method: e.target.value as WbRequest['method'] })}
+          value={request.customMethod ? CUSTOM_METHOD : request.method}
+          onChange={(e) => {
+            if (e.target.value === CUSTOM_METHOD) patch({ customMethod: '' });
+            else patch({ method: e.target.value as WbMethod, customMethod: undefined });
+          }}
           aria-label={t({ zh: '请求方法', en: 'Request method' })}
           wrapperClassName="w-28 shrink-0"
         >
           {WB_METHODS.map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
+          <option value={CUSTOM_METHOD}>{t({ zh: '自定义…', en: 'Custom…' })}</option>
         </Select>
+        {request.customMethod !== undefined ? (
+          <Input
+            size="md"
+            value={request.customMethod}
+            onChange={(e) => patch({ customMethod: e.target.value.toUpperCase() })}
+            placeholder="PROPFIND"
+            mono
+            className="w-32 shrink-0"
+            aria-label={t({ zh: '自定义方法名', en: 'Custom method name' })}
+          />
+        ) : null}
         <Input
           value={request.url}
-          onChange={(e) => patch({ url: e.target.value })}
+          onChange={(e) => editUrl(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') onSend();
           }}
@@ -88,13 +147,24 @@ export function RequestEditor({ request, onChange, onSend, onSave, saving, missi
           <Send className="h-3.5 w-3.5" aria-hidden="true" />
           {saving ? t({ zh: '请求中…', en: 'Requesting…' }) : t({ zh: '发送', en: 'Send' })}
         </Button>
+        <Button variant="secondary" onClick={onSave}>{t({ zh: '保存', en: 'Save' })}<span aria-hidden="true">⌄</span></Button>
       </div>
+
+      {request.customMethod && !CUSTOM_METHOD_PATTERN.test(request.customMethod) ? (
+        <ToolAlert
+          tone="warning"
+          title={t({ zh: `自定义方法「${request.customMethod}」不合法`, en: `"${request.customMethod}" is not a valid method name` })}
+          hint={t({ zh: '只允许大写字母开头、A–Z 0–9 - 组成，最长 16 位；不合法时按左侧选中的方法发送。', en: 'Must start with a capital letter, then A–Z 0–9 - up to 16 characters; until it is valid, the method on the left is used.' })}
+        />
+      ) : null}
 
       {missing.length > 0 ? (
         <ToolAlert
           tone="warning"
           title={t({ zh: `未定义变量：${missing.map((m) => `{{${m}}}`).join(' ')}`, en: `Undefined variables: ${missing.map((m) => `{{${m}}}`).join(' ')}` })}
-          hint={t({ zh: '在环境中定义后重新选择环境，或直接写死值。', en: 'Define them in an environment and reselect it, or inline the values.' })}
+          hint={t(scriptCount
+            ? { zh: '在环境中定义后重新选择环境，或直接写死值；预请求脚本里的 pm.variables.set 也能在这次发送中补上。', en: 'Define them in an environment and reselect it, inline the values, or let the pre-request script set them for this send.' }
+            : { zh: '在环境中定义后重新选择环境，或直接写死值。', en: 'Define them in an environment and reselect it, or inline the values.' })}
         />
       ) : null}
 
@@ -105,25 +175,36 @@ export function RequestEditor({ request, onChange, onSend, onSave, saving, missi
             onChange={setSection}
             ariaLabel={t({ zh: '请求编辑区', en: 'Request editor section' })}
             options={[
-              { value: 'headers', label: t({ zh: '请求头', en: 'Headers' }) },
+              { value: 'params', label: t({ zh: '参数', en: 'Parameters' }) },
               { value: 'body', label: t({ zh: '请求体', en: 'Body' }) },
-              { value: 'auth', label: 'Auth' },
+              { value: 'headers', label: t({ zh: '请求头', en: 'Headers' }) },
+              { value: 'auth', label: t({ zh: '授权', en: 'Authorization' }) },
+              { value: 'scripts', label: t({ zh: '预请求脚本', en: 'Pre-request Script' }) },
+              { value: 'postscript', label: t({ zh: '后请求脚本', en: 'Post-request Script' }) },
+              { value: 'code', label: t({ zh: '代码', en: 'Code' }) },
             ]}
           />
           {section === 'headers' ? <Badge tone="neutral">{request.headers.length}</Badge> : null}
+          {section === 'params' && enabledParams ? <Badge tone="neutral">{enabledParams}</Badge> : null}
+          {scriptCount ? <Badge tone="accent">{t({ zh: `脚本 ${scriptCount} 段`, en: `${scriptCount} script(s)` })}</Badge> : null}
           <div className="ml-auto flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
+            <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)} aria-label={t({ zh: '导入 curl', en: 'Import curl' })} title={t({ zh: '导入 curl', en: 'Import curl' })}>
               <Import className="h-3.5 w-3.5" aria-hidden="true" />
-              {t({ zh: '导入 curl', en: 'Import curl' })}
+
             </Button>
-            <CopyButton text={toCurl(request)} label={{ zh: '复制为 curl', en: 'Copy as curl' }} />
-            <Button variant="secondary" size="sm" onClick={onSave}>
-              {t({ zh: '保存', en: 'Save' })}
-            </Button>
+            <CopyIconButton text={toCurl(request)} label={{ zh: '复制为 curl', en: 'Copy as curl' }} />
+
           </div>
         </div>
 
         <div className="p-2.5">
+          {section === 'params' ? (
+            <RequestParamsEditor
+              url={request.url}
+              params={request.params}
+              onChange={(next) => patch(next)}
+            />
+          ) : null}
 
           {section === 'headers' ? (
             <div className="space-y-2">
@@ -177,85 +258,17 @@ export function RequestEditor({ request, onChange, onSend, onSave, saving, missi
             </div>
           ) : null}
 
-          {section === 'body' ? (
-            <div className="space-y-2">
-              <Segmented<WbBodyMode>
-                size="sm"
-                value={request.body.mode}
-                onChange={(mode) => patch({ body: { ...request.body, mode } })}
-                ariaLabel={t({ zh: '请求体类型', en: 'Body type' })}
-                options={[
-                  { value: 'none', label: t({ zh: '无', en: 'None' }) },
-                  { value: 'json', label: 'JSON' },
-                  { value: 'text', label: t({ zh: '纯文本', en: 'Text' }) },
-                  { value: 'form', label: t({ zh: '表单', en: 'Form' }) },
-                ]}
-              />
-              <Textarea
-                value={request.body.text}
-                onChange={(e) => patch({ body: { ...request.body, text: e.target.value } })}
-                rows={5}
-                mono
-                disabled={bodyDisabled}
-                placeholder={request.body.mode === 'form' ? 'a=1&b=2' : '{"key": "value"}'}
-                aria-label={t({ zh: '请求体', en: 'Request body' })}
-              />
-              <p className="text-[11px] text-ink-3">
-                {t({
-                  zh: '代理通道不支持带请求体的方法；跨域调试请走直连或本地 Mock。',
-                  en: 'Proxy channels do not carry bodies on non-GET methods — use direct or local mock for cross-origin debugging.',
-                })}
-              </p>
-            </div>
-          ) : null}
+          {section === 'body' ? <RequestBodyEditor body={request.body} proxying={proxying} onChange={(body) => patch({ body })} /> : null}
 
           {section === 'auth' ? (
-            <div className="space-y-2">
-              <Segmented<'none' | 'basic' | 'bearer'>
-                size="sm"
-                value={request.auth.type}
-                onChange={(type) => patch({ auth: { type } })}
-                ariaLabel={t({ zh: '认证方式', en: 'Auth type' })}
-                options={[
-                  { value: 'none', label: t({ zh: '无', en: 'None' }) },
-                  { value: 'basic', label: 'Basic' },
-                  { value: 'bearer', label: 'Bearer' },
-                ]}
-              />
-              {request.auth.type === 'basic' ? (
-                <div className="grid min-w-0 gap-2 sm:grid-cols-2">
-                  <Input
-                    size="sm"
-                    value={request.auth.username ?? ''}
-                    onChange={(e) => patch({ auth: { ...request.auth, username: e.target.value } })}
-                    placeholder="username"
-                    mono
-                    aria-label={t({ zh: 'Basic 用户名', en: 'Basic username' })}
-                  />
-                  <Input
-                    size="sm"
-                    value={request.auth.password ?? ''}
-                    onChange={(e) => patch({ auth: { ...request.auth, password: e.target.value } })}
-                    placeholder="password"
-                    type="password"
-                    mono
-                    aria-label={t({ zh: 'Basic 密码', en: 'Basic password' })}
-                  />
-                </div>
-              ) : null}
-              {request.auth.type === 'bearer' ? (
-                <Input
-                  size="sm"
-                  value={request.auth.token ?? ''}
-                  onChange={(e) => patch({ auth: { ...request.auth, token: e.target.value } })}
-                  placeholder="token 或 {{token}}"
-                  type="password"
-                  mono
-                  aria-label={t({ zh: 'Bearer Token', en: 'Bearer token' })}
-                />
-              ) : null}
-            </div>
+            <RequestAuthEditor auth={request.auth} scope={scope} requestId={request.id} onChange={(auth) => patch({ auth })} />
           ) : null}
+
+          {section === 'scripts' || section === 'postscript' ? (
+            <ScriptEditor controlledPhase={section === 'scripts' ? 'prerequest' : 'test'} request={request} deadlineMs={deadlineMs} onDeadlineChange={onDeadlineChange} onChange={patch} />
+          ) : null}
+
+          {section === 'code' ? <CodegenPanel request={request} /> : null}
         </div>
       </div>
 

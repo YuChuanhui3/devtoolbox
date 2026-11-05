@@ -21,6 +21,8 @@ export function AppLayout() {
   const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
 
+  const isApiWorkbench = pathname === '/tools/http-simulator';
+
   useApplyTheme();
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function AppLayout() {
   }, [menuOpen]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className={cn("flex min-h-screen flex-col bg-bg", isApiWorkbench && "h-dvh overflow-hidden")}>
       <a
         href="#main-content"
         className="sr-only z-[110] rounded-full bg-accent-strong px-4 py-2 text-accent-contrast focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -52,11 +54,12 @@ export function AppLayout() {
         onShowShortcuts={() => setShortcutsOpen(true)}
       />
 
-      <div className="mx-auto flex w-full max-w-[1440px] flex-1 items-stretch">
+      <div className={cn("mx-auto flex w-full max-w-[1440px] flex-1 items-stretch", isApiWorkbench && "min-h-0 overflow-hidden")}>
         <div
           className={cn(
             'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 border-r border-line transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:block',
             sidebarCollapsed ? 'w-16' : 'w-60',
+            isApiWorkbench && 'relative top-0 h-full',
           )}
         >
           <Sidebar collapsed={sidebarCollapsed} />
@@ -76,12 +79,12 @@ export function AppLayout() {
           </button>
         </div>
 
-        <main id="main-content" className="min-w-0 flex-1 px-3 py-5 sm:px-5 lg:px-7 lg:py-7">
+        <main id="main-content" className={cn("min-w-0 flex-1 px-3 py-5 sm:px-5 lg:px-7 lg:py-7", isApiWorkbench && "h-full min-h-0")}>
           <Outlet />
         </main>
       </div>
 
-      <Footer onShowShortcuts={() => setShortcutsOpen(true)} />
+      {!isApiWorkbench ? <Footer onShowShortcuts={() => setShortcutsOpen(true)} /> : null}
 
       {menuOpen ? (
         <div className="fixed inset-0 z-[80] md:hidden">

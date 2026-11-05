@@ -19,3 +19,6 @@ coverage/
 # 临时文件
 *.log
 smoke-*.json
+
+# Generated official local API client assets and process state
+.cache/hoppscotch/

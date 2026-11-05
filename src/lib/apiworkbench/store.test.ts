@@ -1,17 +1,23 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import {
+  MAX_BODY_LENGTH,
   MAX_COLLECTIONS,
+  MAX_HISTORY_BODY,
   MAX_HISTORY_ENTRIES,
+  MAX_PARAMS,
+  MAX_PARTS,
+  MAX_SCRIPT_CHARS,
   WORKBENCH_STORAGE_KEY,
   countRequests,
   emptyWorkbench,
+  envInheritanceChain,
   loadWorkbench,
   sanitizeWorkbench,
   saveWorkbench,
 } from './store';
 import { MAX_SOCKETS } from './ws';
-import { WB_METHODS } from './types';
-import type { WbCollection, WbFolder, WorkbenchDoc } from './types';
+import { WB_METHODS, WORKBENCH_VERSION } from './types';
+import type { WbCollection, WbEnvironment, WbFolder, WorkbenchDoc } from './types';
 
 function folder(name: string, requests: number, childFolders: WbFolder[] = []): WbFolder {
   return {
@@ -147,6 +153,200 @@ describe('sanitizeWorkbench', () => {
       depth += 1;
     }
     expect(depth).toBeLessThanOrEqual(10);
+  });
+});
+
+describe('v1 → v2 迁移', () => {
+  /** v1 存档里没有任何新字段，往返后必须一个键都不多出来。 */
+  const v1Doc = {
+    version: 1,
+    collections: [
+      {
+        id: 'c1',
+        name: '演示',
+        root: { id: 'f1', name: 'f1', folders: [], requests: [{ id: 'r1', name: 'R1', method: 'POST', url: 'https://a.test/x', headers: [{ key: 'k', value: 'v', enabled: true }], body: { mode: 'json', text: '{"a":1}' }, auth: { type: 'bearer', token: 't' } }] },
+        variables: [{ id: 'v1', key: 'baseUrl', value: 'https://a.test', enabled: true, secret: true }],
+      },
+    ],
+    environments: [{ id: 'e1', name: 'Dev', variables: [] }],
+    activeEnvId: 'e1',
+    mockRoutes: [],
+    mockEnabled: false,
+    sockets: [{ id: 's1', name: 'echo', url: 'wss://a.test', protocols: [] }],
+    history: [{ id: 'h1', at: 1, request: { url: 'https://a.test/x', method: 'GET', headers: [], body: { mode: 'none', text: '' }, auth: { type: 'none' } }, status: 200, ms: 12, bytes: 5, bodyExcerpt: '{}', via: 'direct' }],
+  };
+
+  test('旧存档逐项补默认值，不新增空字段', () => {
+    const doc = sanitizeWorkbench(v1Doc);
+    expect(doc.version).toBe(WORKBENCH_VERSION);
+    expect(WORKBENCH_VERSION).toBe(2);
+    const request = doc.collections[0].root.requests[0];
+    expect(request).toEqual({
+      id: 'r1',
+      name: 'R1',
+      method: 'POST',
+      url: 'https://a.test/x',
+      headers: [{ key: 'k', value: 'v', enabled: true }],
+      body: { mode: 'json', text: '{"a":1}' },
+      auth: { type: 'bearer', username: '', password: '', token: 't' },
+    });
+    expect(Object.keys(request)).not.toContain('params');
+    expect(Object.keys(request.body)).not.toContain('multipart');
+    expect(doc.sockets).toHaveLength(1);
+    expect(doc.history[0].request).not.toHaveProperty('preScript');
+    // v1 里没有 inheritId，不应被凭空造出来
+    expect(doc.environments[0]).not.toHaveProperty('inheritId');
+  });
+
+  test('再存一次与首次清洗结果完全一致（幂等）', () => {
+    const once = sanitizeWorkbench(v1Doc);
+    expect(sanitizeWorkbench(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
+  test('参数、分片与脚本各自清洗并限额', () => {
+    const doc = sanitizeWorkbench({
+      collections: [
+        {
+          id: 'c',
+          name: 'c',
+          root: {
+            id: 'f',
+            folders: [],
+            requests: [
+              {
+                url: 'https://a.test',
+                customMethod: '  PROPFIND  ',
+                params: [...Array.from({ length: MAX_PARAMS + 30 }, (_, i) => ({ key: `p${i}` })), { key: 1 }, 'junk'],
+                body: {
+                  mode: 'multipart',
+                  text: 'ignored',
+                  multipart: [
+                    { key: 'file', type: 'file', value: 'BINARY', fileName: 'a.bin', fileSize: 12.7, mime: 'application/octet-stream' },
+                    { type: 'file', key: 'ghost' },
+                    ...Array.from({ length: MAX_PARTS + 10 }, (_, i) => ({ key: `f${i}`, type: 'text', value: 'v' })),
+                  ],
+                  graphql: { query: 'query { me }', variables: '{"id":1}', operationName: 'Me' },
+                },
+                preScript: 'x'.repeat(MAX_SCRIPT_CHARS + 500),
+                testScript: 42,
+              },
+              { url: 'https://b.test', customMethod: 'lower case', params: [{ value: 'no key' }] },
+            ],
+          },
+          variables: [],
+        },
+      ],
+    });
+    const [first, second] = doc.collections[0].root.requests;
+    expect(first.customMethod).toBe('PROPFIND');
+    expect(first.params).toHaveLength(MAX_PARAMS);
+    expect(first.params?.[0]).toEqual({ key: 'p0', value: '', enabled: true, description: undefined });
+    expect(first.body.mode).toBe('multipart');
+    expect(first.body.multipart).toHaveLength(MAX_PARTS);
+    expect(first.body.multipart?.[0]).toMatchObject({ key: 'file', type: 'file', fileName: 'a.bin', fileSize: 13 });
+    expect(first.body.multipart?.[0].value).toBe('BINARY');
+    expect(first.body.multipart?.[0].mime).toBe('application/octet-stream');
+    // 非文件分片不保留字节语义之外的字段
+    expect(first.body.multipart?.[2].fileName).toBeUndefined();
+    expect(first.body.graphql).toEqual({ query: 'query { me }', variables: '{"id":1}', operationName: 'Me' });
+    expect(first.preScript).toHaveLength(MAX_SCRIPT_CHARS);
+    expect(second).not.toHaveProperty('testScript');
+    expect(second).not.toHaveProperty('customMethod');
+    expect(second).not.toHaveProperty('params');
+    expect(second.body).not.toHaveProperty('graphql');
+  });
+
+  test('api-key 与 oauth2 认证按类型保留字段，未知类型退回 none', () => {
+    const doc = sanitizeWorkbench({
+      collections: [
+        {
+          id: 'c',
+          name: 'c',
+          root: {
+            id: 'f',
+            folders: [],
+            requests: [
+              { url: 'https://a', auth: { type: 'api-key', in: 'query', key: 'apiKey', value: '{{k}}', headerPrefix: 'Bearer' } },
+              { url: 'https://b', auth: { type: 'oauth2', grantType: 'authorization_code', tokenUrl: 'https://idp/token', clientId: 'cid', expiresAt: 1_800_000_000_000.4 } },
+              { url: 'https://c', auth: { type: 'oauth2', grantType: 'bogus' } },
+              { url: 'https://d', auth: { type: 'api-key' } },
+            ],
+          },
+          variables: [],
+        },
+      ],
+    });
+    const requests = doc.collections[0].root.requests;
+    expect(requests[0].auth).toEqual({ type: 'api-key', in: 'query', key: 'apiKey', value: '{{k}}', headerPrefix: 'Bearer' });
+    expect(requests[1].auth).toMatchObject({ type: 'oauth2', grantType: 'authorization_code', tokenUrl: 'https://idp/token', expiresAt: 1_800_000_000_000 });
+    expect(requests[1].auth.accessToken).toBeUndefined();
+    expect(requests[2].auth.grantType).toBe('client_credentials');
+    expect(requests[3].auth.in).toBe('header');
+  });
+
+  test('历史副本去脚本、截正文，并标注裁剪', () => {
+    const doc = sanitizeWorkbench({
+      history: [
+        {
+          id: 'h1',
+          at: 1,
+          request: { url: 'https://a', method: 'POST', headers: [], body: { mode: 'json', text: 'y'.repeat(MAX_HISTORY_BODY + 1_000) }, auth: { type: 'none' }, preScript: 'console.log(1)', testScript: 'pm.test()' },
+          status: 200,
+          ms: 5,
+          bytes: 5,
+          bodyExcerpt: '',
+          via: 'direct',
+        },
+        { id: 'h2', at: 2, request: { url: 'https://b', method: 'GET', headers: [], body: { mode: 'none', text: 'tiny' }, auth: { type: 'none' } }, status: 200, ms: 1, bytes: 1, bodyExcerpt: '', via: 'direct' },
+      ],
+    });
+    expect(doc.history[0].request).not.toHaveProperty('preScript');
+    expect(doc.history[0].request.body.text).toHaveLength(MAX_HISTORY_BODY);
+    expect(doc.history[0].requestTrimmed).toBe(true);
+    expect(doc.history[1].requestTrimmed).toBeUndefined();
+  });
+
+  test('满额历史不会因带脚本的大请求被静默丢弃', () => {
+    const history = Array.from({ length: MAX_HISTORY_ENTRIES }, (_, i) => ({
+      id: `h${i}`,
+      at: i,
+      request: {
+        url: `https://a.test/${i}`,
+        method: 'POST',
+        headers: [],
+        body: { mode: 'json', text: 'z'.repeat(MAX_BODY_LENGTH) },
+        auth: { type: 'none' },
+        preScript: 'p'.repeat(MAX_SCRIPT_CHARS),
+        testScript: 't'.repeat(MAX_SCRIPT_CHARS),
+      },
+      status: 200,
+      ms: 1,
+      bytes: 1,
+      bodyExcerpt: '',
+      via: 'direct',
+    }));
+    const doc = sanitizeWorkbench({ history });
+    expect(doc.history).toHaveLength(MAX_HISTORY_ENTRIES);
+    expect(doc.history[0].request.body.text).toHaveLength(MAX_HISTORY_BODY);
+    expect(JSON.stringify(doc).length).toBeLessThanOrEqual(3_000_000);
+  });
+
+  test('环境继承链：自己在前、被继承者在后，缺失与成环都安全', () => {
+    const environments: WbEnvironment[] = [
+      { id: 'a', name: 'A', variables: [], inheritId: 'b' },
+      { id: 'b', name: 'B', variables: [], inheritId: 'a' },
+      { id: 'c', name: 'C', variables: [], inheritId: 'gone' },
+      { id: 'd', name: 'D', variables: [] },
+    ];
+    expect(envInheritanceChain(environments, 'a').map((e) => e.id)).toEqual(['a', 'b']);
+    expect(envInheritanceChain(environments, 'c').map((e) => e.id)).toEqual(['c']);
+    expect(envInheritanceChain(environments, 'd').map((e) => e.id)).toEqual(['d']);
+    expect(envInheritanceChain(environments, 'ghost')).toEqual([]);
+
+    const doc = sanitizeWorkbench({ environments });
+    expect(doc.environments.find((e) => e.id === 'c')?.inheritId).toBeUndefined();
+    expect(doc.environments.find((e) => e.id === 'a')?.inheritId).toBe('b');
+    expect(doc.environments.find((e) => e.id === 'b')?.inheritId).toBe('a');
   });
 });
 

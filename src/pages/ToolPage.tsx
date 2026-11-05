@@ -90,6 +90,12 @@ export function ToolPage() {
     | LazyExoticComponent<ComponentType>
     | undefined;
 
+  if (tool.id === 'http-simulator' && ToolComponent) {
+    return <ToolProvider key={tool.id} tool={tool}>
+      <ErrorBoundary resetKey={tool.id}><Suspense fallback={<ToolSkeleton />}><ToolComponent /></Suspense></ErrorBoundary>
+    </ToolProvider>;
+  }
+
   return (
     <ToolProvider key={tool.id} tool={tool}>
       <div className="space-y-6">

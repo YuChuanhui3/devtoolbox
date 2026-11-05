@@ -29,9 +29,11 @@ export interface WsEvent {
   /** 本地时间串，由调用方按 locale 生成。 */
   time: string;
   direction: WsEventDirection;
+  /** 文本帧的原文；二进制帧只存一行摘要，正文由 binary 按视图模式渲染。 */
   text: string;
   /** 事件发生时刻，供时长统计用。 */
   at: number;
+  binary?: BinaryFrame;
 }
 
 /** 环形裁剪：保留最近 cap 条，与旧工具 slice(-499)+push 的上限语义一致。 */
@@ -46,10 +48,10 @@ export function countEvents(events: WsEvent[]): Record<WsEventDirection, number>
   return counts;
 }
 
-/** 收发条数与字节；字节按 UTF-8 编码宽度估算。 */
+/** 收发条数与字节；文本按 UTF-8 编码宽度估算，二进制按帧的真实字节。 */
 export function sessionStats(events: WsEvent[]): { in: number; out: number; bytesIn: number; bytesOut: number } {
   const encoder = typeof TextEncoder === 'function' ? new TextEncoder() : null;
-  const size = (text: string) => (encoder ? encoder.encode(text).length : text.length);
+  const size = (event: WsEvent) => (event.binary ? event.binary.bytes : (encoder ? encoder.encode(event.text).length : event.text.length));
   let bytesIn = 0;
   let bytesOut = 0;
   let inCount = 0;
@@ -57,10 +59,10 @@ export function sessionStats(events: WsEvent[]): { in: number; out: number; byte
   for (const event of events) {
     if (event.direction === 'in') {
       inCount += 1;
-      bytesIn += size(event.text);
+      bytesIn += size(event);
     } else if (event.direction === 'out') {
       outCount += 1;
-      bytesOut += size(event.text);
+      bytesOut += size(event);
     }
   }
   return { in: inCount, out: outCount, bytesIn, bytesOut };
@@ -156,4 +158,78 @@ export function formatPayload(text: string): { text: string; isJson: boolean } {
   } catch {
     return { text, isJson: false };
   }
+}
+
+/** 一帧二进制数据的三种看法。 */
+export interface BinaryFrame {
+  bytes: number;
+  /** 严格 UTF-8 能解才有文本；解不开就是真的二进制，不猜。 */
+  text: string | null;
+  base64: string;
+  /** 十六进制串，只给前 maxHexBytes 字节，界面看节奏够用。 */
+  hex: string;
+  truncated: boolean;
+}
+
+const HEX_GROUP = ' ';
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const step = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += step) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + step));
+  }
+  return typeof btoa === 'function' ? btoa(binary) : Buffer.from(bytes).toString('base64');
+}
+
+/** 二进制帧的展示数据：UTF-8 严格解码、Base64、截断的十六进制。 */
+export function describeBinaryFrame(data: ArrayBuffer | Uint8Array, maxHexBytes = 512): BinaryFrame {
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  let text: string | null = null;
+  try {
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    text = decoded;
+  } catch {
+    text = null;
+  }
+  const shown = bytes.subarray(0, maxHexBytes);
+  const hex = [...shown].map((byte) => byte.toString(16).padStart(2, '0')).join(HEX_GROUP);
+  return { bytes: bytes.length, text, base64: toBase64(bytes), hex, truncated: bytes.length > shown.length };
+}
+
+const HEX_CLEAN = /^(?:[0-9a-f]{2})+$/i;
+
+/**
+ * 十六进制输入 → 字节。允许空格、换行与 `0x` 前缀，其它字符一律报错：
+ * 把 `xyz` 静默当 `0x0x` 之类的猜测只会让人发出自己都没意识到的帧。
+ */
+export function parseHexInput(raw: string): Uint8Array {
+  const cleaned = raw.replace(/0x/gi, '').replace(/[\s,]+/g, '').toLowerCase();
+  if (!cleaned) {
+    throw new ToolError(
+      { zh: '请输入十六进制内容', en: 'Enter some hexadecimal bytes' },
+      { zh: '例如 00 11 22 ab，或一整串 001122ab。', en: 'For example "00 11 22 ab" or "001122ab".' },
+    );
+  }
+  if (!HEX_CLEAN.test(cleaned)) {
+    throw new ToolError(
+      { zh: '十六进制内容不合法', en: 'That is not valid hexadecimal' },
+      { zh: '只允许 0-9 A-F 与空格，字节数必须是偶数', en: 'Only 0-9 A-F and spaces are allowed, with an even number of digits' },
+    );
+  }
+  const bytes = new Uint8Array(cleaned.length / 2);
+  for (let i = 0; i < bytes.length; i += 1) bytes[i] = Number.parseInt(cleaned.slice(i * 2, i * 2 + 2), 16);
+  return bytes;
+}
+
+export type BinaryViewMode = 'text' | 'base64' | 'hex';
+
+/**
+ * 二进制帧的一种看法。文本模式下解不出 UTF-8 就退回调用方给的摘要，
+ * 不伪造内容；十六进制只到 describeBinaryFrame 的截断长度。
+ */
+export function binaryView(frame: BinaryFrame, mode: BinaryViewMode, summary: string): string {
+  if (mode === 'base64') return frame.base64;
+  if (mode === 'hex') return frame.hex + (frame.truncated ? ' …' : '');
+  return frame.text ?? summary;
 }

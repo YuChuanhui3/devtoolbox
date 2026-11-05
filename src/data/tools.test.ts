@@ -212,6 +212,15 @@ describe('搜索直达子功能页签', () => {  test('“JWT” 命中加解密
     expect(searchToolTargets('')).toHaveLength(12);
   });
 
+  test.each([
+    ['graphql', 'http-simulator', 'graphql'],
+    ['断言', 'http-simulator', 'scripts'],
+    ['代码生成', 'http-simulator', 'codegen'],
+  ] as const)('“%s” 直达 %s 的 %s 二级区域', (query, toolId, subId) => {
+    const hit = searchToolTargets(query).find((h) => h.sub?.id === subId);
+    expect(hit?.tool.id).toBe(toolId);
+  });
+
   test('每个 subFeatures id 都是合法页签寻址（与 LEGACY_TOOL_MODES 同构）', () => {
     for (const tool of TOOLS) {
       for (const sub of tool.subFeatures ?? []) {

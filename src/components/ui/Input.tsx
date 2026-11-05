@@ -23,7 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <input
       ref={ref}
       className={cn(
-        'w-full rounded-xl border border-line bg-surface text-ink shadow-[inset_0_1px_2px_rgba(16,24,40,0.03)] transition-colors duration-300 placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent-soft',
+        'w-full rounded-md border border-line bg-surface text-ink transition-colors duration-150 placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft',
         SIZES[size],
         mono && 'font-mono text-[13px]',
         className,

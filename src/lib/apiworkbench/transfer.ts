@@ -1,8 +1,11 @@
 import { ToolError } from '../errors';
 import { parseCurl } from '../curl';
+import type { Localized } from '@/i18n/locale';
 import { newId } from './id';
+import { paramsFromQuery, splitQuery, finalUrl } from './params';
+import { MAX_SCRIPT_CHARS } from './scriptEngine';
 import { walkRequests } from './tree';
-import { WB_METHODS } from './types';
+import { CUSTOM_METHOD_PATTERN, WB_METHODS } from './types';
 import type { WbAuth, WbBodyMode, WbCollection, WbFolder, WbHeaderRow, WbMethod, WbRequest } from './types';
 
 /** shell 单引号安全包裹（tokenizeShell 支持的经典 '\'' 转义）。 */
@@ -12,22 +15,61 @@ function sq(value: string): string {
 
 /** 由工作台请求生成可复制的 curl 命令（变量保持字面量，便于导出）。 */
 export function toCurl(req: WbRequest): string {
-  const parts: string[] = ['curl'];
-  if (req.method !== 'GET') parts.push('-X', req.method);
-  parts.push(sq(req.url));
+  const args: string[] = [];
+  const method = req.customMethod?.trim() || req.method;
   for (const header of req.headers) {
     if (!header.enabled || !header.key.trim()) continue;
-    parts.push('-H', sq(`${header.key.trim()}: ${header.value}`));
+    args.push('-H', sq(`${header.key.trim()}: ${header.value}`));
   }
+  const authQuery: string[] = [];
   if (req.auth.type === 'basic') {
-    parts.push('-u', sq(`${req.auth.username ?? ''}:${req.auth.password ?? ''}`));
+    args.push('-u', sq(`${req.auth.username ?? ''}:${req.auth.password ?? ''}`));
   } else if (req.auth.type === 'bearer' && req.auth.token) {
-    parts.push('-H', sq(`Authorization: Bearer ${req.auth.token}`));
+    args.push('-H', sq(`Authorization: Bearer ${req.auth.token}`));
+  } else if (req.auth.type === 'oauth2' && req.auth.accessToken) {
+    args.push('-H', sq(`Authorization: ${req.auth.tokenType?.trim() || 'Bearer'} ${req.auth.accessToken}`));
+  } else if (req.auth.type === 'api-key' && req.auth.key?.trim()) {
+    if (req.auth.in === 'query') authQuery.push(`${req.auth.key}=${req.auth.value ?? ''}`);
+    else args.push('-H', sq(`${req.auth.key.trim()}: ${req.auth.headerPrefix?.trim() ? `${req.auth.headerPrefix.trim()} ` : ''}${req.auth.value ?? ''}`));
   }
-  if (req.body.mode !== 'none' && req.body.text) {
-    parts.push('--data-raw', sq(req.body.text));
+  const baseUrl = finalUrl(req.url, req.params);
+  const url = authQuery.length ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${authQuery.join('&')}` : baseUrl;
+  // 发送时 buildRequest 会按 body 模式补 Content-Type，复制出的命令也得带上，否则换个服务器就 415。
+  const ownContentType = req.headers.some((h) => h.enabled && h.key.trim().toLowerCase() === 'content-type');
+  const contentTypeFor = (mode: WbBodyMode): string | null =>
+    ownContentType ? null : mode === 'json' || mode === 'graphql' ? 'application/json' : mode === 'form' ? 'application/x-www-form-urlencoded' : mode === 'text' ? 'text/plain' : null;
+  if (req.body.mode === 'graphql' && req.body.graphql?.query.trim()) {
+    const contentType = contentTypeFor('graphql');
+    if (contentType) args.push('-H', sq(`Content-Type: ${contentType}`));
+    args.push('--data-raw', sq(JSON.stringify({
+      query: req.body.graphql.query,
+      variables: safeJsonObject(req.body.graphql.variables),
+      ...(req.body.graphql.operationName?.trim() ? { operationName: req.body.graphql.operationName.trim() } : {}),
+    })));
+  } else if (req.body.mode === 'multipart') {
+    for (const part of req.body.multipart ?? []) {
+      if (!part.key.trim()) continue;
+      args.push('-F', sq(part.type === 'file' ? `${part.key}=@${part.fileName || part.key}` : `${part.key}=${part.value}`));
+    }
+    const files = (req.body.multipart ?? []).filter((p) => p.type === 'file' && p.fileName);
+    if (files.length) args.push('#', `文件字段按名字引用，请在这些文件所在目录执行：${files.map((p) => p.fileName).join('、')}`);
+  } else if (req.body.mode !== 'none' && req.body.text) {
+    const contentType = contentTypeFor(req.body.mode);
+    if (contentType) args.push('-H', sq(`Content-Type: ${contentType}`));
+    args.push('--data-raw', sq(req.body.text));
   }
-  return parts.join(' ');
+  return ['curl', ...(method === 'GET' ? [] : ['-X', method]), sq(url), ...args].join(' ');
+}
+
+/** GraphQL 的 variables 只接受 JSON 对象，其它一律当没有变量，免得导出出坏命令。 */
+function safeJsonObject(text: string | undefined): Record<string, unknown> {
+  if (!text?.trim()) return {};
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
 }
 
 function bodyModeFor(data: string): WbBodyMode {
@@ -48,17 +90,19 @@ function bodyModeFor(data: string): WbBodyMode {
 export function parseCurlToRequest(command: string, name?: string): WbRequest {
   const parsed = parseCurl(command);
   const method = parsed.method.toUpperCase();
-  if (!WB_METHODS.includes(method as WbMethod)) {
+  const known = WB_METHODS.includes(method as WbMethod);
+  if (!known && !CUSTOM_METHOD_PATTERN.test(method)) {
     throw new ToolError({
-      zh: `工作台暂不支持方法 ${method}`,
-      en: `Method ${method} is not supported in the workbench yet`,
+      zh: `方法「${method}」不是合法的 HTTP 动词`,
+      en: `"${method}" is not a valid HTTP method name`,
     });
   }
   const headers = Object.entries(parsed.headers).map(([key, value]) => ({ key, value, enabled: true }));
   return {
     id: newId(),
     name: name ?? `${method} ${parsed.url.slice(0, 60)}`,
-    method: method as WbMethod,
+    method: (known ? method : 'GET') as WbMethod,
+    ...(known ? {} : { customMethod: method }),
     url: parsed.url,
     headers,
     body: { mode: parsed.data ? bodyModeFor(parsed.data) : 'none', text: parsed.data ?? '' },
@@ -171,12 +215,53 @@ function postmanAuth(raw: unknown): WbAuth {
 
 type PostmanNode = { kind: 'request'; request: WbRequest } | { kind: 'folder'; folder: WbFolder };
 
+/** Postman 的 `event[].listen` 只有这两种跟我们的两段脚本对得上。 */
+const SCRIPT_PHASE: Record<string, 'preScript' | 'testScript'> = {
+  prerequest: 'preScript',
+  test: 'testScript',
+};
+
+/** `exec` 既可能是行数组也可能是一整串；v2.0 里还见过 script 直接是字符串。 */
+function postmanExec(script: unknown): string {
+  const dict = asDict(script);
+  const exec = dict ? dict.exec : script;
+  if (Array.isArray(exec)) return exec.map((line) => str(line)).join('\n');
+  return str(exec);
+}
+
+/**
+ * 请求级脚本搬进来；同阶段出现第二段时只保留第一段并记下丢弃原因，
+ * 免得导入结果看起来「全搬完了」。超过长度上限的按存档同一口径截断。
+ */
+function postmanEvents(raw: unknown, notes: Set<string>): Partial<Pick<WbRequest, 'preScript' | 'testScript'>> {
+  const out: Partial<Pick<WbRequest, 'preScript' | 'testScript'>> = {};
+  for (const entry of Array.isArray(raw) ? raw : []) {
+    const event = asDict(entry);
+    if (!event) continue;
+    const phase = SCRIPT_PHASE[str(event.listen)];
+    if (!phase) {
+      notes.add('unsupported-event');
+      continue;
+    }
+    const text = postmanExec(event.script).trim();
+    if (!text) continue;
+    if (out[phase]) {
+      notes.add('duplicate-script');
+      continue;
+    }
+    out[phase] = text.slice(0, MAX_SCRIPT_CHARS);
+    if (text.length > MAX_SCRIPT_CHARS) notes.add('script-truncated');
+  }
+  return out;
+}
+
 function convertPostmanItem(raw: unknown, inheritedAuth: WbAuth, notes: Set<string>): PostmanNode | null {
   const item = asDict(raw);
   if (!item) return null;
   const name = str(item.name, 'Untitled');
   if (Array.isArray(item.item)) {
     const folderAuth = item.auth ? postmanAuth(item.auth) : inheritedAuth;
+    // 文件夹级脚本在我们的模型里没有落点（脚本挂在请求上），只能说明丢了什么。
     if (item.event) notes.add('folder-script');
     const children = item.item
       .map((child) => convertPostmanItem(child, folderAuth, notes))
@@ -193,26 +278,38 @@ function convertPostmanItem(raw: unknown, inheritedAuth: WbAuth, notes: Set<stri
   }
   const request = asDict(item.request);
   if (!request) return null;
-  if (item.event) notes.add('request-script');
+  const scripts = postmanEvents(item.event, notes);
   if (request.mode === 'graphql') notes.add('graphql-body');
   const method = str(request.method, 'GET').toUpperCase();
-  if (!WB_METHODS.includes(method as WbMethod)) {
+  // 认得的动词直接用；不认得但形状合法（PROPFIND、TEAPOT）落到 customMethod——
+  // 本项目支持自定义动词，把它们当「不支持」丢掉是假装我们做不到。
+  const verb = WB_METHODS.includes(method as WbMethod)
+    ? { method: method as WbMethod }
+    : CUSTOM_METHOD_PATTERN.test(method)
+      ? { method: 'GET' as WbMethod, customMethod: method }
+      : null;
+  if (!verb) {
     notes.add(`method-${method}`);
     return null;
   }
   const { rows: headers } = postmanHeaders(request.header);
   const body = postmanBody(request.body, headers);
   const auth = request.auth ? postmanAuth(request.auth) : inheritedAuth;
+  const url = postmanUrl(request.url);
+  // Postman 的查询串只在 URL 里，这里顺手铺进参数表格，导入后直接就能按行编辑。
+  const params = paramsFromQuery(splitQuery(url).query);
   return {
     kind: 'request',
     request: {
       id: newId(),
       name,
-      method: method as WbMethod,
-      url: postmanUrl(request.url),
+      ...verb,
+      url,
+      ...(params.length ? { params } : {}),
       headers,
       body,
       auth,
+      ...scripts,
     },
   };
 }
@@ -232,6 +329,27 @@ function nodesIntoFolder(items: unknown[], auth: WbAuth, notes: Set<string>, nam
 export interface PostmanImportResult {
   collection: WbCollection;
   ignored: string[];
+}
+
+const POSTMAN_NOTE_LABEL: Record<string, Localized> = {
+  'folder-script': { zh: '文件夹级脚本（脚本只挂在请求上）', en: 'folder-level scripts (scripts live on requests here)' },
+  'graphql-body': { zh: 'GraphQL 请求体', en: 'GraphQL bodies' },
+  'unsupported-event': { zh: '对不上的事件脚本（只认 prerequest / test）', en: 'event scripts we cannot place (only prerequest / test)' },
+  'duplicate-script': { zh: '同一阶段的第二段脚本', en: 'a second script for the same phase' },
+  'script-truncated': { zh: '超长脚本（已截到上限）', en: 'an over-long script (trimmed to the cap)' },
+};
+
+/**
+ * 导入说明给用户看的说法。`ignored` 里是机器码（`method-1ABC` 这种），
+ * 原样显示在中文界面里等于没解释。
+ */
+export function postmanNoteText(note: string): Localized {
+  const prefix = 'method-';
+  if (note.startsWith(prefix)) {
+    const verb = note.slice(prefix.length);
+    return { zh: `方法「${verb}」不是合法动词（该请求已跳过）`, en: `method "${verb}" is not a valid verb (that request was skipped)` };
+  }
+  return POSTMAN_NOTE_LABEL[note] ?? { zh: note, en: note };
 }
 
 /** Postman 集合 JSON（v2.1，容错 v2.0）→ 工作台集合；event 脚本忽略并在返回值提示。 */
@@ -274,12 +392,20 @@ export function importPostman(raw: string): PostmanImportResult {
 }
 
 function exportRequest(request: WbRequest): Dict {
+  // 脚本按 Postman 的形状写回 item.event，导出去还能导回来。
+  const events = [
+    ...(request.preScript ? [{ listen: 'prerequest', script: { type: 'text/javascript', exec: request.preScript.split('\n') } }] : []),
+    ...(request.testScript ? [{ listen: 'test', script: { type: 'text/javascript', exec: request.testScript.split('\n') } }] : []),
+  ];
   return {
     name: request.name,
+    ...(events.length ? { event: events } : {}),
     request: {
-      method: request.method,
+      // 自定义动词要跟着走，否则 PROPFIND 导出去就变回 GET 了。
+      method: request.customMethod?.trim() || request.method,
       header: request.headers.map((header) => ({ key: header.key, value: header.value, disabled: !header.enabled })),
-      url: { raw: request.url },
+      // Postman 只有 raw URL 一个地方放查询串，参数表格必须并进去才不算丢。
+      url: { raw: finalUrl(request.url, request.params) },
       ...(request.body.mode !== 'none' && request.body.text
         ? {
             body: {

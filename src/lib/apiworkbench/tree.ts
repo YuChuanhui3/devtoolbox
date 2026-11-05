@@ -70,6 +70,24 @@ export function newFolder(name: string): WbFolder {
   return { id: newId(), name, folders: [], requests: [] };
 }
 
+/**
+ * 按关键词裁一棵树，用于侧栏搜索。
+ * 命中文件夹名就整棵留下（用户找的是这一组，不是这一组里恰好叫什么的一条），
+ * 否则只留命中名字或 URL 的请求与还有内容的子文件夹；全空返回 null 表示这一支不该出现。
+ */
+export function filterFolder(folder: WbFolder, query: string): WbFolder | null {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return folder;
+  if (folder.name.toLowerCase().includes(needle)) return folder;
+  const requests = folder.requests.filter(
+    (request) => request.name.toLowerCase().includes(needle) || request.url.toLowerCase().includes(needle),
+  );
+  const folders = folder.folders
+    .map((child) => filterFolder(child, needle))
+    .filter((child): child is WbFolder => child !== null);
+  return requests.length === 0 && folders.length === 0 ? null : { ...folder, requests, folders };
+}
+
 export function newCollection(name: string): WbCollection {
   return { id: newId(), name, root: newFolder(name), variables: [] };
 }

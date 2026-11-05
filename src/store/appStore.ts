@@ -43,7 +43,7 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      themeMode: 'system',
+      themeMode: 'light',
       locale: detectLocale(),
       favorites: [],
       recent: [],

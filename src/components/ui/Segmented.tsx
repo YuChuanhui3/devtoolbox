@@ -52,7 +52,7 @@ export function Segmented<T extends string>({
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
       className={cn(
-        'inline-flex flex-wrap items-center gap-0.5 rounded-full border border-line bg-surface-2',
+        'inline-flex flex-wrap items-center gap-0.5 rounded-md border border-line bg-surface-2',
         size === 'sm' ? 'p-0.5' : 'p-1',
         className,
       )}
@@ -69,7 +69,7 @@ export function Segmented<T extends string>({
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full text-xs font-medium transition-all duration-300 ease-in-out disabled:cursor-not-allowed disabled:opacity-40',
+              'inline-flex items-center gap-1.5 rounded-md text-xs font-medium transition-colors duration-300 ease-in-out disabled:cursor-not-allowed disabled:opacity-40',
               size === 'sm' ? 'min-h-7 px-2.5 py-0.5' : 'min-h-9 px-3.5 py-1.5',
               active
                 ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)]'

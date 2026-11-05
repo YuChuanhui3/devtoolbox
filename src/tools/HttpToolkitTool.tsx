@@ -1,59 +1,102 @@
-import { FlaskConical, Gauge, Layers, FileText, Webhook } from 'lucide-react';
-import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { FlaskConical, Gauge, FileText, Link2, Search, Moon, Sun, ArrowLeft, ShieldCheck, PanelLeftClose, CircleHelp, Settings, Globe } from 'lucide-react';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
-import { RequestPanel } from './http-toolkit/RequestPanel';
+import { useAppStore } from '@/store/appStore';
+import { foldSubMode } from '@/lib/apiworkbench/subAddress';
+import { RequestWorkspace } from './http-toolkit/RequestWorkspace';
 import { WebSocketPanel } from './http-toolkit/WebSocketPanel';
 import { OpenApiPanel } from './http-toolkit/OpenApiPanel';
 import { MockPanel } from './http-toolkit/MockPanel';
 import { StressPanel } from './http-toolkit/StressPanel';
+import './http-toolkit/workbench.css';
 import { WorkbenchProvider } from './http-toolkit/WorkbenchContext';
 
 type HttpToolkitMode = 'request' | 'websocket' | 'openapi' | 'mock' | 'stress';
 
 export default function HttpToolkitTool() {
   const { t } = useI18n();
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const toggleTheme = () => {
+    useAppStore.getState().setThemeMode(dark ? 'light' : 'dark');
+    setDark(!dark);
+  };
+  useEffect(() => {
+    const sync = () => setDark(document.documentElement.classList.contains('dark'));
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [mode, setMode] = useToolkitMode<HttpToolkitMode>(['request', 'websocket', 'openapi', 'mock', 'stress'], 'request');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || document.querySelector('[role="dialog"]')) return;
+      if (event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setMode('request');
+        requestAnimationFrame(() => window.dispatchEvent(new Event('wb:search')));
+      } else if (event.key === '/') {
+        event.preventDefault();
+        window.dispatchEvent(new Event('wb:help'));
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [setMode]);
+
+  useEffect(() => {
+    const folded = foldSubMode(searchParams.get('mode'));
+    if (!folded) return;
+    const next = new URLSearchParams(searchParams);
+    // 回到默认页签就把 mode 删掉，跟 useToolkitMode 的干净链接口径一致。
+    if (folded.mode === 'request') next.delete('mode');
+    else next.set('mode', folded.mode);
+    next.set('sub', folded.sub);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   return (
     <WorkbenchProvider>
-      <div className="space-y-4">
-      <ToolkitTabs<HttpToolkitMode>
-        value={mode}
-        onChange={setMode}
-        ariaLabel={t({ zh: 'API 工作台页签', en: 'API workbench tab' })}
-        options={[
-          {
-            value: 'request',
-            label: t({ zh: '请求', en: 'Request' }),
-            icon: <Layers className="h-3.5 w-3.5" aria-hidden="true" />,
-          },
-          {
-            value: 'websocket',
-            label: 'WebSocket',
-            icon: <Webhook className="h-3.5 w-3.5" aria-hidden="true" />,
-          },
-          {
-            value: 'openapi',
-            label: t({ zh: 'OpenAPI', en: 'OpenAPI' }),
-            icon: <FileText className="h-3.5 w-3.5" aria-hidden="true" />,
-          },
-          {
-            value: 'mock',
-            label: 'Mock',
-            icon: <FlaskConical className="h-3.5 w-3.5" aria-hidden="true" />,
-          },
-          {
-            value: 'stress',
-            label: t({ zh: '压测', en: 'Stress' }),
-            icon: <Gauge className="h-3.5 w-3.5" aria-hidden="true" />,
-          },
-        ]}
-      />
-
+      <div className={`api-workbench hopp-workbench${dark ? ' wb-dark' : ''}`}>
+      <header className="wb-titlebar">
+        <Link to="/tools" className="wb-brand" title={t({ zh: '返回工具箱', en: 'Back to toolbox' })}>DEVTOOLBOX <span>⌄</span></Link>
+        <button type="button" className="wb-command" onClick={() => { setMode('request'); requestAnimationFrame(() => window.dispatchEvent(new Event('wb:search'))); }}><Search size={15} />{t({ zh: '搜索请求与集合', en: 'Search requests and collections' })}<kbd>⌘ K</kbd></button>
+        <span className="wb-header-actions">
+          <span className="wb-local"><ShieldCheck size={14} />{t({ zh: '本地工作区', en: 'Local workspace' })}</span>
+          <button type="button" className="wb-icon" onClick={toggleTheme} aria-label={t({ zh: '切换工作台主题', en: 'Toggle workspace theme' })}>{dark ? <Sun size={16} /> : <Moon size={16} />}</button>
+          <Link to="/tools/http-simulator" className="wb-back"><ArrowLeft size={14} />{t({ zh: '完整工作台', en: 'Full workspace' })}</Link>
+        </span>
+      </header>
+      <div className="wb-app-body">
+      <nav className="wb-navigation" aria-label={t({ zh: 'API 工作台页签', en: 'API workbench tab' })}>
+        <div role="tablist" aria-label={t({ zh: '工作区', en: 'Workspace' })} aria-orientation="vertical" onKeyDown={(event) => {
+          const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+          if (!keys.includes(event.key)) return;
+          event.preventDefault();
+          const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+          const current = tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + tabs.length) % tabs.length;
+          tabs[next]?.focus(); tabs[next]?.click();
+        }}>
+          {([
+            ['request', 'REST', Link2],
+            ['websocket', 'WebSocket', Globe],
+            ['openapi', 'OpenAPI', FileText],
+            ['mock', 'Mock', FlaskConical],
+            ['stress', t({ zh: '压测', en: 'Stress' }), Gauge],
+          ] as const).map(([value, label, Icon]) => <button key={value} type="button" role="tab" aria-selected={mode === value} tabIndex={mode === value ? 0 : -1} title={label} aria-label={label} onClick={() => setMode(value)}><Icon size={17} /></button>)}
+        </div>
+        <button type="button" className="wb-icon wb-settings-button" onClick={() => setSettingsOpen(!settingsOpen)} aria-expanded={settingsOpen} aria-label={t({ zh: '工作台设置', en: 'Workspace settings' })}><Settings size={17} /></button>
+      </nav>
+      <div className="wb-content">
       <LazyPanel active={mode === 'request'}>
-        <RequestPanel active={mode === 'request'} />
+        <RequestWorkspace active={mode === 'request'} />
       </LazyPanel>
       <LazyPanel active={mode === 'websocket'}>
         <WebSocketPanel active={mode === 'websocket'} />
@@ -68,12 +111,10 @@ export default function HttpToolkitTool() {
         <StressPanel active={mode === 'stress'} />
       </LazyPanel>
 
-      <p className="text-center text-[11px] leading-5 text-ink-3">
-        {t({
-          zh: '集合、环境、连接与历史只存在本机浏览器，不上传；各页签的输入与结果在切换页签时保留',
-          en: 'Collections, environments, connections and history stay in this browser and are never uploaded; each tab keeps its input when you switch away',
-        })}
-      </p>
+      </div>
+      </div>
+      <footer className="wb-statusbar"><PanelLeftClose size={14} /><ShieldCheck size={14} /><span>{t({ zh: '本地存储', en: 'Local storage' })}</span><a href="https://docs.hoppscotch.io" target="_blank" rel="noreferrer"><CircleHelp size={14} />{t({ zh: '文档与帮助', en: 'Help & documentation' })}</a></footer>
+      {settingsOpen ? <div className="wb-settings-popover"><strong>{t({ zh: '工作台设置', en: 'Workspace settings' })}</strong><button type="button" onClick={toggleTheme}>{dark ? <Sun size={15} /> : <Moon size={15} />}{t({ zh: '切换浅色 / 深色', en: 'Switch light / dark' })}</button><p>{t({ zh: '请求与集合保存在本机浏览器。', en: 'Requests and collections are stored in this browser.' })}</p></div> : null}
       </div>
     </WorkbenchProvider>
   );

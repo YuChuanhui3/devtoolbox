@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { builtinValue, collectMissing, extractVars, interpolate, mergeVarScopes } from './vars';
+import { builtinValue, collectMissing, extractVars, interpolate, mergeVarLists, mergeVarScopes } from './vars';
 
 const fixedRand = () => 0.5;
 
@@ -16,6 +16,32 @@ describe('mergeVarScopes', () => {
   test('后层覆盖前层；禁用与空 key 忽略', () => {
     const scope = mergeVarScopes([v('a', 'col'), v('skip', 'x', false), v(' ', 'x')], [v('a', 'env'), v('b', '2')]);
     expect(scope).toEqual({ a: 'env', b: '2' });
+  });
+});
+
+describe('mergeVarLists', () => {
+  const w = (key: string, value: string, enabled = true) => ({ id: `id-${key}`, key, value, enabled });
+
+  test('后层覆盖同名的整行，前面的行不再出现', () => {
+    const merged = mergeVarLists([w('a', 'parent'), w('b', 'parent')], [w('a', 'child')]);
+    expect(merged.map((row) => [row.key, row.value])).toEqual([['a', 'child'], ['b', 'parent']]);
+  });
+
+  test('禁用行也保留成行——子层关掉某项就是关掉，不回填父层的值', () => {
+    const merged = mergeVarLists([w('a', 'parent')], [w('a', 'child', false)]);
+    expect(merged).toEqual([w('a', 'child', false)]);
+    expect(mergeVarScopes(merged)).toEqual({});
+  });
+
+  test('返回的是副本，改回去不会写脏源表', () => {
+    const parent = [w('a', 'parent')];
+    const merged = mergeVarLists(parent);
+    merged[0].value = 'mutated';
+    expect(parent[0].value).toBe('parent');
+  });
+
+  test('空 key 与空白 key 直接丢弃，继承链空白层不影响顺序', () => {
+    expect(mergeVarLists([w(' ', 'x'), w('', 'y')], [], [w('a', '1')]).map((row) => row.key)).toEqual(['a']);
   });
 });
 

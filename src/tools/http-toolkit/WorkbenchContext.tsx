@@ -10,9 +10,9 @@ import {
 } from 'react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToast } from '@/components/ui/Toast';
-import { loadWorkbench, saveWorkbench } from '@/lib/apiworkbench/store';
-import { mergeVarScopes } from '@/lib/apiworkbench/vars';
-import type { WbCollection, WbEnvironment, WorkbenchDoc } from '@/lib/apiworkbench/types';
+import { envInheritanceChain, loadWorkbench, saveWorkbench } from '@/lib/apiworkbench/store';
+import { mergeVarLists, mergeVarScopes } from '@/lib/apiworkbench/vars';
+import type { WbCollection, WbEnvironment, WbVar, WorkbenchDoc } from '@/lib/apiworkbench/types';
 
 interface WorkbenchApi {
   doc: WorkbenchDoc;
@@ -20,6 +20,10 @@ interface WorkbenchApi {
   /** 环境变量覆盖集合变量后的插值 scope；不传 collection 时只用环境。 */
   scopeFor: (collection?: WbCollection | null) => Record<string, string>;
   activeEnv: WbEnvironment | null;
+  /** 当前环境连同它继承来的每一层（近→远）；界面用它说明变量到底来自哪里。 */
+  envChain: WbEnvironment[];
+  /** 继承链并成的一张变量表，脚本的 `pm.environment.*` 看的就是这个。 */
+  envVars: WbVar[];
 }
 
 const WorkbenchContext = createContext<WorkbenchApi | null>(null);
@@ -51,15 +55,20 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [doc, toast, t]);
 
-  const value = useMemo<WorkbenchApi>(() => ({
-    doc,
-    update,
-    scopeFor: (collection) => {
-      const env = doc.environments.find((e) => e.id === doc.activeEnvId) ?? null;
-      return mergeVarScopes(collection?.variables ?? [], env?.variables ?? []);
-    },
-    activeEnv: doc.environments.find((e) => e.id === doc.activeEnvId) ?? null,
-  }), [doc, update]);
+  const value = useMemo<WorkbenchApi>(() => {
+    const activeEnv = doc.environments.find((e) => e.id === doc.activeEnvId) ?? null;
+    // 链是 [自己, 继承的父, 祖…]，而并表规则是后入者赢，所以从最远的一层铺回来。
+    const envChain = activeEnv ? envInheritanceChain(doc.environments, activeEnv.id) : [];
+    const envVars = mergeVarLists(...envChain.slice().reverse().map((item) => item.variables));
+    return {
+      doc,
+      update,
+      scopeFor: (collection) => mergeVarScopes(collection?.variables ?? [], envVars),
+      activeEnv,
+      envChain,
+      envVars,
+    };
+  }, [doc, update]);
 
   return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;
 }

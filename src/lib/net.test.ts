@@ -7,6 +7,7 @@ import {
   dohTypeName,
   fetchJson,
   grabHtml,
+  MAX_BLOB_BYTES,
   proxiedUrl,
   proxyFetch,
 } from './net';
@@ -87,6 +88,31 @@ describe('proxyFetch', () => {
     const error = await proxyFetch('https://ex.cn', { mode: 'direct' }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(Error);
     expect(tl((error as { hint?: Localized }).hint!, 'zh')).toContain('CORS');
+  });
+
+  test('要字节且声明是图片时保留 Blob，正文只给占位', async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(png, { headers: { 'content-type': 'image/png' } })));
+    const result = await proxyFetch('https://ex.cn/logo.png', { wantBlob: true });
+    expect(result.blob).toBeInstanceOf(Blob);
+    expect(result.bytes).toBe(6);
+    expect(result.text).toBe('[binary 6 bytes]');
+  });
+
+  test('没要字节时按文本解，即使 content-type 是图片', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response({ body: 'not really a png', headers: { 'content-type': 'image/png' } })));
+    const result = await proxyFetch('https://ex.cn/logo.png');
+    expect(result.blob).toBeUndefined();
+    expect(result.text).toBe('not really a png');
+  });
+
+  test('超过上限的字节不留在内存里，但仍如实报大小', async () => {
+    const big = new Uint8Array(MAX_BLOB_BYTES + 1);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(big, { headers: { 'content-type': 'application/pdf' } })));
+    const result = await proxyFetch('https://ex.cn/huge.pdf', { wantBlob: true });
+    expect(result.blob).toBeUndefined();
+    expect(result.bytes).toBe(MAX_BLOB_BYTES + 1);
+    expect(result.text).toBe(`[binary ${MAX_BLOB_BYTES + 1} bytes]`);
   });
 });
 
