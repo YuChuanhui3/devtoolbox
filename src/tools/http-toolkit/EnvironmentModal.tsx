@@ -38,8 +38,8 @@ export function EnvironmentModal({ open, onClose }: { open: boolean; onClose: ()
       maxWidth={640}
       title={t({ zh: '环境与变量', en: 'Environments & variables' })}
       description={t({
-        zh: '请求里用 {{"{{变量名}}"}} 引用；同名变量环境优先于集合。',
-        en: 'Reference them in requests as {{"{{name}}"}}; environment beats collection on name clashes.',
+        zh: '请求里用 {{变量名}} 引用；同名变量环境优先于集合。',
+        en: 'Reference them in requests as {{name}}; environment beats collection on name clashes.',
       })}
       bodyClassName="space-y-4"
     >
@@ -64,16 +64,14 @@ export function EnvironmentModal({ open, onClose }: { open: boolean; onClose: ()
       </div>
 
       {selected ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 space-y-3">
+          <div className="grid min-w-0 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <Input
               value={selected.name}
               onChange={(e) => writeEnvs(doc.environments.map((x) => (x.id === selected.id ? { ...x, name: e.target.value } : x)))}
-              className="h-8 w-52 text-xs"
               aria-label={t({ zh: '环境名称', en: 'Environment name' })}
             />
             <ConfirmButton
-              size="sm"
               confirmLabel={{ zh: '确认删除环境？', en: 'Click again to delete' }}
               onConfirm={() => {
                 writeEnvs(doc.environments.filter((x) => x.id !== selected.id));
@@ -84,12 +82,17 @@ export function EnvironmentModal({ open, onClose }: { open: boolean; onClose: ()
               {t({ zh: '删除环境', en: 'Delete' })}
             </ConfirmButton>
           </div>
-          <VarTable
-            vars={selected.variables}
-            onChange={(variables) =>
-              writeEnvs(doc.environments.map((x) => (x.id === selected.id ? { ...x, variables } : x)))
-            }
-          />
+          <div className="min-w-0 rounded-card border border-line bg-surface-2/40 p-2.5">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-3">
+              {t({ zh: `变量（${selected.variables.length}）`, en: `Variables (${selected.variables.length})` })}
+            </p>
+            <VarTable
+              vars={selected.variables}
+              onChange={(variables) =>
+                writeEnvs(doc.environments.map((x) => (x.id === selected.id ? { ...x, variables } : x)))
+              }
+            />
+          </div>
         </div>
       ) : null}
     </Modal>

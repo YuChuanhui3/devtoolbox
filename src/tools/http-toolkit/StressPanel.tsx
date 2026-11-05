@@ -166,66 +166,90 @@ export function StressPanel({ active: _active }: { active: boolean }) {
             {t({ zh: '还没有可压测的请求：先在请求页签保存一个请求（或从 OpenAPI 导入集合）。', en: 'No request to stress yet: save one in the Request tab (or import a collection from OpenAPI) first.' })}
           </p>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              value={target?.request.id ?? ''}
-              onChange={(e) => setTargetId(e.target.value)}
-              aria-label={t({ zh: '压测目标', en: 'Target request' })}
-              className="h-9 min-w-56 flex-1"
-              wrapperClassName="min-w-56 flex-1"
-            >
-              {targets.map((item) => (
-                <option key={item.request.id} value={item.request.id}>
-                  {`${item.collection.name} · ${item.request.name || item.request.url}`}
-                </option>
-              ))}
-            </Select>
-            <label className="flex items-center gap-1 text-xs text-ink-3">
-              {t({ zh: '并发', en: 'Concurrency' })}
-              <Input
-                type="number"
-                min={1}
-                max={MAX_CONCURRENCY}
-                value={concurrency}
-                onChange={(e) => setConcurrency(e.target.value)}
-                className="h-9 w-16 text-xs"
-              />
-            </label>
-            <Segmented
-              value={mode}
-              onChange={setMode}
-              ariaLabel={t({ zh: '终止方式', en: 'Stop condition' })}
-              options={[
-                { value: 'count', label: t({ zh: '按次数', en: 'By count' }) },
-                { value: 'duration', label: t({ zh: '按时长', en: 'By time' }) },
-              ]}
-            />
-            <label className="flex items-center gap-1 text-xs text-ink-3">
-              {mode === 'count' ? t({ zh: '次数', en: 'Requests' }) : t({ zh: '秒数', en: 'Seconds' })}
-              <Input
-                type="number"
-                min={1}
-                max={mode === 'count' ? MAX_ITERATIONS : MAX_DURATION_S}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="h-9 w-20 text-xs"
-              />
-            </label>
-            <label className="flex items-center gap-1 text-xs text-ink-3">
-              {t({ zh: '超时 ms', en: 'Timeout ms' })}
-              <Input type="number" min={100} value={timeoutMs} onChange={(e) => setTimeoutMs(e.target.value)} className="h-9 w-20 text-xs" />
-            </label>
-            {running ? (
-              <Button variant="secondary" onClick={() => abortRef.current?.abort()}>
-                <Square className="h-3.5 w-3.5" aria-hidden="true" />
-                {t({ zh: '停止', en: 'Stop' })}
-              </Button>
-            ) : (
-              <Button variant="primary" onClick={() => void start()} disabled={!target}>
-                <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
-                {t({ zh: '开始压测', en: 'Start' })}
-              </Button>
-            )}
+          <div className="grid min-w-0 gap-2.5 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <fieldset className="min-w-0 rounded-card border border-line bg-surface-2/40 px-2.5 pb-2.5 pt-1">
+              <legend className="px-1 text-[11px] font-medium text-ink-3">
+                {t({ zh: '目标', en: 'Target' })}
+              </legend>
+              <Select
+                size="sm"
+                wrapperClassName="w-full"
+                value={target?.request.id ?? ''}
+                onChange={(e) => setTargetId(e.target.value)}
+                aria-label={t({ zh: '压测目标', en: 'Target request' })}
+              >
+                {targets.map((item) => (
+                  <option key={item.request.id} value={item.request.id}>
+                    {`${item.collection.name} · ${item.request.name || item.request.url}`}
+                  </option>
+                ))}
+              </Select>
+            </fieldset>
+
+            <fieldset className="rounded-card border border-line bg-surface-2/40 px-2.5 pb-2.5 pt-1">
+              <legend className="px-1 text-[11px] font-medium text-ink-3">
+                {t({ zh: '并发与计划', en: 'Concurrency and plan' })}
+              </legend>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-3">
+                  {t({ zh: '并发', en: 'Concurrency' })}
+                  <Input
+                    size="sm"
+                    type="number"
+                    min={1}
+                    max={MAX_CONCURRENCY}
+                    value={concurrency}
+                    onChange={(e) => setConcurrency(e.target.value)}
+                    className="w-20"
+                  />
+                </label>
+                <Segmented
+                  size="sm"
+                  value={mode}
+                  onChange={setMode}
+                  ariaLabel={t({ zh: '终止方式', en: 'Stop condition' })}
+                  options={[
+                    { value: 'count', label: t({ zh: '按次数', en: 'By count' }) },
+                    { value: 'duration', label: t({ zh: '按时长', en: 'By time' }) },
+                  ]}
+                />
+                <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-3">
+                  {mode === 'count' ? t({ zh: '次数', en: 'Requests' }) : t({ zh: '秒数', en: 'Seconds' })}
+                  <Input
+                    size="sm"
+                    type="number"
+                    min={1}
+                    max={mode === 'count' ? MAX_ITERATIONS : MAX_DURATION_S}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-20"
+                  />
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset className="rounded-card border border-line bg-surface-2/40 px-2.5 pb-2.5 pt-1">
+              <legend className="px-1 text-[11px] font-medium text-ink-3">
+                {t({ zh: '超时与终止', en: 'Timeout and control' })}
+              </legend>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-3">
+                  {t({ zh: '超时 ms', en: 'Timeout ms' })}
+                  <Input size="sm" type="number" min={100} value={timeoutMs} onChange={(e) => setTimeoutMs(e.target.value)} className="w-20" />
+                </label>
+                {running ? (
+                  <Button variant="secondary" size="sm" onClick={() => abortRef.current?.abort()}>
+                    <Square className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t({ zh: '停止', en: 'Stop' })}
+                  </Button>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={() => void start()} disabled={!target}>
+                    <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t({ zh: '开始压测', en: 'Start' })}
+                  </Button>
+                )}
+              </div>
+            </fieldset>
           </div>
         )}
         {running && live ? (
@@ -252,22 +276,30 @@ export function StressPanel({ active: _active }: { active: boolean }) {
               zh: `总耗时 ${(result.elapsedMs / 1000).toFixed(1)}s · P50/P90/P95/P99 仅统计成功请求`,
               en: `Elapsed ${(result.elapsedMs / 1000).toFixed(1)}s · percentiles cover successful requests only`,
             })}
+            actions={
+              <DownloadButton
+                filename="loadtest.csv"
+                content={csv}
+                mime="text/csv;charset=utf-8"
+                label={t({ zh: '导出样本 CSV', en: 'Export samples CSV' })}
+              />
+            }
           >
-            <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-2">
               {[
-                { label: t({ zh: '完成/失败', en: 'Done/Failed' }), value: `${result.completed} / ${result.failed}` },
+                { label: t({ zh: '完成 / 失败', en: 'Done / Failed' }), value: `${result.completed} / ${result.failed}` },
                 { label: t({ zh: '错误率', en: 'Error rate' }), value: `${stats.errorRate}%` },
                 { label: t({ zh: '成功 RPS', en: 'Success RPS' }), value: String(stats.rps) },
                 { label: t({ zh: '平均 ms', en: 'Avg ms' }), value: String(stats.avg) },
-                { label: 'P50', value: String(stats.p50) },
-                { label: 'P90', value: String(stats.p90) },
-                { label: 'P95', value: String(stats.p95) },
-                { label: 'P99', value: String(stats.p99) },
-                { label: t({ zh: 'min / max', en: 'min / max' }), value: `${stats.min} / ${stats.max}` },
+                { label: 'P50 ms', value: String(stats.p50) },
+                { label: 'P90 ms', value: String(stats.p90) },
+                { label: 'P95 ms', value: String(stats.p95) },
+                { label: 'P99 ms', value: String(stats.p99) },
+                { label: t({ zh: 'min / max ms', en: 'min / max ms' }), value: `${stats.min} / ${stats.max}` },
               ].map((cell) => (
-                <div key={t(cell.label)} className="rounded-card border border-line bg-surface-2/50 px-2 py-2.5">
+                <div key={t(cell.label)} className="rounded-card border border-line bg-surface-2/50 px-2.5 py-2">
                   <p className="text-[11px] text-ink-3">{t(cell.label)}</p>
-                  <p className="pt-1 font-mono text-sm text-ink">{cell.value}</p>
+                  <p className="pt-0.5 font-mono text-sm text-ink">{cell.value}</p>
                 </div>
               ))}
             </div>
@@ -280,14 +312,6 @@ export function StressPanel({ active: _active }: { active: boolean }) {
                 ))}
               </div>
             ) : null}
-            <div className="mt-3 flex items-center justify-end">
-              <DownloadButton
-                filename="loadtest.csv"
-                content={csv}
-                mime="text/csv;charset=utf-8"
-                label={t({ zh: '导出样本 CSV', en: 'Export samples CSV' })}
-              />
-            </div>
           </Panel>
 
           <Panel title={t({ zh: '时序（按秒）', en: 'Timeline (per second)' })}>

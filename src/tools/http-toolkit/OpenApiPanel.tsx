@@ -171,7 +171,8 @@ export function OpenApiPanel({ active: _active, onJumpToRequest }: { active: boo
             }}
             placeholder="https://….well-known/openapi.yaml"
             mono
-            className="h-8 min-w-56 flex-1 text-xs"
+            size="sm"
+            className="min-w-56 flex-1"
             aria-label={t({ zh: '文档 URL', en: 'Document URL' })}
           />
           <Button variant="ghost" size="sm" onClick={() => void fetchSpec()} disabled={fetching || !specUrl.trim()}>

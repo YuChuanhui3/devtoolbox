@@ -58,6 +58,10 @@ export function ResponseViewer({ result, error, hint }: {
         <span className="flex items-center gap-2">
           {t({ zh: '响应', en: 'Response' })}
           <Badge tone={statusTone(result.status)}>{result.status}</Badge>
+        </span>
+      }
+      actions={
+        <span className="flex items-center gap-1.5">
           <Badge>{result.ms} ms</Badge>
           <Badge>{result.bytes} B</Badge>
           <Badge tone={result.via === 'mock' ? 'accent' : 'neutral'}>{t(VIA_LABEL[result.via])}</Badge>

@@ -70,8 +70,8 @@ export default function HttpToolkitTool() {
 
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({
-          zh: 'Postman 式集合与环境、WebSocket 长连接调试、OpenAPI 导入、本地 Mock、浏览器内压测合为一个 API 工作台 · 集合与数据保存在本机浏览器，不上传；切换页签不会丢失各自的输入与结果',
-          en: 'One API workbench: Postman-style collections and environments, WebSocket debugging, OpenAPI import, local mocking, and in-browser load testing · collections stay in your local browser, never uploaded, and switching tabs keeps each panel\'s input and results',
+          zh: '集合、环境、连接与历史只存在本机浏览器，不上传；各页签的输入与结果在切换页签时保留',
+          en: 'Collections, environments, connections and history stay in this browser and are never uploaded; each tab keeps its input when you switch away',
         })}
       </p>
       </div>

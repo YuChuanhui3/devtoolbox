@@ -34,6 +34,8 @@ export interface SelectProps {
   children?: ReactNode;
   className?: string;
   wrapperClassName?: string;
+  /** 同 Input：尺寸必须由组件选档，className 覆盖基础类不会生效（cn 不做 tailwind 合并）。 */
+  size?: 'sm' | 'md';
   id?: string;
   name?: string;
   disabled?: boolean;
@@ -41,6 +43,11 @@ export interface SelectProps {
   'aria-label'?: string;
   'aria-labelledby'?: string;
 }
+
+const SELECT_SIZES = {
+  sm: 'h-8 pl-2.5 pr-7 text-xs',
+  md: 'h-10 pl-3 pr-8 text-sm',
+};
 
 interface MenuPosition {
   top: number;
@@ -84,6 +91,7 @@ export function Select({
   children,
   className,
   wrapperClassName,
+  size = 'md',
   id,
   name,
   disabled = false,
@@ -264,7 +272,8 @@ export function Select({
         onClick={() => (open ? closeMenu() : openMenu())}
         onKeyDown={handleTriggerKeyDown}
         className={cn(
-          'flex h-9 w-full cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface pl-3 pr-8 text-left text-sm text-ink transition-colors duration-300 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-50',
+          'flex w-full cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface text-left text-ink transition-colors duration-300 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-50',
+          SELECT_SIZES[size],
           className,
         )}
       >

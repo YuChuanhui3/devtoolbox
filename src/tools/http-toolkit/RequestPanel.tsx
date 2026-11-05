@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Settings2 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Segmented } from '@/components/ui/Segmented';
 import { Select } from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
+import { ActionBar } from '@/components/tool/ToolActions';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { Localized } from '@/i18n/locale';
 import { toToolError } from '@/lib/errors';
@@ -130,15 +132,33 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div>
+    <div className="min-w-0 space-y-4">
+      <ActionBar>
         <Segmented
+          size="sm"
           value={mode}
           onChange={setMode}
           ariaLabel={t({ zh: '请求通道', en: 'Request channel' })}
           options={FETCH_MODES.map((item) => ({ value: item.id, label: t(MODE_LABEL[item.id] ?? item.label) }))}
         />
-        <p className="px-1 pt-1 text-[11px] text-ink-3">
+        <span className="flex items-center gap-1.5 sm:ml-auto">
+          <Select
+            size="sm"
+            value={doc.activeEnvId ?? ''}
+            onChange={(e) => update((d) => ({ ...d, activeEnvId: e.target.value || null }))}
+            aria-label={t({ zh: '当前环境', en: 'Active environment' })}
+            wrapperClassName="w-40"
+          >
+            <option value="">{t({ zh: '无环境', en: 'No environment' })}</option>
+            {doc.environments.map((env) => (
+              <option key={env.id} value={env.id}>{env.name}</option>
+            ))}
+          </Select>
+          <Button variant="ghost" size="sm" onClick={() => setEnvModalOpen(true)} aria-label={t({ zh: '管理环境', en: 'Manage environments' })}>
+            <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </span>
+        <p className="basis-full text-[11px] leading-4 text-ink-3">
           {t(MODE_NOTE[mode])}
           {doc.mockEnabled
             ? t({
@@ -147,23 +167,21 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
               })
             : ''}
         </p>
-      </div>
+      </ActionBar>
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[230px_minmax(0,1fr)]">
-        <div className="min-w-0">
-          <div className="max-h-[560px] overflow-auto rounded-card border border-line bg-surface/60 p-2">
-            <CollectionTree
-              doc={doc}
-              update={update}
-              selectedRequestId={editing.collectionId ? editing.request.id : null}
-              onSelectRequest={(collectionId, request) => {
-                setEditing({ request, collectionId, folderId: null });
-                setError(null);
-              }}
-              onNewRequest={(collectionId, folderId) => setEditing({ request: blankRequest(), collectionId, folderId })}
-              onImportPostman={() => setPostmanImportOpen(true)}
-            />
-          </div>
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[264px_minmax(0,1fr)]">
+        <div className="no-scrollbar min-w-0 rounded-card border border-line bg-surface/60 p-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+          <CollectionTree
+            doc={doc}
+            update={update}
+            selectedRequestId={editing.collectionId ? editing.request.id : null}
+            onSelectRequest={(collectionId, request) => {
+              setEditing({ request, collectionId, folderId: null });
+              setError(null);
+            }}
+            onNewRequest={(collectionId, folderId) => setEditing({ request: blankRequest(), collectionId, folderId })}
+            onImportPostman={() => setPostmanImportOpen(true)}
+          />
           <HistoryList
             history={doc.history}
             onSelect={(entry) => setEditing({ request: entry.request, collectionId: editing.collectionId, folderId: null })}
@@ -175,27 +193,15 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
           <Panel
             title={t({ zh: '请求', en: 'Request' })}
             actions={
-              <span className="flex items-center gap-1.5">
-                <Select
-                  value={doc.activeEnvId ?? ''}
-                  onChange={(e) => update((d) => ({ ...d, activeEnvId: e.target.value || null }))}
-                  aria-label={t({ zh: '当前环境', en: 'Active environment' })}
-                  className="h-8 w-36 text-xs"
-                  wrapperClassName="w-36"
-                >
-                  <option value="">{t({ zh: '无环境', en: 'No environment' })}</option>
-                  {doc.environments.map((env) => (
-                    <option key={env.id} value={env.id}>{env.name}</option>
-                  ))}
-                </Select>
-                <Button variant="ghost" size="sm" onClick={() => setEnvModalOpen(true)} aria-label={t({ zh: '管理环境', en: 'Manage environments' })}>
-                  <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
-              </span>
+              <Badge tone={missing.length > 0 ? 'warning' : 'neutral'}>
+                {collection
+                  ? t({ zh: `集合「${collection.name}」`, en: `Collection "${collection.name}"` })
+                  : t({ zh: '未归属集合', en: 'Not in a collection' })}
+              </Badge>
             }
             subtitle={activeEnv
-              ? t({ zh: `变量来自「${activeEnv.name}」${collection ? ` + 「${collection.name}」集合变量` : ''}`, en: `Variables from "${activeEnv.name}"${collection ? ` + "${collection.name}" collection variables` : ''}` })
-              : t({ zh: '未选择环境；仅使用集合变量（如有）', en: 'No environment selected; only collection variables apply (if any)' })}
+              ? t({ zh: `变量来自「${activeEnv.name}」${collection ? ` + 「${collection.name}」集合变量` : ''}；URL、请求头与请求体均可用 {{名称}} 引用`, en: `Variables from "${activeEnv.name}"${collection ? ` + "${collection.name}" collection variables` : ''}; reference them as {{name}} in the URL, headers, and body` })
+              : t({ zh: '未选择环境，仅集合变量（如有）生效；URL、请求头与请求体均可用 {{名称}} 引用', en: 'No environment selected, so only collection variables apply (if any); reference variables as {{name}} in the URL, headers, and body' })}
             bodyClassName="space-y-3"
           >
             <RequestEditor
@@ -217,13 +223,6 @@ export function RequestPanel({ active: _active }: { active: boolean }) {
 
       <EnvironmentModal open={envModalOpen} onClose={() => setEnvModalOpen(false)} />
       <PostmanImportModal open={postmanImportOpen} onClose={() => setPostmanImportOpen(false)} onImported={importCollection} />
-
-      <p className="text-center text-[11px] leading-5 text-ink-3">
-        {t({
-          zh: '集合、环境与历史保存在本机浏览器 localStorage，不上传；请求可引用 {{"{{变量}}"}}，缺失变量会高亮提醒。',
-          en: 'Collections, environments, and history live in this browser\'s localStorage and are never uploaded; requests can reference {{"{{variables}}"}} and missing ones are flagged.',
-        })}
-      </p>
     </div>
   );
 }

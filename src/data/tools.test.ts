@@ -165,6 +165,23 @@ describe('HTML 工具并入代码格式化工具箱', () => {
   });
 });
 
+describe('WebSocket 测试并入 API 工作台', () => {
+  test('旧链接解析到 websocket 页签', () => {
+    expect(resolveToolTarget('websocket-client')).toEqual({ toolId: 'http-simulator', mode: 'websocket' });
+  });
+
+  test('旧 ID 不再作为独立工具存在', () => {
+    expect(TOOLS.some((tool) => tool.id === 'websocket-client')).toBe(false);
+    expect(getTool('websocket-client')?.id).toBe('http-simulator');
+  });
+
+  test('“模拟websocket” 与 “ws在线” 都能搜到工作台', () => {
+    expect(searchTools('模拟websocket')[0]?.id).toBe('http-simulator');
+    expect(searchTools('ws在线')[0]?.id).toBe('http-simulator');
+    expect(searchToolTargets('websocket').some((hit) => hit.tool.id === 'http-simulator' && hit.sub?.id === 'websocket')).toBe(true);
+  });
+});
+
 describe('搜索直达子功能页签', () => {  test('“JWT” 命中加解密工具箱的 jwt 页签', () => {
     const hits = searchToolTargets('JWT');
     expect(hits.some((h) => h.tool.id === 'crypto-toolkit' && h.sub?.id === 'jwt')).toBe(true);

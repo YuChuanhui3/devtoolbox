@@ -1,17 +1,34 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, History } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { useI18n } from '@/i18n/I18nProvider';
 import { WORKBENCH_STORAGE_KEY } from '@/lib/apiworkbench/store';
 import type { WbHistoryEntry } from '@/lib/apiworkbench/types';
+
+const METHOD_TONE: Record<string, 'success' | 'accent' | 'warning' | 'danger' | 'neutral'> = {
+  GET: 'success',
+  POST: 'accent',
+  PUT: 'warning',
+  PATCH: 'warning',
+  DELETE: 'danger',
+};
+
+const VIA_LABEL: Record<WbHistoryEntry['via'], { zh: string; en: string }> = {
+  mock: { zh: 'Mock', en: 'Mock' },
+  corsproxy: { zh: 'CORS 代理', en: 'CORS proxy' },
+  allorigins: { zh: '抓取代理', en: 'Fetch proxy' },
+  direct: { zh: '直连', en: 'Direct' },
+};
 
 export function HistoryList({ history, onSelect, onClear }: {
   history: WbHistoryEntry[];
   onSelect: (entry: WbHistoryEntry) => void;
   onClear: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
+  const time = (at: number) => new Date(at).toLocaleTimeString(locale === 'zh' ? 'zh-CN' : 'en-US', { hour12: false });
 
   return (
     <div className="mt-3 rounded-xl border border-line bg-surface-2/40">
@@ -50,15 +67,23 @@ export function HistoryList({ history, onSelect, onClear }: {
               key={entry.id}
               type="button"
               onClick={() => onSelect(entry)}
-              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-[11px] text-ink-2 hover:bg-surface-2"
+              className="block w-full rounded-lg border border-line bg-surface px-2 py-1.5 text-left transition-colors hover:border-accent/40"
             >
-              <span className={`w-11 shrink-0 font-mono ${entry.request.method === 'GET' ? 'text-ok' : 'text-accent'}`}>
-                {entry.request.method}
+              <span className="flex items-center gap-1.5">
+                <Badge
+                  tone={METHOD_TONE[entry.request.method] ?? 'neutral'}
+                  className="shrink-0 px-1 py-0 text-[10px] leading-4"
+                >
+                  {entry.request.method}
+                </Badge>
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-2">{entry.request.url}</span>
               </span>
-              <span className="min-w-0 flex-1 truncate font-mono">{entry.request.url}</span>
-              <span className={`shrink-0 font-mono ${entry.status >= 400 ? 'text-danger' : 'text-ok'}`}>{entry.status}</span>
-              <span className="shrink-0 text-ink-3">{entry.ms}ms</span>
-              {entry.via === 'mock' ? <span className="shrink-0 text-accent">M</span> : null}
+              <span className="mt-1 flex items-center gap-2 text-[10px] text-ink-3">
+                <span className={`font-mono ${entry.status >= 400 ? 'text-danger' : 'text-ok'}`}>{entry.status}</span>
+                <span className="font-mono">{entry.ms}ms</span>
+                {entry.via !== 'direct' ? <span>{t(VIA_LABEL[entry.via])}</span> : null}
+                <span className="ml-auto font-mono">{time(entry.at)}</span>
+              </span>
             </button>
           ))}
         </div>

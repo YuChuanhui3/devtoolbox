@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, FilePlus2, FileUp, FolderPlus, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, FilePlus2, FileUp, FolderOpen, FolderPlus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { Input } from '@/components/ui/Input';
-import { DownloadButton } from '@/components/tool/ToolActions';
+import { useToast } from '@/components/ui/Toast';
 import { useI18n } from '@/i18n/I18nProvider';
+import { downloadText, safeFilename } from '@/lib/download';
 import { newId } from '@/lib/apiworkbench/id';
 import { removeFolder, updateFolder } from '@/lib/apiworkbench/tree';
 import { exportPostman } from '@/lib/apiworkbench/transfer';
@@ -26,6 +28,9 @@ interface FolderProps extends TreeProps {
   depth: number;
 }
 
+/** 缩进量只由 --depth 决定，单位统一在 index.css 的 --tree-indent。 */
+const indent = (depth: number) => ({ paddingLeft: `calc(${depth} * var(--tree-indent))` });
+
 function InlineRename({ initial, onDone }: { initial: string; onDone: (name: string | null) => void }) {
   const [value, setValue] = useState(initial);
   return (
@@ -39,7 +44,8 @@ function InlineRename({ initial, onDone }: { initial: string; onDone: (name: str
           if (e.key === 'Escape') onDone(null);
         }}
         onBlur={() => onDone(value.trim() || null)}
-        className="h-6 min-w-0 flex-1 text-xs"
+        size="sm"
+        className="min-w-0 flex-1"
       />
       <Button size="sm" variant="primary" onClick={() => onDone(value.trim() || null)}>OK</Button>
     </span>
@@ -49,7 +55,7 @@ function InlineRename({ initial, onDone }: { initial: string; onDone: (name: str
 function RowMenu({ onRename, onDelete, label, hideDelete }: { onRename: () => void; onDelete: () => void; label: L10n; hideDelete?: boolean }) {
   const { t } = useI18n();
   return (
-    <span className="ml-auto flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+    <span className="ml-auto flex shrink-0 items-center focus-within:opacity-100 opacity-70 transition-opacity group-hover:opacity-100">
       <Button variant="ghost" size="sm" onClick={onRename} aria-label={t({ zh: `重命名${label.zh}`, en: `Rename ${label.en}` })}>
         <Pencil className="h-3 w-3" aria-hidden="true" />
       </Button>
@@ -94,7 +100,7 @@ function FolderNode(props: FolderProps) {
 
   return (
     <div>
-      <div className="group flex items-center gap-1 rounded-lg py-1 pr-1 text-xs hover:bg-surface-2" style={{ paddingLeft: depth * 12 }}>
+      <div className="group flex items-center gap-1 rounded-lg py-1 pr-1 text-xs hover:bg-surface-2" style={indent(depth)}>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -113,7 +119,7 @@ function FolderNode(props: FolderProps) {
         ) : (
           <span className="min-w-0 truncate font-medium text-ink-2">{folder.name}</span>
         )}
-        <span className="ml-1 flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <span className="ml-1 flex shrink-0 items-center opacity-70 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <Button
             variant="ghost"
             size="sm"
@@ -165,11 +171,11 @@ function FolderNode(props: FolderProps) {
               className={`group flex w-full items-center gap-2 rounded-lg py-1 pr-1 text-left text-xs hover:bg-surface-2 ${
                 selectedRequestId === request.id ? 'bg-accent-soft text-accent-strong' : 'text-ink-2'
               }`}
-              style={{ paddingLeft: (depth + 1) * 12 + 14 }}
+              style={indent(depth + 1)}
             >
-              <span className={`w-12 shrink-0 font-mono text-[10px] ${METHOD_TONE[request.method] ?? 'text-ink-3'}`}>
+              <Badge tone={METHOD_TONE[request.method] ?? 'neutral'} className="w-14 shrink-0 justify-center px-1 py-0 text-[10px] leading-4">
                 {request.method}
-              </span>
+              </Badge>
               <span className="min-w-0 truncate">{request.name}</span>
             </button>
           ))}
@@ -182,18 +188,19 @@ function FolderNode(props: FolderProps) {
   );
 }
 
-const METHOD_TONE: Record<string, string> = {
-  GET: 'text-ok',
-  POST: 'text-accent',
-  PUT: 'text-warn',
-  DELETE: 'text-danger',
-  PATCH: 'text-warn',
-  HEAD: 'text-ink-3',
-  OPTIONS: 'text-ink-3',
+const METHOD_TONE: Record<string, 'success' | 'accent' | 'warning' | 'danger' | 'neutral'> = {
+  GET: 'success',
+  POST: 'accent',
+  PUT: 'warning',
+  PATCH: 'warning',
+  DELETE: 'danger',
+  HEAD: 'neutral',
+  OPTIONS: 'neutral',
 };
 
 export function CollectionTree(props: TreeProps) {
   const { t } = useI18n();
+  const toast = useToast();
   const { doc, update } = props;
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
@@ -227,7 +234,7 @@ export function CollectionTree(props: TreeProps) {
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-auto">
         {doc.collections.length === 0 ? (
-          <p className="px-1 text-[11px] leading-5 text-ink-3">
+          <p className="rounded-card border border-dashed border-line-strong px-2.5 py-3 text-[11px] leading-5 text-ink-3">
             {t({
               zh: '还没有集合。新建集合后可把请求存进去，也可以从 OpenAPI 页签生成，或点上方的 Postman 按钮导入。',
               en: 'No collections yet. Create one to save requests, generate them from the OpenAPI tab, or import via the Postman button above.',
@@ -254,7 +261,7 @@ export function CollectionTree(props: TreeProps) {
                 <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">{collection.name}</span>
               )}
               {renamingId !== collection.id ? (
-                <span className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="flex shrink-0 items-center opacity-70 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -263,15 +270,21 @@ export function CollectionTree(props: TreeProps) {
                   >
                     <FilePlus2 className="h-3 w-3" aria-hidden="true" />
                   </Button>
-                  <DownloadButton
+                  <Button
                     variant="ghost"
                     size="sm"
-                    filename={`${collection.name || 'collection'}.postman_collection.json`}
-                    content={JSON.stringify(exportPostman(collection), null, 2)}
-                    mime="application/json;charset=utf-8"
-                    label={{ zh: '导出', en: 'Export' }}
-                    className="text-ink-3 hover:text-ink"
-                  />
+                    aria-label={t({ zh: '导出', en: 'Export' })}
+                    onClick={() => {
+                      downloadText(
+                        safeFilename(`${collection.name || 'collection'}.postman_collection.json`, 'collection.json'),
+                        JSON.stringify(exportPostman(collection), null, 2),
+                        'application/json;charset=utf-8',
+                      );
+                      toast.success(t({ zh: '已开始下载', en: 'Download started' }));
+                    }}
+                  >
+                    <Download className="h-3 w-3" aria-hidden="true" />
+                  </Button>
                   <RowMenu
                     label={{ zh: '集合', en: 'collection' }}
                     onRename={() => setRenamingId(collection.id)}

@@ -36,23 +36,23 @@ export function StressChart({ series }: { series: LoadSeriesPoint[] }) {
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t({ zh: '压测时序图', en: 'Load test timeline' })} className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t({ zh: '压测时序图', en: 'Load test timeline' })} className="h-auto w-full">
         <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom} stroke="currentColor" className="text-line" strokeWidth="1" />
-        <path d={rpsPath} fill="none" stroke="var(--accent, #4f6ef7)" strokeWidth="2" />
-        <path d={p95Path} fill="none" stroke="#e08633" strokeWidth="2" strokeDasharray="4 3" />
+        <path d={rpsPath} fill="none" stroke="var(--accent)" strokeWidth="2" />
+        <path d={p95Path} fill="none" stroke="var(--warn)" strokeWidth="2" strokeDasharray="4 3" />
         {ticks.map((tick) => (
           <text key={tick.index} x={PAD.left + (series.length <= 1 ? (W - PAD.left - PAD.right) / 2 : (tick.index / (series.length - 1)) * (W - PAD.left - PAD.right))} y={H - 6} textAnchor="middle" className="fill-ink-3" fontSize="10">
             {tick.atSecond}s
           </text>
         ))}
       </svg>
-      <p className="mt-1 flex items-center gap-3 text-[11px] text-ink-3">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-4" style={{ background: 'var(--accent, #4f6ef7)' }} aria-hidden="true" />
+      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-3">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-5 rounded-full bg-accent" aria-hidden="true" />
           {t({ zh: `RPS（峰值 ${rpsMax}）`, en: `RPS (peak ${rpsMax})` })}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-4 border-b border-dashed" style={{ borderColor: '#e08633' }} aria-hidden="true" />
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-5 rounded-full bg-warn" aria-hidden="true" />
           {t({ zh: `P95 ms（刻度 ${p95Max}）`, en: `P95 ms (scale ${p95Max})` })}
         </span>
       </p>

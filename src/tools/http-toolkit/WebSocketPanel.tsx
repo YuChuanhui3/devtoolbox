@@ -89,6 +89,7 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
   const [recent, setRecent] = useState<string[]>([]);
   const [openedAt, setOpenedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [lastCloseCode, setLastCloseCode] = useState<number | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -132,11 +133,20 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
   }, [events, autoScroll, filter]);
 
   const connected = session === 'open';
+  /** 主动断开和异常断开要区分颜色，否则一次正常关闭也标红。 */
+  const statusTone: 'success' | 'danger' | 'warning' | 'neutral' = connected
+    ? 'success'
+    : session === 'error'
+      ? 'danger'
+      : session === 'closed' && lastCloseCode !== null && lastCloseCode !== 1000 && lastCloseCode !== 1005
+        ? 'warning'
+        : 'neutral';
 
   const connect = () => {
     if (socketRef.current) return;
     setError(null);
     setNotice(null);
+    setLastCloseCode(null);
     let target: string;
     let missing: string[];
     try {
@@ -194,6 +204,7 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
     socket.onclose = (event) => {
       socketRef.current = null;
       setOpenedAt(null);
+      setLastCloseCode(event.code);
       transition('closed');
       const description = describeCloseCode(event.code);
       log('sys', t({
@@ -279,7 +290,7 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
           ? t({ zh: `地址与消息可引用变量，取自当前环境「${activeEnv.name}」`, en: `The address and messages can reference variables from the active environment "${activeEnv.name}"` })
           : t({ zh: '地址与消息可引用变量；未选择环境，仅内置 {{$uuid}} / {{$timestamp}} 可用', en: 'Variables come from the active environment; none selected, so only built-in {{$uuid}} / {{$timestamp}} resolve' })}
         actions={
-          <Badge tone={connected ? 'success' : session === 'error' || session === 'closed' ? 'danger' : 'neutral'}>
+          <Badge tone={statusTone}>
             {t(STATUS_LABEL[session])}
           </Badge>
         }
@@ -291,7 +302,6 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
             onChange={(e) => setUrl(e.target.value)}
             placeholder="wss://echo.websocket.org"
             mono
-            className="text-xs"
             aria-label={t({ zh: 'WebSocket 地址', en: 'WebSocket URL' })}
             disabled={connected || session === 'connecting'}
           />
@@ -315,7 +325,7 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
             value={socketId}
             onChange={(e) => loadSaved(e.target.value)}
             aria-label={t({ zh: '已保存的连接', en: 'Saved connections' })}
-            className="text-xs"
+            wrapperClassName="w-full"
           >
             <option value={TEMPORARY}>{t({ zh: '临时连接', en: 'Ad-hoc connection' })}</option>
             {doc.sockets.map((item) => (
@@ -326,17 +336,15 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t({ zh: '连接名称，如「订单推送」', en: 'Connection name, e.g. "Order feed"' })}
-            className="text-xs"
             aria-label={t({ zh: '连接名称', en: 'Connection name' })}
           />
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={saveConnection}>
+            <Button variant="secondary" onClick={saveConnection}>
               <Save className="h-3.5 w-3.5" aria-hidden="true" />
               {selected ? t({ zh: '更新连接', en: 'Update' }) : t({ zh: '保存连接', en: 'Save connection' })}
             </Button>
             {selected ? (
               <ConfirmButton
-                size="sm"
                 confirmLabel={{ zh: '再次点击删除', en: 'Click again to delete' }}
                 onConfirm={deleteConnection}
                 aria-label={t({ zh: '删除该连接', en: 'Delete this connection' })}
@@ -352,7 +360,6 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
           onChange={(e) => setProtocolsText(e.target.value)}
           placeholder={t({ zh: '子协议（可选，逗号分隔，如 chat.proto, v2）', en: 'Subprotocols (optional, comma separated, e.g. chat.proto, v2)' })}
           mono
-          className="text-xs"
           aria-label={t({ zh: '子协议', en: 'Subprotocols' })}
           disabled={connected || session === 'connecting'}
         />
@@ -375,7 +382,6 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
               }}
               rows={4}
               mono
-              className="text-xs"
               disabled={!connected}
               aria-label={t({ zh: '消息内容', en: 'Message content' })}
             />
@@ -386,7 +392,8 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
                   if (e.target.value) setMessage(e.target.value);
                 }}
                 aria-label={t({ zh: '复用上次的消息', en: 'Reuse a recent message' })}
-                className="h-8 max-w-[180px] text-xs"
+                size="sm"
+                wrapperClassName="max-w-[200px]"
                 disabled={recent.length === 0}
               >
                 <option value="">{t({ zh: '复用上次的消息', en: 'Reuse a recent message' })}</option>
@@ -452,9 +459,15 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
                 { value: 'sys', label: `SYS ${counts.sys}` },
               ]}
             />
-            <div className="flex flex-wrap items-center gap-3">
-              <Switch label={t({ zh: '自动滚动', en: 'Auto scroll' })} checked={autoScroll} onChange={setAutoScroll} />
-              <Switch label={t({ zh: '格式化 JSON', en: 'Pretty JSON' })} checked={pretty} onChange={setPretty} />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="flex items-center gap-2">
+                <Switch label={t({ zh: '自动滚动', en: 'Auto scroll' })} checked={autoScroll} onChange={setAutoScroll} />
+                <span className="text-xs text-ink-2">{t({ zh: '自动滚动', en: 'Auto scroll' })}</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <Switch label={t({ zh: '格式化 JSON', en: 'Pretty JSON' })} checked={pretty} onChange={setPretty} />
+                <span className="text-xs text-ink-2">{t({ zh: '格式化 JSON', en: 'Pretty JSON' })}</span>
+              </span>
             </div>
           </div>
 
@@ -465,7 +478,7 @@ export function WebSocketPanel({ active: _active }: { active: boolean }) {
               description={events.length === 0
                 ? t({ zh: '点「连接」后，收发的消息与关闭码都会显示在这里。', en: 'Connect, and every message plus the close code lands here.' })
                 : t({ zh: '换成「全部」可看到完整 500 条上限内的记录。', en: 'Switch back to All to see everything within the 500-entry cap.' })}
-              className="m-4 border-0 bg-transparent"
+              className="m-4"
             />
           ) : (
             <div ref={listRef} className="max-h-[460px] divide-y divide-line overflow-auto">
