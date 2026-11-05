@@ -64,11 +64,13 @@ export function useImageBatch({
 
   const mountedRef = useRef(true);
   const cancelledRef = useRef(false);
+  const runningRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      cancelledRef.current = true;
       revokeAll();
     };
   }, [revokeAll]);
@@ -84,10 +86,12 @@ export function useImageBatch({
       handle: (file: File, bitmap: ImageBitmap | HTMLImageElement) => Promise<CompressOutcome>,
       messages: { success: string },
     ) => {
-      if (items.length === 0 || isProcessing) return;
+      if (items.length === 0 || runningRef.current) return;
+      runningRef.current = true;
 
       cancelledRef.current = false;
       revokeAll();
+      resultsRef.current = {};
       setResults({});
       setIsProcessing(true);
       setProgress(0);
@@ -118,7 +122,8 @@ export function useImageBatch({
             size: outcome.blob.size,
             targetMet: outcome.targetMet,
           };
-          setResults((current) => ({ ...current, [item.id]: result }));
+          resultsRef.current = { ...resultsRef.current, [item.id]: result };
+          setResults(resultsRef.current);
         } catch (error) {
           if (cancelledRef.current || !mountedRef.current) break;
           failures += 1;
@@ -142,6 +147,7 @@ export function useImageBatch({
         setProgress(Math.round(((index + 1) / items.length) * 100));
       }
 
+      runningRef.current = false;
       if (!mountedRef.current) return;
       setIsProcessing(false);
       if (cancelledRef.current) {
@@ -152,7 +158,7 @@ export function useImageBatch({
         toast.error(t({ zh: `处理完成，${failures} 个文件失败`, en: `Finished with ${failures} failed files` }));
       }
     },
-    [items, isProcessing, revokeAll, setError, toast, t],
+    [items, revokeAll, setError, toast, t],
   );
 
   const cancel = useCallback(() => {
@@ -176,7 +182,9 @@ export function useImageBatch({
   );
 
   const clearAll = useCallback(() => {
+    cancelledRef.current = true;
     revokeAll();
+    resultsRef.current = {};
     setResults({});
     clearSources();
     setProgress(0);

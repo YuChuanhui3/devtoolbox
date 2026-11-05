@@ -7,7 +7,6 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>> = {
   // 数据格式
   'json-toolkit': lazy(() => import('./JsonToolkitTool')),
-  'json-to-code': lazy(() => import('./JsonToCodeTool')),
 
   // 编码加密
   'codec-toolkit': lazy(() => import('./CodecToolkitTool')),
@@ -35,9 +34,7 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'markdown-editor': lazy(() => import('./MarkdownTool')),
 
   // 图像处理
-  'image-compress': lazy(() => import('./ImageCompressTool')),
-  'image-convert': lazy(() => import('./ImageConvertTool')),
-  'image-base64': lazy(() => import('./ImageBase64Tool')),
+  'image-toolkit': lazy(() => import('./ImageToolkitTool')),
   'qr-generator': lazy(() => import('./QrGeneratorTool')),
 
   // 网络工具

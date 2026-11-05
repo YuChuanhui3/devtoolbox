@@ -17,11 +17,18 @@ const ToolContext = createContext<ToolContextValue | null>(null);
 export function ToolProvider({ tool, children }: { tool: ToolMeta; children: ReactNode }) {
   const draftsEnabled = useAppStore((state) => state.draftEnabled);
   const canDraft = draftsEnabled && !tool.sensitive && !tool.customDraft;
-  const [initialDraft, setInitialDraft] = useState(() => (canDraft ? getToolDraft(tool.id) : null));
+  const [initialDraft, setInitialDraft] = useState(() => {
+    if (!canDraft) return null;
+    const current = getToolDraft(tool.id);
+    if (current || tool.id !== 'json-toolkit') return current;
+    const legacy = getToolDraft('json-to-code');
+    return legacy ? { ...legacy, input: JSON.stringify({ input: legacy.input, right: '' }) } : null;
+  });
   const [draftDiscardToken, setDraftDiscardToken] = useState(0);
 
   const discardDraft = useCallback(() => {
     removeToolDraft(tool.id);
+    if (tool.id === 'json-toolkit') removeToolDraft('json-to-code');
     setInitialDraft(null);
     setDraftDiscardToken((token) => token + 1);
   }, [tool.id]);

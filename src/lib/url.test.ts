@@ -106,3 +106,17 @@ describe('url utilities', () => {
     expect(() => queryToJsonObject('  ', DEFAULT_FLAGS)).toThrow('请输入 Query 字符串');
   });
 });
+
+describe('query editing', () => {
+  test('preserves duplicate keys, ordering, unicode, credentials and fragment', async () => {
+    const { updateUrlQuery } = await import('./url');
+    const href = updateUrlQuery('https://user:pass@example.com/path?old=1#section', [
+      { key: 'tag', value: '中文 & +' }, { key: 'tag', value: '' },
+    ]);
+    const parsed = parseUrl(href);
+    expect(parsed.query).toEqual([{ key: 'tag', value: '中文 & +' }, { key: 'tag', value: '' }]);
+    expect(parsed.username).toBe('user');
+    expect(parsed.hash).toBe('#section');
+    expect(updateUrlQuery(href, [])).toBe('https://user:pass@example.com/path#section');
+  });
+});

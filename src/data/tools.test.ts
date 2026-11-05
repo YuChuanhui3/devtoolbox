@@ -87,9 +87,9 @@ describe('tool registry search', () => {
 });
 
 describe('JSON 工具箱合并', () => {
-  test('data category keeps the toolkit plus json-to-code and no legacy ids', () => {
+  test('data category keeps the unified toolkit and no legacy ids', () => {
     const dataToolIds = getToolsByCategory('data').map((tool) => tool.id);
-    expect(dataToolIds).toEqual(['json-toolkit', 'json-to-code']);
+    expect(dataToolIds).toEqual(['json-toolkit']);
     expect(Object.keys(LEGACY_TOOL_IDS).every((id) => !dataToolIds.includes(id))).toBe(true);
   });
 
@@ -229,5 +229,15 @@ describe('搜索直达子功能页签', () => {  test('“JWT” 命中加解密
         expect(sub.name.en.length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('工作台整合入口', () => {
+  test('旧入口直接定位合并后的页签', () => {
+    expect(resolveToolTarget('json-to-code')).toEqual({ toolId: 'json-toolkit', mode: 'code' });
+    for (const mode of ['compress', 'convert', 'base64']) {
+      expect(resolveToolTarget(`image-${mode}`)).toEqual({ toolId: 'image-toolkit', mode });
+    }
+    expect(searchToolTargets('实体类生成').some((target) => target.tool.id === 'json-toolkit')).toBe(true);
   });
 });

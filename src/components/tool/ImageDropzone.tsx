@@ -42,6 +42,13 @@ export function ImageDropzone({
           inputRef.current?.click();
         }
       }}
+      onPaste={(event) => {
+        const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'));
+        if (!files.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onFiles(multiple ? files : files.slice(0, 1));
+      }}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -53,10 +60,11 @@ export function ImageDropzone({
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
-        if (event.dataTransfer.files.length > 0) onFiles(event.dataTransfer.files);
+        const files = Array.from(event.dataTransfer.files);
+        if (files.length > 0) onFiles(multiple ? files : files.slice(0, 1));
       }}
       className={cn(
-        'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-all duration-300',
+        'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent',
         dragging
           ? 'border-accent bg-accent-soft'
           : 'border-line-strong bg-surface-2/30 hover:border-accent/50 hover:bg-accent-soft/30',
@@ -68,6 +76,7 @@ export function ImageDropzone({
       <p className="mt-3 text-sm font-medium text-ink">{resolvedTitle}</p>
       <p className="mt-1 text-[11px] text-ink-3">{t(hint)}</p>
 
+      <p className="mt-1 text-[11px] text-ink-3">{t({ zh: '聚焦此区域后，可直接粘贴截图（Ctrl / ⌘ + V）', en: 'Focus this area to paste a screenshot (Ctrl / ⌘ + V)' })}</p>
       <input
         ref={inputRef}
         type="file"

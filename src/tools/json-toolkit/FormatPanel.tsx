@@ -77,7 +77,7 @@ const RESULT_META: Record<
 
 export function FormatPanel({ input, setInput, active }: ToolkitPanelProps) {
   const { t } = useI18n();
-  const io = useToolIO();
+  const io = useToolIO('', { draftless: true });
   const [indent, setIndent] = useState<'2' | '4'>('2');
   const [sortKeys, setSortKeys] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('text');

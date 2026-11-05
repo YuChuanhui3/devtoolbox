@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeftRight, Braces, FileDiff, ListTree, ShieldCheck } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
+import { ArrowLeftRight, Code2, Braces, FileDiff, ListTree, ShieldCheck } from 'lucide-react';
 import { ToolkitTabs } from '@/components/tool/ToolkitTabs';
 import { useToolContext } from '@/components/tool/ToolContext';
 import { useDraftAutosave } from '@/hooks/useDraftAutosave';
@@ -12,7 +12,9 @@ import { FormatPanel } from './json-toolkit/FormatPanel';
 import { JsonPathPanel } from './json-toolkit/JsonPathPanel';
 import { SchemaPanel } from './json-toolkit/SchemaPanel';
 
-type ToolkitMode = 'format' | 'path' | 'schema' | 'diff' | 'convert';
+const JsonToCodeTool = lazy(() => import('./JsonToCodeTool'));
+
+type ToolkitMode = 'format' | 'path' | 'schema' | 'diff' | 'convert' | 'code';
 
 interface ToolkitDraft {
   input: string;
@@ -23,7 +25,7 @@ function readDraft(raw: string): ToolkitDraft {
   if (!raw) return { input: '', diffRight: '' };
   try {
     const parsed = JSON.parse(raw) as unknown;
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && ('input' in parsed || 'right' in parsed)) {
       const pair = parsed as { input?: unknown; right?: unknown };
       return {
         input: typeof pair.input === 'string' ? pair.input : '',
@@ -40,7 +42,7 @@ export default function JsonToolkitTool() {
   const { t } = useI18n();
   const toolContext = useToolContext();
   const [restored] = useState(() => readDraft(toolContext?.initialInput ?? ''));
-  const [mode, setMode] = useToolkitMode<ToolkitMode>(['format', 'path', 'schema', 'diff', 'convert'], 'format');
+  const [mode, setMode] = useToolkitMode<ToolkitMode>(['format', 'path', 'schema', 'diff', 'convert', 'code'], 'format');
   const [inputState, setInputState] = useState(restored.input);
   const [diffRightState, setDiffRightState] = useState(restored.diffRight);
 
@@ -100,6 +102,7 @@ export default function JsonToolkitTool() {
               label: t({ zh: '格式转换', en: 'Convert' }),
               icon: <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />,
             },
+            { value: 'code', label: t({ zh: '实体类生成', en: 'Code generation' }), icon: <Code2 className="h-3.5 w-3.5" aria-hidden="true" /> },
           ]}
       />
 
@@ -124,10 +127,16 @@ export default function JsonToolkitTool() {
         <ConverterPanel {...panelProps} active={mode === 'convert'} />
       </LazyPanel>
 
+      <LazyPanel active={mode === 'code'}>
+        <Suspense fallback={<p role="status">{t({ zh: '正在加载代码生成器…', en: 'Loading code generator…' })}</p>}>
+          <JsonToCodeTool {...panelProps} />
+        </Suspense>
+      </LazyPanel>
+
       <p className="text-center text-[11px] leading-5 text-ink-3">
         {t({
-          zh: '五种模式共享同一份输入：粘贴一次，即可格式化、查询、校验、对比，或在六种数据格式间互转 · 切换模式不会丢失各自的输出与选项',
-          en: 'All five modes share one input: paste once, then format, query, validate, diff, or convert among six data formats · switching modes keeps each panel\'s output and options',
+          zh: '六种模式共享同一份输入：粘贴一次，即可格式化、查询、校验、对比，生成 13 种语言实体类，或进行数据格式互转 · 切换模式不会丢失各自的输出与选项',
+          en: 'All six modes share one input: paste once, then format, query, validate, diff, generate entity classes in 13 languages, or convert data formats · switching modes keeps each panel\'s output and options',
         })}
       </p>
     </div>

@@ -27,7 +27,7 @@ const EXAMPLES = ['$', '$.data.list[*].name', '$.data.list[0]', '$.data.list[*].
 
 export function JsonPathPanel({ input, setInput, active }: ToolkitPanelProps) {
   const { t } = useI18n();
-  const io = useToolIO();
+  const io = useToolIO('', { draftless: true });
   const [path, setPath] = useState(SAMPLE_JSONPATH);
   const [warning, setWarning] = useState<Localized | null>(null);
 

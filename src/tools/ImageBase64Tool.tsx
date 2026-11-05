@@ -53,14 +53,14 @@ function MetaItem({ label, value, mono = false }: { label: string; value: string
   );
 }
 
-export default function ImageBase64Tool() {
+export default function ImageBase64Tool({ active = true }: { active?: boolean }) {
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>('encode');
   const [includeDataUri, setIncludeDataUri] = useState(true);
   const [singleLine, setSingleLine] = useState(false);
   const [showFullOutput, setShowFullOutput] = useState(false);
 
-  const encode = useImageEncode({ pasteEnabled: mode === 'encode' });
+  const encode = useImageEncode({ pasteEnabled: active && mode === 'encode' });
   const decode = useImageDecode();
   const { source } = encode;
   const { decoded } = decode;

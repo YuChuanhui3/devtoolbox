@@ -189,3 +189,12 @@ export function queryToJsonObject(query: string, flags: QueryFlags): Record<stri
 
   return result;
 }
+
+/** Rebuild the query in order, preserving repeated keys and the URL fragment. */
+export function updateUrlQuery(href: string, entries: QueryEntry[]): string {
+  const url = new URL(href);
+  const params = new URLSearchParams();
+  for (const entry of entries) params.append(entry.key, entry.value);
+  url.search = params.toString();
+  return url.href;
+}

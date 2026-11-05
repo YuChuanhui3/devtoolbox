@@ -41,7 +41,7 @@ const CSV_DELIMITERS: Array<{ value: string; zh: string; en: string }> = [
 
 export function ConverterPanel({ input, setInput }: ToolkitPanelProps) {
   const { t } = useI18n();
-  const io = useToolIO();
+  const io = useToolIO('', { draftless: true });
   const [from, setFrom] = useState<FormatId>('json');
   const [to, setTo] = useState<FormatId>('yaml');
   const [indent, setIndent] = useState<'2' | '4'>('2');

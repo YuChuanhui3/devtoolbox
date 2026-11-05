@@ -52,35 +52,32 @@ export function useImageFiles(): UseImageFilesResult {
       });
     }
 
-    setItems((current) => {
-      const remaining = MAX_IMAGE_COUNT - current.length;
-      if (valid.length > remaining) {
-        errors.push(
-          new ToolError({
-            zh: `最多同时处理 ${MAX_IMAGE_COUNT} 张图片，超出的文件已被忽略。`,
-            en: `At most ${MAX_IMAGE_COUNT} images can be processed at a time; the extra files were ignored.`,
-          }),
-        );
-      }
-      return [...current, ...valid.slice(0, Math.max(0, remaining))];
-    });
+    const remaining = Math.max(0, MAX_IMAGE_COUNT - itemsRef.current.length);
+    const accepted = valid.slice(0, remaining);
+    valid.slice(remaining).forEach((item) => URL.revokeObjectURL(item.url));
+    if (valid.length > remaining) {
+      errors.push(new ToolError({
+        zh: `最多同时处理 ${MAX_IMAGE_COUNT} 张图片，超出的文件已被忽略。`,
+        en: `At most ${MAX_IMAGE_COUNT} images can be processed at a time; the extra files were ignored.`,
+      }));
+    }
+    itemsRef.current = [...itemsRef.current, ...accepted];
+    setItems(itemsRef.current);
 
     setError(errors[0] ?? null);
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setItems((current) => {
-      const target = current.find((item) => item.id === id);
-      if (target) URL.revokeObjectURL(target.url);
-      return current.filter((item) => item.id !== id);
-    });
+    const target = itemsRef.current.find((item) => item.id === id);
+    if (target) URL.revokeObjectURL(target.url);
+    itemsRef.current = itemsRef.current.filter((item) => item.id !== id);
+    setItems(itemsRef.current);
   }, []);
 
   const clearItems = useCallback(() => {
-    setItems((current) => {
-      current.forEach((item) => URL.revokeObjectURL(item.url));
-      return [];
-    });
+    itemsRef.current.forEach((item) => URL.revokeObjectURL(item.url));
+    itemsRef.current = [];
+    setItems([]);
     setError(null);
   }, []);
 

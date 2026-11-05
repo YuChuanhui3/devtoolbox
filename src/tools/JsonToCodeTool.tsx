@@ -13,7 +13,6 @@ import {
 } from '@/components/tool/ToolActions';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useToolIO } from '@/hooks/useToolIO';
 import { useCodeGenWorker } from '@/hooks/useCodeGenWorker';
 import {
   DEFAULT_CODE_GEN_OPTIONS,
@@ -53,9 +52,8 @@ function CodeSkeleton() {
   );
 }
 
-export default function JsonToCodeTool() {
+export default function JsonToCodeTool({ input, setInput }: { input: string; setInput: (value: string) => void }) {
   const { t } = useI18n();
-  const io = useToolIO();
   const [options, setOptions] = useState<CodeGenOptions>(DEFAULT_CODE_GEN_OPTIONS);
   const [languagePulse, setLanguagePulse] = useState(false);
   const {
@@ -71,7 +69,7 @@ export default function JsonToCodeTool() {
   } = useCodeGenWorker();
 
   const previousLanguageRef = useRef(options.language);
-  const debouncedInput = useDebouncedValue(io.input, DEBOUNCE_DELAY);
+  const debouncedInput = useDebouncedValue(input, DEBOUNCE_DELAY);
 
 
   useEffect(() => {
@@ -90,7 +88,7 @@ export default function JsonToCodeTool() {
     setOptions((previous) => ({ ...previous, ...patch }));
   };
 
-  const hasInput = io.input.trim().length > 0;
+  const hasInput = input.trim().length > 0;
   const displayCode = codeLanguage === options.language ? code : '';
   const languageMeta = getLanguageMeta(options.language);
   const filename = getCodeFilename(options.rootName, options.language);
@@ -101,12 +99,12 @@ export default function JsonToCodeTool() {
     !genError &&
     (languagePulse || isStaleLanguage || (isGenerating && !displayCode));
 
-  const inputStats = useMemo(() => countTextStats(io.input), [io.input]);
+  const inputStats = useMemo(() => countTextStats(input), [input]);
   const codeStats = useMemo(() => countTextStats(displayCode), [displayCode]);
   const codeLines = useMemo(() => (displayCode ? displayCode.split('\n') : []), [displayCode]);
 
-  const errorLine = genError?.source === io.input ? (genError.line ?? null) : null;
-  const errorPreview = errorLine ? getLineAt(io.input, errorLine) : '';
+  const errorLine = genError?.source === input ? (genError.line ?? null) : null;
+  const errorPreview = errorLine ? getLineAt(input, errorLine) : '';
   const statusTone = !hasInput
     ? 'idle'
     : isGenerating
@@ -134,12 +132,12 @@ export default function JsonToCodeTool() {
   const handleClear = () => {
     invalidate();
     resetOutput();
-    io.clear();
+    setInput('');
   };
 
   const handleSample = () => {
     resetOutput();
-    io.reset(SAMPLE_JSON_TO_CODE);
+    setInput(SAMPLE_JSON_TO_CODE);
     requestGeneration(SAMPLE_JSON_TO_CODE, options, true);
   };
 
@@ -162,7 +160,7 @@ export default function JsonToCodeTool() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => requestGeneration(io.input, options, true)}
+          onClick={() => requestGeneration(input, options, true)}
           disabled={!hasInput || isGenerating}
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isGenerating && 'animate-spin')} aria-hidden="true" />
@@ -206,8 +204,8 @@ export default function JsonToCodeTool() {
       <div className="grid gap-4 lg:grid-cols-2">
         <InputPanel
           label={t({ zh: 'JSON 输入', en: 'JSON input' })}
-          value={io.input}
-          onChange={io.setInput}
+          value={input}
+          onChange={setInput}
           placeholder={t({ zh: '粘贴 JSON，例如 {"user_id": 1001, "user_name": "admin"}', en: 'Paste JSON, e.g. {"user_id": 1001, "user_name": "admin"}' })}
           minHeight={360}
           showLineNumbers

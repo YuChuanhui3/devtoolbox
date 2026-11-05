@@ -7,6 +7,7 @@ const RAW_TOOLS: ToolMeta[] = [
   {
     id: 'json-toolkit',
     subFeatures: [
+    { id: 'code', name: { zh: '实体类生成', en: 'Code generation' }, keywords: ['json-to-code', 'json2code', 'json转代码', 'json转实体类', '实体类生成', '代码生成', 'typescript', 'java', 'go'] },
     { id: 'format', name: { zh: '格式化', en: 'Format' }, keywords: ['json格式化', '美化', '压缩', '校验', 'beautify', 'minify', 'validate'] },
     { id: 'path', name: { zh: 'JSONPath 查询', en: 'JSONPath' }, keywords: ['jsonpath', '路径查询', 'jp'] },
     { id: 'schema', name: { zh: 'Schema', en: 'Schema' }, keywords: ['json schema', 'schema校验', '生成schema'] },
@@ -16,10 +17,11 @@ const RAW_TOOLS: ToolMeta[] = [
     name: 'JSON 工具箱',
     nameEn: 'JSON Toolkit',
     category: 'data',
-    description: '共享一份输入：格式化压缩校验、JSONPath 查询、Schema 校验生成、JSON 结构化对比，以及 JSON/XML/YAML/CSV/NDJSON/Markdown/SQL/Properties/Query 九格式互转，支持拖入文件批量转换后打包下载。',
-    descriptionEn: 'One shared input: format, minify, and validate JSON; query with JSONPath; validate or generate schemas; diff JSON structurally; convert among JSON, XML, YAML, CSV, NDJSON, Markdown, SQL, Properties, and Query; and batch-convert dropped files for download.',
+    description: '共享一份输入：格式化压缩校验、JSONPath 查询、Schema 校验生成、JSON 结构化对比，13 种语言实体类生成，以及 JSON/XML/YAML/CSV/NDJSON/Markdown/SQL/Properties/Query 九格式互转，支持拖入文件批量转换后打包下载。',
+    descriptionEn: 'One shared input: format, minify, and validate JSON; query with JSONPath; validate or generate schemas; diff JSON structurally; generate entity classes in 13 languages; convert among JSON, XML, YAML, CSV, NDJSON, Markdown, SQL, Properties, and Query; and batch-convert dropped files for download.',
     tags: ['json', 'xml', 'yaml', 'csv', 'ndjson', 'markdown', 'sql', 'properties', 'query', '格式化', '压缩', '校验', '美化', 'jsonpath', '查询', 'schema', 'diff', '对比', '转换', '互转', '批量'],
     aliases: [
+      'json2code', 'json转实体类', '实体类生成', '代码生成',
       'json',
       'json格式化',
       'json校验',
@@ -79,21 +81,7 @@ const RAW_TOOLS: ToolMeta[] = [
     priority: 'P0',
     featured: true,
   },
-  {
-    id: 'json-to-code',
-    name: 'JSON 转多语言实体类',
-    nameEn: 'JSON to Entity Classes',
-    category: 'data',
-    description: '将 JSON 实时生成 TypeScript、Go、Java 等 13 种语言的类型定义。',
-    descriptionEn: 'Turn JSON into type definitions for 13 languages including TypeScript, Go, and Java, in real time.',
-    tags: ['json', 'codegen', 'go', 'java', 'typescript', '实体类', '代码生成'],
-    aliases: ['json2code', 'json转代码', 'json转实体类', '实体类生成', '代码生成'],
-    icon: 'Code',
-    priority: 'P0',
-    featured: true,
-  },
 
-  // ---------------- 编码加密 ----------------
   {
     id: 'codec-toolkit',
     subFeatures: [
@@ -390,40 +378,20 @@ const RAW_TOOLS: ToolMeta[] = [
 
   // ---------------- 图像处理 ----------------
   {
-    id: 'image-compress',
-    name: '图片压缩',
-    nameEn: 'Image Compressor',
+    id: 'image-toolkit',
+    name: '图片工作台',
+    nameEn: 'Image Workbench',
     category: 'image',
-    description: '浏览器本地压缩图片：质量/目标大小双模式，智能择优输出最小格式。',
-    descriptionEn: 'Compress images locally: quality or target-size mode, smart pick of the smallest format.',
-    tags: ['图片', '压缩', 'image', 'webp', '目标大小', '智能择优'],
-    aliases: ['compress', '图片压缩', '压缩到', 'target size'],
+    description: '本地批量压缩、目标大小优化、JPG/PNG/WebP 互转及图片 Base64 编解码，切换页签保留文件和结果。',
+    descriptionEn: 'Local batch compression, target-size optimization, JPG/PNG/WebP conversion, and image Base64 encoding and decoding. Tabs retain files and results.',
+    tags: ['图片', '压缩', 'image', 'jpg', 'png', 'webp', 'base64', 'data url', '目标大小', '格式转换'],
+    aliases: ['compress', '图片压缩', '压缩到', 'target size', 'convert', '图片转换', '图片base64', 'base64图片', 'dataurl', 'image base64'],
+    subFeatures: [
+      { id: 'compress', name: { zh: '图片压缩', en: 'Compress' }, keywords: ['compress', '压缩到', 'target size'] },
+      { id: 'convert', name: { zh: '图片格式转换', en: 'Convert' }, keywords: ['convert', 'jpg', 'png', 'webp'] },
+      { id: 'base64', name: { zh: '图片 Base64', en: 'Image Base64' }, keywords: ['图片base64', 'base64图片', 'dataurl'] },
+    ],
     icon: 'ImageDown',
-    priority: 'P0',
-    featured: true,
-  },
-  {
-    id: 'image-convert',
-    name: '图片格式转换',
-    nameEn: 'Image Format Converter',
-    category: 'image',
-    description: 'JPG、PNG、WebP 格式互转，支持批量处理与背景填充。',
-    descriptionEn: 'Convert among JPG, PNG, and WebP formats, with batch processing and background fill.',
-    tags: ['图片', '格式转换', 'jpg', 'png', 'webp'],
-    aliases: ['convert', '图片转换', '格式转换'],
-    icon: 'Image',
-    priority: 'P0',
-  },
-  {
-    id: 'image-base64',
-    name: '图片 Base64 互转',
-    nameEn: 'Image ↔ Base64 Converter',
-    category: 'image',
-    description: '本地图片转 Base64 / Data URL，或将 Base64 还原为可预览、可下载的图片。',
-    descriptionEn: 'Convert local images to Base64 / Data URL, or restore Base64 to a previewable, downloadable image.',
-    tags: ['图片', 'base64', 'data url', '编码', '解码', '预览'],
-    aliases: ['图片base64', 'base64图片', 'dataurl', 'image base64'],
-    icon: 'ArrowLeftRight',
     priority: 'P0',
     featured: true,
   },
@@ -678,6 +646,10 @@ export const TOOL_MAP = new Map<string, ToolMeta>(TOOLS.map((tool) => [tool.id, 
 
 /** 同类工具陆续合并为工具箱，保留旧链接、收藏与最近使用的兼容映射。 */
 export const LEGACY_TOOL_IDS: Record<string, string> = {
+  'json-to-code': 'json-toolkit',
+  'image-compress': 'image-toolkit',
+  'image-convert': 'image-toolkit',
+  'image-base64': 'image-toolkit',
   'yaml-to-json': 'json-toolkit',
   'xml-to-json': 'json-toolkit',
   'csv-to-json': 'json-toolkit',
@@ -769,6 +741,10 @@ export const resolveToolId = (id: string): string => LEGACY_TOOL_IDS[id] ?? id;
 
 /** 旧工具 ID → 合并后工具箱内的页签 mode，保证 /tools/jwt-decoder 直达 JWT 页签。 */
 export const LEGACY_TOOL_MODES: Record<string, string> = {
+  'json-to-code': 'code',
+  'image-compress': 'compress',
+  'image-convert': 'convert',
+  'image-base64': 'base64',
   'json-formatter': 'format',
   'json-query': 'path',
   jsonpath: 'path',
