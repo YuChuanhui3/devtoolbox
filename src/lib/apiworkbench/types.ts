@@ -84,6 +84,16 @@ export interface WbMockRoute {
 
 export type WbVia = FetchMode | 'mock';
 
+export interface WbSocket {
+  id: string;
+  name: string;
+  /** 可含 {{var}} 占位，ws:// 或 wss://。 */
+  url: string;
+  /** Sec-WebSocket-Protocol 候选，逗号分隔写法在存储时已归一为数组。 */
+  protocols: string[];
+  note?: string;
+}
+
 export interface WbHistoryEntry {
   id: string;
   at: number;
@@ -105,5 +115,6 @@ export interface WorkbenchDoc {
   activeEnvId: string | null;
   mockRoutes: WbMockRoute[];
   mockEnabled: boolean;
+  sockets: WbSocket[];
   history: WbHistoryEntry[];
 }

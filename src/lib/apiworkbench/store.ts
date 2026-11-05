@@ -1,4 +1,5 @@
 import { readStorage, writeStorage } from '../storage';
+import { MAX_SOCKETS, MAX_WS_URL_LENGTH } from './ws';
 import { WB_METHODS, WORKBENCH_VERSION } from './types';
 import type {
   WbAuth,
@@ -12,6 +13,7 @@ import type {
   WbMethod,
   WbMockRoute,
   WbRequest,
+  WbSocket,
   WbVar,
   WorkbenchDoc,
 } from './types';
@@ -146,6 +148,22 @@ function sanitizeMockRoute(raw: unknown): WbMockRoute | null {
   };
 }
 
+function sanitizeSocket(raw: unknown): WbSocket | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const s = raw as Partial<WbSocket>;
+  if (typeof s.url !== 'string' || !s.url.trim()) return null;
+  const url = s.url.trim().slice(0, MAX_WS_URL_LENGTH);
+  return {
+    id: str(s.id),
+    name: (str(s.name).trim() || url).slice(0, 120),
+    url,
+    protocols: Array.isArray(s.protocols)
+      ? [...new Set(s.protocols.map((p) => str(p).trim()).filter(Boolean))].slice(0, 8)
+      : [],
+    note: typeof s.note === 'string' ? s.note : undefined,
+  };
+}
+
 function sanitizeHistoryEntry(raw: unknown): WbHistoryEntry | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const h = raw as Partial<WbHistoryEntry>;
@@ -184,6 +202,7 @@ function applyLimits(doc: WorkbenchDoc): WorkbenchDoc {
     ...doc,
     collections,
     mockRoutes: doc.mockRoutes.slice(0, MAX_MOCK_ROUTES),
+    sockets: doc.sockets.slice(0, MAX_SOCKETS),
     history: doc.history.slice(0, MAX_HISTORY_ENTRIES),
   };
 }
@@ -226,6 +245,7 @@ export function emptyWorkbench(): WorkbenchDoc {
     activeEnvId: null,
     mockRoutes: [],
     mockEnabled: false,
+    sockets: [],
     history: [],
   };
 }
@@ -250,6 +270,9 @@ export function sanitizeWorkbench(raw: unknown): WorkbenchDoc {
   const history = Array.isArray(doc.history)
     ? doc.history.map(sanitizeHistoryEntry).filter((h): h is WbHistoryEntry => h !== null)
     : [];
+  const sockets = Array.isArray(doc.sockets)
+    ? doc.sockets.map(sanitizeSocket).filter((s): s is WbSocket => s !== null)
+    : [];
   return applyLimits(fitTotalSize({
     version: WORKBENCH_VERSION,
     collections,
@@ -257,6 +280,7 @@ export function sanitizeWorkbench(raw: unknown): WorkbenchDoc {
     activeEnvId,
     mockRoutes,
     mockEnabled: bool(doc.mockEnabled),
+    sockets,
     history,
   }));
 }

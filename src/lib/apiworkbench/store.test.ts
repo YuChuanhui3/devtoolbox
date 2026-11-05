@@ -9,6 +9,7 @@ import {
   sanitizeWorkbench,
   saveWorkbench,
 } from './store';
+import { MAX_SOCKETS } from './ws';
 import { WB_METHODS } from './types';
 import type { WbCollection, WbFolder, WorkbenchDoc } from './types';
 
@@ -42,6 +43,30 @@ describe('sanitizeWorkbench', () => {
     for (const raw of [null, undefined, 42, 'x', [], true]) {
       expect(sanitizeWorkbench(raw)).toEqual(emptyWorkbench());
     }
+  });
+
+  test('保存的 WebSocket 连接逐项清洗并限额', () => {
+    const doc = sanitizeWorkbench({
+      sockets: [
+        { id: 's1', name: '', url: ' wss://a.test/echo ', protocols: [' chat ', '', ' chat ', 'v2'], note: 'n' },
+        { url: 'wss://b.test' },
+        { url: '   ' },
+        { url: 'wss://c.test', protocols: 'not-an-array' },
+        'junk',
+      ],
+    });
+    expect(doc.sockets).toHaveLength(3);
+    expect(doc.sockets[0]).toMatchObject({ name: 'wss://a.test/echo', url: 'wss://a.test/echo', protocols: ['chat', 'v2'] });
+    expect(doc.sockets[1].name).toBe('wss://b.test');
+    expect(doc.sockets[2].protocols).toEqual([]);
+
+    const capped = sanitizeWorkbench({
+      sockets: Array.from({ length: MAX_SOCKETS + 20 }, (_, i) => ({ url: `wss://a.test/${i}` })),
+    });
+    expect(capped.sockets).toHaveLength(MAX_SOCKETS);
+
+    saveWorkbench(capped);
+    expect(loadWorkbench().sockets).toHaveLength(MAX_SOCKETS);
   });
 
   test('脏字段逐项回退默认值', () => {

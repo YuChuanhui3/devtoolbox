@@ -17,7 +17,7 @@ vi.mock('@/lib/download', async (importOriginal) => ({
 }));
 
 function docWith(collections: WorkbenchDoc['collections']): WorkbenchDoc {
-  return { version: 1, collections, environments: [], activeEnvId: null, history: [], mockEnabled: false, mockRoutes: [] };
+  return { version: 1, collections, environments: [], activeEnvId: null, history: [], mockEnabled: false, mockRoutes: [], sockets: [] };
 }
 
 function renderTree(doc = docWith([])) {
