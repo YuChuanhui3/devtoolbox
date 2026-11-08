@@ -52,7 +52,9 @@ describe('HttpToolkitTool 二级寻址', () => {
   test('?mode=graphql 折回请求页签并带上 sub', () => {
     renderTool('/tools/http-simulator?mode=graphql');
     expect(screen.getByTestId('location')).toHaveTextContent('?sub=graphql');
-    expect(screen.getByRole('tab', { name: /WebSocket/ })).toBeInTheDocument();
+    // 导航上五个一级页签：REST / 实时 / OpenAPI / Mock / 压测。
+    expect(screen.getByRole('tab', { name: 'REST' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /实时/ })).toBeInTheDocument();
   });
 
   test('真页签的 mode 不被改写', () => {
@@ -62,9 +64,9 @@ describe('HttpToolkitTool 二级寻址', () => {
 });
 
 describe('HttpToolkitTool 实时协议页签', () => {
-  test('五个协议页签都在导航上（本地引擎，无上游 iframe）', () => {
+  test('导航上是五个一级页签，实时协议聚合在「实时」内', () => {
     renderTool('/tools/http-simulator');
-    for (const label of ['REST', 'WebSocket', 'SSE', 'Socket.IO', 'MQTT', 'OpenAPI', 'Mock']) {
+    for (const label of ['REST', '实时', 'OpenAPI', 'Mock']) {
       expect(screen.getByRole('tab', { name: label })).toBeInTheDocument();
     }
     // 默认页签是 REST；没有任何 iframe 或上游启动屏。
@@ -72,31 +74,47 @@ describe('HttpToolkitTool 实时协议页签', () => {
     expect(document.body.textContent).not.toContain('npm run api:start');
   });
 
-  test('?mode=websocket 直达 WebSocket 页签（不再落 iframe）', () => {
+  test('?mode=websocket 折进实时页签并落到 WebSocket 协议（proto 缺省）', async () => {
     renderTool('/tools/http-simulator?mode=websocket');
-    expect(screen.getByTestId('location')).toHaveTextContent('?mode=websocket');
-    expect(screen.getByRole('tab', { name: 'WebSocket' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime');
+    expect(screen.getByTestId('location')).not.toHaveTextContent('proto=');
+    expect(screen.getByRole('tab', { name: '实时' })).toHaveAttribute('aria-selected', 'true');
+    // 协议 tab 渲染：WebSocket 选中，SSE/Socket.IO/MQTT 同屏可切换。
+    expect(await screen.findByRole('tab', { name: 'WebSocket' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'SSE' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Socket.IO' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'MQTT' })).toBeInTheDocument();
   });
 
-  test('?mode=sse 直达 SSE 页签', async () => {
+  test('?mode=sse 折进实时页签并带 proto=sse', async () => {
     renderTool('/tools/http-simulator?mode=sse');
-    expect(screen.getByTestId('location')).toHaveTextContent('?mode=sse');
-    expect(screen.getByRole('tab', { name: 'SSE' })).toHaveAttribute('aria-selected', 'true');
-    // 面板组件是 lazy 的，等待动态 import 解析后断言内容。
+    expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime&proto=sse');
+    expect(await screen.findByRole('tab', { name: 'SSE' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByLabelText('SSE 地址')).toBeInTheDocument();
   });
 
-  test('?mode=socketio 直达 Socket.IO 页签', async () => {
+  test('?mode=socketio 折进实时页签并带 proto=socketio', async () => {
     renderTool('/tools/http-simulator?mode=socketio');
-    expect(screen.getByTestId('location')).toHaveTextContent('?mode=socketio');
-    expect(screen.getByRole('tab', { name: 'Socket.IO' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime&proto=socketio');
+    expect(await screen.findByRole('tab', { name: 'Socket.IO' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByLabelText('Socket.IO 服务地址')).toBeInTheDocument();
   });
 
-  test('?mode=mqtt 直达 MQTT 页签', async () => {
+  test('?mode=mqtt 折进实时页签并带 proto=mqtt', async () => {
     renderTool('/tools/http-simulator?mode=mqtt');
-    expect(screen.getByTestId('location')).toHaveTextContent('?mode=mqtt');
-    expect(screen.getByRole('tab', { name: 'MQTT' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime&proto=mqtt');
+    expect(await screen.findByRole('tab', { name: 'MQTT' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByLabelText('Broker 地址')).toBeInTheDocument();
+  });
+
+  test('?mode=realtime 直达实时页签，默认 WebSocket 协议', async () => {
+    renderTool('/tools/http-simulator?mode=realtime');
+    expect(screen.getByRole('tab', { name: '实时' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByRole('tab', { name: 'WebSocket' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('?mode=realtime&proto=mqtt 直达 MQTT 协议', async () => {
+    renderTool('/tools/http-simulator?mode=realtime&proto=mqtt');
     expect(await screen.findByLabelText('Broker 地址')).toBeInTheDocument();
   });
 

@@ -1,25 +1,21 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, Globe, Radio, Network, MessageSquare } from 'lucide-react';
+import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, Zap } from 'lucide-react';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useI18n } from '@/i18n/I18nProvider';
-import { useToolkitMode } from '@/hooks/useToolkitMode';
 import { foldSubMode } from '@/lib/apiworkbench/subAddress';
 import { RequestWorkspace } from './http-toolkit/RequestWorkspace';
-import { WebSocketPanel } from './http-toolkit/WebSocketPanel';
 import { OpenApiPanel } from './http-toolkit/OpenApiPanel';
 import { MockPanel } from './http-toolkit/MockPanel';
 import { StressPanel } from './http-toolkit/StressPanel';
 import './http-toolkit/workbench.css';
 import { WorkbenchProvider } from './http-toolkit/WorkbenchContext';
 
-// 三个实时协议面板各自带一个浏览器协议栈（socket.io-client / mqtt.js），
-// 与 OpenAPI/Mock/Stress 的代码体量同级，懒加载避免撑大工作台首屏 chunk。
-const SsePanel = lazy(() => import('./http-toolkit/SsePanel'));
-const SocketIoPanel = lazy(() => import('./http-toolkit/SocketIoPanel'));
-const MqttPanel = lazy(() => import('./http-toolkit/MqttPanel'));
+// 「实时」页签内聚四个协议（WebSocket / SSE / Socket.IO / MQTT），
+// 协议栈各自懒加载：socket.io-client 与 mqtt.js 只在进入对应协议 tab 时才拉取。
+const RealtimeWorkspace = lazy(() => import('./http-toolkit/RealtimeWorkspace'));
 
-type HttpToolkitMode = 'request' | 'websocket' | 'sse' | 'socketio' | 'mqtt' | 'openapi' | 'mock' | 'stress';
+type HttpToolkitMode = 'request' | 'realtime' | 'openapi' | 'mock' | 'stress';
 
 export default function HttpToolkitTool() {
   const { t } = useI18n();
@@ -32,8 +28,27 @@ export default function HttpToolkitTool() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
-  const [mode, setMode] = useToolkitMode<HttpToolkitMode>(['request', 'websocket', 'sse', 'socketio', 'mqtt', 'openapi', 'mock', 'stress'], 'request');
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // 页签解析与 URL 折叠同源：搜索面板写的 ?mode=<协议> 或 ?mode=graphql 在解析成
+  // 页签状态的同时一次性折进干净 URL（?mode=realtime&proto=… / ?sub=…），
+  // 视图不闪烁、也不存在两次 setSearchParams 基于过期闭包相互覆盖的问题。
+  const requestedMode = searchParams.get('mode');
+  const folded = foldSubMode(requestedMode);
+  const resolvedMode: HttpToolkitMode = folded
+    ? (folded.mode as HttpToolkitMode)
+    : (['request', 'realtime', 'openapi', 'mock', 'stress'].includes(requestedMode ?? '')
+        ? (requestedMode as HttpToolkitMode)
+        : 'request');
+  const mode = resolvedMode;
+  const setMode = (next: HttpToolkitMode) => {
+    setSearchParams((current) => {
+      const nextParams = new URLSearchParams(current);
+      if (next === 'request') nextParams.delete('mode');
+      else nextParams.set('mode', next);
+      return nextParams;
+    });
+  };
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -49,20 +64,27 @@ export default function HttpToolkitTool() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [setMode]);
+  }, []);
 
   useEffect(() => {
-    const folded = foldSubMode(searchParams.get('mode'));
     if (!folded) return;
-    const next = new URLSearchParams(searchParams);
-    // 回到默认页签就把 mode 删掉，跟 useToolkitMode 的干净链接口径一致。
-    if (folded.mode === 'request') next.delete('mode');
-    else next.set('mode', folded.mode);
-    next.set('sub', folded.sub);
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+    // 折叠结果写回干净 URL（语义与解析处同源，这里只做写回）。
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (folded.mode === 'request') {
+        next.delete('mode');
+        if (folded.sub) next.set('sub', folded.sub);
+        next.delete('proto');
+      } else {
+        next.set('mode', folded.mode);
+        if (folded.sub) next.set('sub', folded.sub);
+        if (folded.proto && folded.proto !== 'websocket') next.set('proto', folded.proto);
+        else next.delete('proto');
+      }
+      return next;
+    }, { replace: true });
+  }, [folded, setSearchParams]);
 
-  // 「完整工作台」链接在纯本地引擎下没有上游 iframe 可回，移除出口。
   return (
     <WorkbenchProvider>
       <div className={`api-workbench hopp-workbench${dark ? ' wb-dark' : ''}`}>
@@ -86,10 +108,7 @@ export default function HttpToolkitTool() {
         }}>
           {([
             ['request', 'REST', Link2],
-            ['websocket', 'WebSocket', Globe],
-            ['sse', 'SSE', Radio],
-            ['socketio', 'Socket.IO', MessageSquare],
-            ['mqtt', 'MQTT', Network],
+            ['realtime', t({ zh: '实时', en: 'Realtime' }), Zap],
             ['openapi', 'OpenAPI', FileText],
             ['mock', 'Mock', FlaskConical],
             ['stress', t({ zh: '压测', en: 'Stress' }), Gauge],
@@ -100,22 +119,9 @@ export default function HttpToolkitTool() {
       <LazyPanel active={mode === 'request'}>
         <RequestWorkspace active={mode === 'request'} />
       </LazyPanel>
-      <LazyPanel active={mode === 'websocket'}>
-        <WebSocketPanel active={mode === 'websocket'} />
-      </LazyPanel>
-      <LazyPanel active={mode === 'sse'}>
+      <LazyPanel active={mode === 'realtime'}>
         <Suspense fallback={null}>
-          <SsePanel active={mode === 'sse'} />
-        </Suspense>
-      </LazyPanel>
-      <LazyPanel active={mode === 'socketio'}>
-        <Suspense fallback={null}>
-          <SocketIoPanel active={mode === 'socketio'} />
-        </Suspense>
-      </LazyPanel>
-      <LazyPanel active={mode === 'mqtt'}>
-        <Suspense fallback={null}>
-          <MqttPanel active={mode === 'mqtt'} />
+          <RealtimeWorkspace active={mode === 'realtime'} />
         </Suspense>
       </LazyPanel>
       <LazyPanel active={mode === 'openapi'}>

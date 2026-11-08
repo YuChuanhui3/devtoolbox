@@ -8,9 +8,17 @@ describe('二级寻址折算', () => {
     expect(foldSubMode('oauth')).toEqual({ mode: 'request', sub: 'auth' });
   });
 
+  test('四个实时协议折进实时页签，协议名放 proto', () => {
+    expect(foldSubMode('websocket')).toEqual({ mode: 'realtime', proto: 'websocket' });
+    expect(foldSubMode('sse')).toEqual({ mode: 'realtime', proto: 'sse' });
+    expect(foldSubMode('socketio')).toEqual({ mode: 'realtime', proto: 'socketio' });
+    expect(foldSubMode('mqtt')).toEqual({ mode: 'realtime', proto: 'mqtt' });
+  });
+
   test('真页签与缺失的 mode 不动 URL', () => {
     expect(foldSubMode('mock')).toBeNull();
-    expect(foldSubMode('websocket')).toBeNull();
+    expect(foldSubMode('realtime')).toBeNull();
+    expect(foldSubMode('openapi')).toBeNull();
     expect(foldSubMode(null)).toBeNull();
   });
 });

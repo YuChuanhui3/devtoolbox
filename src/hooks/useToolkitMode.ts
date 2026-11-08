@@ -2,8 +2,9 @@ import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 /**
- * 工具箱页签与 URL `?mode=` 双向同步：刷新与浏览器后退/前进都能恢复页签。
+ * 工具箱页签与 URL `?mode=` 双步同步：刷新与浏览器后退/前进都能恢复页签。
  * 非法或缺失的 mode 一律回退到默认页签，等于默认值时从 URL 中删除参数保持链接干净。
+ * 注意：非法 mode 的 URL 清理由调用方在 effect 里完成（本 hook 只读不写）。
  */
 export function useToolkitMode<T extends string>(
   allowed: readonly T[],
