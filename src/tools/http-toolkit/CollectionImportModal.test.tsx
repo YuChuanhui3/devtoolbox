@@ -15,11 +15,6 @@ const POSTMAN = JSON.stringify({
   ],
 });
 
-const HOPPSOTCH = JSON.stringify([
-  { v: 12, name: 'Hop', folders: [], requests: [{ v: '1', name: 'Q', endpoint: 'https://api.test/q', method: 'GET', params: [], headers: [], auth: { authType: 'none', authActive: true }, body: { contentType: null, body: null } }] },
-  { v: 2, name: 'Prod', variables: [{ key: 'host', initialValue: 'https://api.test', currentValue: '', secret: false }] },
-]);
-
 function renderModal(onImported: (bundle: ImportedBundle) => void) {
   return render(
     <I18nProvider>
@@ -49,17 +44,6 @@ describe('CollectionImportModal', () => {
     expect(onImported).toHaveBeenCalledTimes(1);
     const bundle = onImported.mock.calls[0][0] as ImportedBundle;
     expect([bundle.format, bundle.requestCount, bundle.collections[0].name]).toEqual(['postman', 2, 'PM']);
-  });
-
-  test('一份文件里的集合与环境都交出去', async () => {
-    const onImported = vi.fn();
-    renderModal(onImported);
-    await paste(HOPPSOTCH);
-    await userEvent.click(screen.getByRole('button', { name: '导入' }));
-
-    const bundle = onImported.mock.calls[0][0] as ImportedBundle;
-    expect(bundle.collections.map((c) => c.name)).toEqual(['Hop']);
-    expect(bundle.environments.map((e) => e.name)).toEqual(['Prod']);
   });
 
   test('认不出的内容给出错提示，而不是静默什么都不做', async () => {

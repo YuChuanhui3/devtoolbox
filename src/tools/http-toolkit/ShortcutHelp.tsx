@@ -12,7 +12,7 @@ const ROWS: { keys: string[]; description: L10n; note?: L10n }[] = [
   { keys: [MOD, 'Enter'], description: { zh: '发送当前请求', en: 'Send the current request' } },
   { keys: [MOD, 'S'], description: { zh: '保存到集合', en: 'Save into the collection' } },
   { keys: [MOD, 'Shift', 'S'], description: { zh: '另存为副本', en: 'Save a copy' } },
-  { keys: [MOD, 'O'], description: { zh: '打开导入（Postman / Hoppscotch / HAR）', en: 'Open import (Postman / Hoppscotch / HAR)' } },
+  { keys: [MOD, 'O'], description: { zh: '打开导入（Postman / HAR）', en: 'Open import (Postman / HAR)' } },
   { keys: ['/'], description: { zh: '聚焦集合搜索', en: 'Focus the collection search' }, note: TYPING_NOTE },
   { keys: ['?'], description: { zh: '开合本说明', en: 'Toggle this list' }, note: TYPING_NOTE },
 ];

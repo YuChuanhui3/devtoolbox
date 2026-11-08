@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -216,22 +216,11 @@ const POSTMAN_V21_WITH_SCRIPT = JSON.stringify({
   ],
 });
 
-/** 他们的「Export collection」+「Export as JSON」拼成一个数组也是合法输入。 */
-const HOPPSOTCH_WITH_ENV = JSON.stringify([
-  {
-    v: 12,
-    name: 'Hop API',
-    folders: [],
-    requests: [{ v: '1', name: 'Q', endpoint: 'https://api.test/q', method: 'GET', params: [], headers: [], auth: { authType: 'none', authActive: true }, body: { contentType: null, body: null } }],
-  },
-  { v: 2, name: 'Prod', variables: [{ key: 'host', initialValue: 'https://api.test', currentValue: 'https://api.test', secret: false }] },
-]);
-
 describe('RequestPanel 集合导入', () => {  test('粘贴 Postman 集合 JSON → 导入集合，请求脚本一起带进来', async () => {
     seedDoc();
     renderPanel();
 
-    fireEvent.click(screen.getByRole('button', { name: '导入集合（Postman / Hoppscotch / HAR）' }));
+    fireEvent.click(screen.getByRole('button', { name: '导入集合（Postman / HAR）' }));
     const dialog = await screen.findByRole('dialog', { name: '导入集合' });
     fireEvent.change(dialog.querySelector('textarea')!, { target: { value: POSTMAN_V21_WITH_SCRIPT } });
     fireEvent.click(screen.getByRole('button', { name: '导入' }));
@@ -253,29 +242,13 @@ describe('RequestPanel 集合导入', () => {  test('粘贴 Postman 集合 JSON 
     seedDoc();
     renderPanel();
 
-    fireEvent.click(screen.getByRole('button', { name: '导入集合（Postman / Hoppscotch / HAR）' }));
+    fireEvent.click(screen.getByRole('button', { name: '导入集合（Postman / HAR）' }));
     const dialog = await screen.findByRole('dialog', { name: '导入集合' });
     fireEvent.change(dialog.querySelector('textarea')!, { target: { value: 'not json' } });
     fireEvent.click(screen.getByRole('button', { name: '导入' }));
 
     expect(await screen.findByText(/不是合法 JSON/)).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: '导入集合' })).toBeInTheDocument();
-  });
-
-  test('Hoppscotch 文件里的集合与环境一起落地', async () => {
-    seedDoc();
-    renderPanel();
-
-    fireEvent.click(screen.getByRole('button', { name: '导入集合（Postman / Hoppscotch / HAR）' }));
-    const dialog = await screen.findByRole('dialog', { name: '导入集合' });
-    fireEvent.change(dialog.querySelector('textarea')!, { target: { value: HOPPSOTCH_WITH_ENV } });
-    fireEvent.click(screen.getByRole('button', { name: '导入' }));
-
-    expect(await screen.findByText(/外加 1 个环境/)).toBeInTheDocument();
-    // 选项列表 portal 到 body，不能 within(dialog) 找。
-    fireEvent.click(screen.getByRole('combobox', { name: '当前环境' }));
-    const listbox = await screen.findByRole('listbox', { name: '当前环境' });
-    expect(within(listbox).getByRole('option', { name: 'Prod' })).toBeInTheDocument();
   });
 });
 

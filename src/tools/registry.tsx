@@ -42,7 +42,7 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   'ua-toolkit': lazy(() => import('./UaToolkitTool')),
   'webmaster-toolkit': lazy(() => import('./WebmasterToolkitTool')),
   'browser-toolkit': lazy(() => import('./BrowserToolkitTool')),
-  'http-simulator': lazy(() => import('./HoppscotchTool')),
+  'http-simulator': lazy(() => import('./HttpToolkitTool')),
   'site-diagnosis-toolkit': lazy(() => import('./SiteDiagnosisToolkitTool')),
   'page-refresh': lazy(() => import('./PageRefreshTool')),
   'transfer-toolkit': lazy(() => import('./TransferToolkitTool')),

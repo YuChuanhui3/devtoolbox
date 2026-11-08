@@ -19,9 +19,9 @@ export interface CollectionImportModalProps {
 }
 
 /**
- * 集合导入的统一入口：Postman / Hoppscotch / HAR 三种文件都从这里进。
+ * 集合导入的统一入口：Postman / HAR 两种文件都从这里进。
  * 默认「自动识别」，因为让用户先去想自己的文件是哪种格式没有意义——文件形状本身就带着答案；
- * 认不出或猜错（比如一份只有 `name` 的 Hoppscotch 环境）时才需要手动指定。
+ * 认不出或猜错时才需要手动指定。
  */
 export function CollectionImportModal({ open, onClose, onImported }: CollectionImportModalProps) {
   const { t } = useI18n();
@@ -33,8 +33,8 @@ export function CollectionImportModal({ open, onClose, onImported }: CollectionI
   const doImport = (raw: string) => {
     try {
       const bundle = importWorkbenchFile(raw, source);
-      if (bundle.collections.length === 0 && bundle.environments.length === 0) {
-        setError({ zh: '文件里既没有集合也没有环境', en: 'The file has neither a collection nor an environment' });
+      if (bundle.collections.length === 0) {
+        setError({ zh: '文件里没有集合', en: 'The file has no collection' });
         return;
       }
       setText('');
@@ -74,8 +74,8 @@ export function CollectionImportModal({ open, onClose, onImported }: CollectionI
         {format
           ? t(format.source)
           : t({
-              zh: '按文件形状判断：`log.entries` 是 HAR，带 `info.item` 的是 Postman，`folders`/`requests` 或环境数组是 Hoppscotch。',
-              en: 'Read from the shape: `log.entries` is HAR, `info.item` is Postman, `folders`/`requests` or an array of environments is Hoppscotch.',
+              zh: '按文件形状判断：`log.entries` 是 HAR，带 `info.item` 的是 Postman。',
+              en: 'Read from the shape: `log.entries` is HAR, `info.item` is Postman.',
             })}
       </p>
       <Textarea

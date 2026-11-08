@@ -1,9 +1,0 @@
-{
-  "repository": "https://github.com/hoppscotch/hoppscotch",
-  "sourceCommit": "55908a76a1d0555c9bbb5d74244c14173df95b06",
-  "sourceArchive": "https://codeload.github.com/hoppscotch/hoppscotch/tar.gz/55908a76a1d0555c9bbb5d74244c14173df95b06",
-  "image": "hoppscotch/hoppscotch@sha256:09a50aa1831ff1e39dfe73bf672e2bca45e1e73514d656e9be6a91f561071a53",
-  "license": "MIT",
-  "runtimeVersion": "2026.10.1",
-  "mode": "local-only-frontend"
-}

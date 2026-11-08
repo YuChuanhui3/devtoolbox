@@ -415,19 +415,17 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
   });
 
   const importCollection = (bundle: ImportedBundle) => {
-    // 三种格式名在中英文里同字面，所以一次 t() 就够，不用拼两种语言。
+    // 两种格式名在中英文里同字面，所以一次 t() 就够，不用拼两种语言。
     const source = t(IMPORT_FORMATS.find((item) => item.id === bundle.format)?.label ?? { zh: '外来文件', en: 'an imported file' });
     const names = bundle.collections.map((c) => c.name);
     update((d) => ({
       ...d,
       collections: [...d.collections, ...bundle.collections],
-      // 同名环境不合并：Hoppscotch 允许几层同名环境，悄悄丢一个比留着更难解释。
-      environments: [...d.environments, ...bundle.environments],
     }));
     setImportOpen(false);
     toast.success(t({
-      zh: `已从 ${source} 导入 ${bundle.collections.length} 个集合（${names.join('、')}），共 ${bundle.requestCount} 个请求${bundle.environments.length ? `，外加 ${bundle.environments.length} 个环境` : ''}`,
-      en: `Imported ${bundle.collections.length} collection(s) (${names.join(', ')}) from ${source} with ${bundle.requestCount} requests${bundle.environments.length ? `, plus ${bundle.environments.length} environment(s)` : ''}`,
+      zh: `已从 ${source} 导入 ${bundle.collections.length} 个集合（${names.join('、')}），共 ${bundle.requestCount} 个请求`,
+      en: `Imported ${bundle.collections.length} collection(s) (${names.join(', ')}) from ${source} with ${bundle.requestCount} requests`,
     }));
     if (bundle.ignored.length > 0) {
       toast.info(t({
