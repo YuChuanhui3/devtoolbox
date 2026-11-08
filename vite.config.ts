@@ -4,7 +4,6 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { attachLanSignaling, handleLanInfo, LAN_INFO_PATH } from './scripts/lan-signaling.mjs';
-import { hoppscotchStatusPlugin } from './scripts/hoppscotch-status.mjs';
 import { createMockMiddleware } from './scripts/mock-preview.mjs';
 
 function lanSignalingPlugin() {
@@ -46,7 +45,7 @@ const packageJson = JSON.parse(
 ) as { version: string };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), hoppscotchStatusPlugin(), lanSignalingPlugin(), mockPreviewPlugin()],
+  plugins: [react(), tailwindcss(), lanSignalingPlugin(), mockPreviewPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),

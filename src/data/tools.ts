@@ -487,8 +487,8 @@ const RAW_TOOLS: ToolMeta[] = [
     category: 'network',
     description: '本地 API 工作台：REST、GraphQL、WebSocket / SSE / Socket.IO / MQTT、集合运行器、脚本与测试、curl 导入和代码生成；集合与环境保存在浏览器，无需账号或数据库。',
     descriptionEn: 'Local API workspace: REST, GraphQL, WebSocket / SSE / Socket.IO / MQTT, collection runner, scripts and tests, curl imports and code generation. Collections and environments stay in your browser; no accounts or database.',
-    tags: ['http', '请求', '调试', 'api', 'post', 'get', 'swagger', 'openapi', 'mock', '压测', 'postman', 'jmeter', 'websocket', 'ws', 'wss', '长连接', 'graphql', 'sse', 'oauth', 'hoppscotch', 'socket.io', 'mqtt', '集合运行器', 'har', '脚本', '断言', '代码生成', 'multipart'],
-    aliases: ['curl转python', 'curl转php', 'curl转java', 'curl转go', 'curl转nodejs', 'curl命令转换', 'http请求', '模拟请求', '在线请求', 'api调试', 'api工作台', '在线postman', 'postman替代', '接口测试', '接口调试', 'swagger', 'openapi', 'mock接口', '假接口', '挡板', 'jmeter', '压测工具', 'http压测', '接口压测', '模拟websocket', 'websocket测试', 'websocket客户端', 'ws在线', 'ws测试', 'wss', '长连接测试', 'graphql客户端', 'graphql调试', '接口脚本', '接口自动化', '断言测试', 'hoppscotch导入', 'har查看', 'har导入', '请求转代码', '代码生成'],
+    tags: ['http', '请求', '调试', 'api', 'post', 'get', 'swagger', 'openapi', 'mock', '压测', 'postman', 'jmeter', 'websocket', 'ws', 'wss', '长连接', 'graphql', 'sse', 'oauth', 'socket.io', 'mqtt', '集合运行器', 'har', '脚本', '断言', '代码生成', 'multipart'],
+    aliases: ['curl转python', 'curl转php', 'curl转java', 'curl转go', 'curl转nodejs', 'curl命令转换', 'http请求', '模拟请求', '在线请求', 'api调试', 'api工作台', '在线postman', 'postman替代', '接口测试', '接口调试', 'swagger', 'openapi', 'mock接口', '假接口', '挡板', 'jmeter', '压测工具', 'http压测', '接口压测', '模拟websocket', 'websocket测试', 'websocket客户端', 'ws在线', 'ws测试', 'wss', '长连接测试', 'graphql客户端', 'graphql调试', '接口脚本', '接口自动化', '断言测试', 'har查看', 'har导入', '请求转代码', '代码生成'],
     sensitive: true,
     subFeatures: [
       { id: 'request', name: { zh: '请求', en: 'Request' }, keywords: ['http', 'get', 'post', '请求头', 'curl', '集合', 'collection', '环境变量', 'history', '参数表格', 'multipart', 'oauth', 'sse', '事件流'] },

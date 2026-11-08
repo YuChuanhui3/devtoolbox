@@ -4,7 +4,6 @@ import { createServer as createHttpsServer } from 'node:https';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HOPPSCOTCH_STATUS_PATH, handleHoppscotchStatus } from './hoppscotch-status.mjs';
 import { attachLanSignaling, handleLanInfo, lanAddresses, LAN_INFO_PATH } from './lan-signaling.mjs';
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -31,7 +30,6 @@ const mime = {
 
 const handler = (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
-  if (url.pathname === HOPPSCOTCH_STATUS_PATH) { void handleHoppscotchStatus(request, response); return; }
   if (url.pathname === LAN_INFO_PATH) {
     handleLanInfo(request, response);
     return;
