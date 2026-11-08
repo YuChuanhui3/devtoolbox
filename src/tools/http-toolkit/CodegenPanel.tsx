@@ -34,7 +34,8 @@ export function CodegenPanel({ request }: { request: WbRequest }) {
             </option>
           ))}
         </Select>
-        <p className="min-w-0 flex-1 text-[11px] leading-4 text-ink-3">
+        {/* 说明文字换行独占一行：侧边栏代码视图只有 ~30% 宽，挤在同一行会被压成竖排。 */}
+        <p className="order-last basis-full text-[11px] leading-4 text-ink-3">
           {t({
             zh: `片段按发送时真正会带的请求头生成${plan.basic ? '，Basic 在运行时编码' : ''}。`,
             en: `Headers are the ones the request actually sends${plan.basic ? '; Basic is encoded at run time' : ''}.`,

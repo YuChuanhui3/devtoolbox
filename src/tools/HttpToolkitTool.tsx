@@ -171,7 +171,18 @@ function StatusbarChannelButton() {
   const label = t({ zh: '取数通道（浏览器 / 网络 / 程序 / 浏览器扩展）', en: 'Request channel (browser / network / program / extension)' });
   return (
     <span className="wb-statusbar-anchor">
-      <button type="button" className="wb-icon" onClick={() => setOpen((value) => !value)} title={label} aria-label={label} aria-expanded={open}>
+      <button
+        type="button"
+        className="wb-icon"
+        onClick={() => setOpen((value) => !value)}
+        // pointerdown 先于 click：若不停播，文档级的外部点击关闭会把
+        // 「再次点击触发按钮」当成外部点击，紧接着的 click 又把它翻回来，
+        // 于是气泡永远关不掉。停播后开合全交给 click 的切换。
+        onPointerDown={(event) => event.stopPropagation()}
+        title={label}
+        aria-label={label}
+        aria-expanded={open}
+      >
         <ShieldCheck size={14} />
       </button>
       <ProxySourcePopover open={open} onClose={() => setOpen(false)} channel={sendChannel} onChange={setSendChannel} />

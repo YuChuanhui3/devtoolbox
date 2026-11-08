@@ -170,7 +170,17 @@ export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadline
         {/* 分裂保存：主按钮存回原处，⌄ 菜单给「另存为」两个出口。 */}
         <span className="wb-save-split">
           <Button variant="secondary" onClick={onSave}>{t({ zh: '保存', en: 'Save' })}</Button>
-          <Button variant="secondary" className="wb-save-split-caret" onClick={() => setSaveMenuOpen((value) => !value)} aria-label={t({ zh: '保存选项', en: 'Save options' })} aria-expanded={saveMenuOpen} aria-haspopup="menu">
+          <Button
+            variant="secondary"
+            className="wb-save-split-caret"
+            onClick={() => setSaveMenuOpen((value) => !value)}
+            // 同通道气泡：pointerdown 先于 click，不停播会被文档级外部点击关闭
+            // 抢先关掉，紧接着的 click 又翻回来，导致永远关不掉。
+            onPointerDown={(event) => event.stopPropagation()}
+            aria-label={t({ zh: '保存选项', en: 'Save options' })}
+            aria-expanded={saveMenuOpen}
+            aria-haspopup="menu"
+          >
             <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
           {saveMenuOpen ? (

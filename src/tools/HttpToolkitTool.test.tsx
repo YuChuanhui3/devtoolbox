@@ -87,6 +87,18 @@ describe('HttpToolkitTool 状态栏取数通道', () => {
     expect(screen.queryByRole('dialog', { name: /取数通道/ })).toBeNull();
   });
 
+  test('再次点击通道按钮本身也能收起气泡（不是只能点关闭或外部）', () => {
+    renderTool('/tools/http-simulator');
+    const channelButton = screen.getByRole('button', { name: /取数通道/ });
+
+    fireEvent.click(channelButton);
+    expect(screen.getByRole('dialog', { name: /取数通道/ })).toBeInTheDocument();
+
+    // pointerdown 停播 + click 切换：第二次点击同一按钮应收起。
+    fireEvent.click(channelButton);
+    expect(screen.queryByRole('dialog', { name: /取数通道/ })).toBeNull();
+  });
+
   test('状态栏右侧的集合侧栏开关与请求面板内的切换按钮同步', () => {
     renderTool('/tools/http-simulator');
     // 状态栏与面板内各有一个同名开关，用 footer 作用域锁定状态栏那个。
