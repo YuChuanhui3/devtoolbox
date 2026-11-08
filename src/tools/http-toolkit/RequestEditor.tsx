@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Import, Plus, Send, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, Import, Plus, Send, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -47,18 +47,38 @@ interface EditorProps {
   onChange: (next: WbRequest) => void;
   onSend: () => void;
   onSave: () => void;
+  /** 另存为副本：同文件夹放一份换 id 的请求。 */
+  onSaveAs: () => void;
+  /** 打开「另存为到集合/文件夹」的目标选择器。 */
+  onSaveAsPickerOpen: () => void;
   saving: boolean;
   missing: string[];
   onImported: (req: WbRequest) => void;
 }
 
-export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadlineChange, onChange, onSend, onSave, saving, missing, onImported }: EditorProps) {
+export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadlineChange, onChange, onSend, onSave, onSaveAs, onSaveAsPickerOpen, saving, missing, onImported }: EditorProps) {
   const { t } = useI18n();
   const sub = useToolkitSub(SUBS);
   const [section, setSection] = useState<Section>(() => (sub === null ? 'params' : sub === 'graphql' ? 'body' : sub));
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState<Localized | null>(null);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const saveMenuRef = useRef<HTMLSpanElement>(null);
+
+  // 另存为菜单：点击外部或 Esc 关闭。
+  useEffect(() => {
+    if (!saveMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!saveMenuRef.current?.contains(event.target as Node)) setSaveMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSaveMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onPointerDown); document.removeEventListener('keydown', onKey); };
+  }, [saveMenuOpen]);
 
   /** 深链在面板已经挂载时也要生效；反过来不写回 URL，点页签不该改地址栏。 */
   useEffect(() => {
@@ -147,7 +167,23 @@ export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadline
           <Send className="h-3.5 w-3.5" aria-hidden="true" />
           {saving ? t({ zh: '请求中…', en: 'Requesting…' }) : t({ zh: '发送', en: 'Send' })}
         </Button>
-        <Button variant="secondary" onClick={onSave}>{t({ zh: '保存', en: 'Save' })}<span aria-hidden="true">⌄</span></Button>
+        {/* 分裂保存：主按钮存回原处，⌄ 菜单给「另存为」两个出口。 */}
+        <span className="wb-save-split">
+          <Button variant="secondary" onClick={onSave}>{t({ zh: '保存', en: 'Save' })}</Button>
+          <Button variant="secondary" className="wb-save-split-caret" onClick={() => setSaveMenuOpen((value) => !value)} aria-label={t({ zh: '保存选项', en: 'Save options' })} aria-expanded={saveMenuOpen} aria-haspopup="menu">
+            <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+          {saveMenuOpen ? (
+            <div className="wb-save-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => { setSaveMenuOpen(false); onSaveAs(); }}>
+                {t({ zh: '另存为副本', en: 'Save as copy' })}
+              </button>
+              <button type="button" role="menuitem" onClick={() => { setSaveMenuOpen(false); onSaveAsPickerOpen(); }}>
+                {t({ zh: '另存为到集合…', en: 'Save as to collection…' })}
+              </button>
+            </div>
+          ) : null}
+        </span>
       </div>
 
       {request.customMethod && !CUSTOM_METHOD_PATTERN.test(request.customMethod) ? (

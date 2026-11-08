@@ -140,7 +140,8 @@ export interface WbMockRoute {
   note?: string;
 }
 
-export type WbVia = FetchMode | 'mock';
+/** 响应经由哪条通道取得：直连/公共代理（FetchMode）、本地 Mock，或新版取数通道的代理源标注。 */
+export type WbVia = FetchMode | 'mock' | 'browser' | 'extension' | 'network' | 'program';
 
 /** 实时连接的协议种类；缺省（旧数据）按 websocket 处理。 */
 export type WbSocketKind = 'websocket' | 'sse' | 'socketio' | 'mqtt';

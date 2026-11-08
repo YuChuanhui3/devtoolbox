@@ -19,6 +19,10 @@ const VIA_LABEL: Record<WbHistoryEntry['via'], { zh: string; en: string }> = {
   corsproxy: { zh: 'CORS 代理', en: 'CORS proxy' },
   allorigins: { zh: '抓取代理', en: 'Fetch proxy' },
   direct: { zh: '直连', en: 'Direct' },
+  browser: { zh: '浏览器直连', en: 'Browser direct' },
+  extension: { zh: '浏览器扩展', en: 'Browser extension' },
+  network: { zh: '网络代理', en: 'Network proxy' },
+  program: { zh: '本地程序', en: 'Local program' },
 };
 
 export function HistoryList({ history, onSelect, onClear }: {

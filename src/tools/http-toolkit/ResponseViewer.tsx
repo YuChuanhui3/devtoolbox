@@ -34,6 +34,10 @@ const VIA_LABEL: Record<WbVia, { zh: string; en: string }> = {
   corsproxy: { zh: 'CORS 代理', en: 'CORS proxy' },
   allorigins: { zh: 'allorigins', en: 'allorigins' },
   mock: { zh: 'Mock 命中', en: 'Mock hit' },
+  browser: { zh: '浏览器直连', en: 'Browser direct' },
+  extension: { zh: '浏览器扩展', en: 'Browser extension' },
+  network: { zh: '网络代理', en: 'Network proxy' },
+  program: { zh: '本地程序', en: 'Local program' },
 };
 
 function statusTone(status: number): 'success' | 'warning' | 'danger' {

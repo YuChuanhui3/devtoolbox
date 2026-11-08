@@ -5,6 +5,7 @@ import { I18nProvider } from '@/i18n/I18nProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useAppStore } from '@/store/appStore';
 import { WORKBENCH_STORAGE_KEY } from '@/lib/apiworkbench/store';
+import type { SendChannel } from '@/lib/net';
 import { RequestPanel } from './RequestPanel';
 import { WorkbenchProvider } from './WorkbenchContext';
 
@@ -43,12 +44,12 @@ function seedMockDoc() {
 }
 
 /** 面板里的 ?sub= 寻址要 Router 上下文，测试与真实挂载树保持同一形状。 */
-function renderPanel(entry = '/tools/http-simulator?mode=request') {
+function renderPanel(entry = '/tools/http-simulator?mode=request', initialChannel?: SendChannel) {
   render(
     <MemoryRouter initialEntries={[entry]}>
       <I18nProvider>
         <ToastProvider>
-          <WorkbenchProvider>
+          <WorkbenchProvider initialChannel={initialChannel}>
             <RequestPanel active />
           </WorkbenchProvider>
         </ToastProvider>
@@ -61,6 +62,60 @@ beforeEach(() => {
   localStorage.clear();
   useAppStore.setState({ locale: 'zh' });
   vi.unstubAllGlobals();
+});
+
+describe('RequestPanel 分裂保存与另存为', () => {
+  const seededCollection = () => ({
+    id: 'col-1',
+    name: '我的集合',
+    root: { id: 'root-1', name: '我的集合', folders: [{ id: 'dir-1', name: '子目录', folders: [], requests: [] }], requests: [] },
+    variables: [],
+  });
+
+  test('保存 caret 换成 ChevronDown 图标，下拉给「另存为副本」与「另存为到集合」两档', () => {
+    seedDoc();
+    renderPanel();
+
+    const caret = screen.getByRole('button', { name: '保存选项' });
+    expect(caret.querySelector('svg.lucide-chevron-down')).toBeInTheDocument();
+    expect(caret.querySelector('span')).toBeNull(); // 不再用 ⌄ 文本字符
+
+    fireEvent.click(caret);
+    expect(screen.getByRole('menuitem', { name: '另存为副本' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '另存为到集合…' })).toBeInTheDocument();
+  });
+
+  test('另存为到集合：选集合与子文件夹后副本落入目标文件夹且 toast 提示', async () => {
+    seedDoc({ collections: [seededCollection()] });
+    renderPanel();
+
+    fireEvent.change(screen.getByLabelText('请求 URL'), { target: { value: 'https://api.test/save-as' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存选项' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '另存为到集合…' }));
+
+    const dialog = screen.getByRole('dialog');
+    // 集合默认选中第一个；文件夹 Select 是 button+portal 菜单，
+    // 打开 trigger 再点子目录选项。
+    const folderTrigger = within(dialog).getByLabelText('目标文件夹');
+    fireEvent.click(folderTrigger);
+    fireEvent.click(await screen.findByRole('option', { name: /子目录/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '另存为' }));
+
+    await waitFor(() => expect(screen.getByText(/已另存为/)).toBeInTheDocument());
+    // 存档有 500ms 防抖，轮询等到副本落盘再断言位置。
+    const storedDoc = await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem(WORKBENCH_STORAGE_KEY) ?? '{}');
+      const col = stored.collections.find((c: { id: string }) => c.id === 'col-1');
+      const dir = col.root.folders.find((f: { id: string }) => f.id === 'dir-1');
+      if (dir.requests.length > 0) return stored;
+      throw new Error('副本尚未落盘');
+    });
+    const saved = storedDoc.collections.find((c: { id: string }) => c.id === 'col-1');
+    const dir = saved.root.folders.find((f: { id: string }) => f.id === 'dir-1');
+    expect(dir.requests.length).toBe(1);
+    expect(dir.requests[0].url).toContain('save-as');
+    expect(saved.root.requests.length).toBe(0);
+  });
 });
 
 describe('RequestPanel mock interception', () => {
@@ -333,8 +388,7 @@ describe('RequestPanel 流式与差异', () => {
 
   test('代理通道禁用流式勾选并说明原因', () => {
     seedDoc();
-    renderPanel();
-    fireEvent.click(screen.getByRole('tab', { name: 'corsproxy.io' }));
+    renderPanel('/tools/http-simulator?mode=request', { source: 'network', mode: 'corsproxy' });
     expect(screen.getByLabelText(/流式接收/)).toBeDisabled();
     expect(screen.getByText('代理通道取完才返回，只有直连能边收边看')).toBeInTheDocument();
   });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useAppStore } from '@/store/appStore';
@@ -58,6 +58,36 @@ function renderProbe() {
 
 beforeEach(() => {
   useAppStore.setState({ locale: 'zh' });
+});
+
+describe('WorkbenchContext 取数通道', () => {
+  test('默认浏览器直连，setSendChannel 整体替换并保留其余字段', () => {
+    function ChannelProbe() {
+      const { sendChannel, setSendChannel } = useWorkbench();
+      return (
+        <div>
+          <p data-testid="channel">{`${sendChannel.source},${sendChannel.mode},${sendChannel.programBase ?? '-'}`}</p>
+          <button type="button" onClick={() => setSendChannel({ source: 'program', mode: 'direct', programBase: 'http://127.0.0.1:8080' })}>
+            set
+          </button>
+        </div>
+      );
+    }
+    render(
+      <I18nProvider>
+        <ToastProvider>
+          <WorkbenchProvider>
+            <ChannelProbe />
+          </WorkbenchProvider>
+        </ToastProvider>
+      </I18nProvider>,
+    );
+
+    expect(screen.getByTestId('channel')).toHaveTextContent('browser,direct,-');
+
+    fireEvent.click(screen.getByRole('button', { name: 'set' }));
+    expect(screen.getByTestId('channel')).toHaveTextContent('program,direct,http://127.0.0.1:8080');
+  });
 });
 
 describe('WorkbenchContext 变量作用域', () => {

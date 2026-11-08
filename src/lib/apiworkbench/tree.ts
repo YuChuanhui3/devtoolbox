@@ -6,6 +6,11 @@ export function walkRequests(root: WbFolder): WbRequest[] {
   return [...root.requests, ...root.folders.flatMap(walkRequests)];
 }
 
+/** 深度优先收集全部文件夹（含根），带相对根的层级 depth，供目标选择器展示缩进。 */
+export function walkFolders(root: WbFolder, depth = 0): { folder: WbFolder; depth: number }[] {
+  return [{ folder: root, depth }, ...root.folders.flatMap((f) => walkFolders(f, depth + 1))];
+}
+
 export function findRequest(doc: WorkbenchDoc, requestId: string): WbRequest | null {
   for (const collection of doc.collections) {
     const hit = walkRequests(collection.root).find((r) => r.id === requestId);

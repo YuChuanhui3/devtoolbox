@@ -60,7 +60,7 @@ export function EnvironmentModal({ open, onClose }: { open: boolean; onClose: ()
       })}
       bodyClassName="space-y-4"
     >
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {doc.environments.length === 0 ? (
           <p className="text-xs text-ink-3">{t({ zh: '还没有环境，先创建一个。', en: 'No environments yet — create one first.' })}</p>
         ) : null}

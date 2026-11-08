@@ -1,5 +1,5 @@
 import { ToolError } from '../errors';
-import { proxyFetch, type FetchMode, type ProxyRequestOptions, type TimedResponse } from '../net';
+import { proxyFetch, proxiedUrl, resolveChannelUrl, type FetchMode, type ProxyRequestOptions, type SendChannel, type TimedResponse } from '../net';
 import { matchMockRoute, renderMockBody } from './mock';
 import { interpolate } from './vars';
 import { finalUrl } from './params';
@@ -16,12 +16,29 @@ export interface WbResponse extends TimedResponse {
   sseDiscarded?: boolean;
 }
 
+/** 通道实际生效的 FetchMode：浏览器/扩展/程序源等价直连，只有网络源用公共代理。 */
+function channelFetchMode(channel: SendChannel | undefined, fallback: FetchMode): FetchMode {
+  if (!channel) return fallback;
+  return channel.source === 'network' ? channel.mode : 'direct';
+}
+
+/** 通道生效时按 source 解析目标 URL；缺省通道回落老 mode 语义。 */
+function channelUrl(target: string, channel: SendChannel | undefined, fallback: FetchMode): string {
+  if (!channel) return proxiedUrl(target, fallback);
+  return resolveChannelUrl(target, channel);
+}
+
 export interface SendContext {
   /** 合并后的变量作用域（内置变量除外）。 */
   scope: Record<string, string>;
   mockEnabled: boolean;
   mockRoutes: WbMockRoute[];
   mode: FetchMode;
+  /**
+   * 取数通道（代理源）。给了就按 source 解析最终 URL：浏览器/扩展直连，
+   * 程序改写 ?url=，网络沿用 mode 的公共代理。缺省时回落 mode 老语义。
+   */
+  channel?: SendChannel;
   timeoutMs?: number;
   /** 注入以便单测断言 mock 命中时零网络调用。 */
   fetcher?: (target: string, options: ProxyRequestOptions) => Promise<TimedResponse>;
@@ -266,16 +283,17 @@ export async function sendWbRequest(req: WbRequest, ctx: SendContext): Promise<W
   const hit = mockMatch(req, ctx, built);
   if (hit) return mockResponse(hit, ctx, start);
 
-  const response = await fetcher(built.url, {
-    mode: ctx.mode,
+  const fetcherMode = channelFetchMode(ctx.channel, ctx.mode);
+  const response = await fetcher(channelUrl(built.url, ctx.channel, ctx.mode), {
+    mode: fetcherMode,
     method: built.method,
     headers: Object.keys(built.headers).length ? built.headers : undefined,
     body: built.body,
     timeoutMs: ctx.timeoutMs,
     // 图片与 PDF 要字节才能预览；代理通道给不出字节时自然退回占位文本。
-    wantBlob: ctx.mode === 'direct',
+    wantBlob: fetcherMode === 'direct',
   });
-  return { ...response, via: ctx.mode };
+  return { ...response, via: ctx.channel?.source ?? ctx.mode };
 }
 
 export interface StreamedEvent extends SseEvent {
@@ -306,7 +324,7 @@ export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promi
     const hit = mockMatch(req, ctx, built);
     if (hit) return mockResponse(hit, ctx, Date.now());
   }
-  if (ctx.mode !== 'direct') {
+  if (channelFetchMode(ctx.channel, ctx.mode) !== 'direct') {
     throw new ToolError(
       { zh: '代理通道不支持流式响应', en: 'Proxy channels do not support streaming responses' },
       { zh: '公共代理会把整个响应取完再返回，请切到直连', en: 'Public proxies fetch the whole response before returning it; switch to direct' },

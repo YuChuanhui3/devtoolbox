@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, PanelLeftOpen, Zap } from 'lucide-react';
+import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Zap } from 'lucide-react';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useI18n } from '@/i18n/I18nProvider';
 import { foldSubMode } from '@/lib/apiworkbench/subAddress';
@@ -8,8 +8,9 @@ import { RequestWorkspace } from './http-toolkit/RequestWorkspace';
 import { OpenApiPanel } from './http-toolkit/OpenApiPanel';
 import { MockPanel } from './http-toolkit/MockPanel';
 import { StressPanel } from './http-toolkit/StressPanel';
+import { ProxySourcePopover } from './http-toolkit/ProxySourcePopover';
 import './http-toolkit/workbench.css';
-import { WorkbenchProvider } from './http-toolkit/WorkbenchContext';
+import { WorkbenchProvider, useWorkbench } from './http-toolkit/WorkbenchContext';
 
 // 「实时」页签内聚四个协议（WebSocket / SSE / Socket.IO / MQTT），
 // 协议栈各自懒加载：socket.io-client 与 mqtt.js 只在进入对应协议 tab 时才拉取。
@@ -150,10 +151,42 @@ export default function HttpToolkitTool() {
           {/* 图标语义：收起时露「展开」，展开时露「收起」。 */}
           {navCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
         </button>
-        <ShieldCheck size={14} />
-        <span>{t({ zh: '本地存储', en: 'Local storage' })}</span>
+        {/* 取数通道入口：点击弹出代理源选择（浏览器/网络/程序/浏览器扩展）。 */}
+        <StatusbarChannelButton />
+        {/* 占满中段把右侧按钮顶到最右：专门开合右侧集合侧栏。 */}
+        <span className="wb-statusbar-spacer" />
+        <StatusbarSidebarToggle />
       </footer>
       </div>
     </WorkbenchProvider>
+  );
+}
+
+/** 状态栏的取数通道按钮：本地图标 + 通道弹层，通道状态经 WorkbenchContext 与请求面板共享。
+ *  气泡相对按钮定位在正上方，不贴状态栏边缘。 */
+function StatusbarChannelButton() {
+  const { t } = useI18n();
+  const { sendChannel, setSendChannel } = useWorkbench();
+  const [open, setOpen] = useState(false);
+  const label = t({ zh: '取数通道（浏览器 / 网络 / 程序 / 浏览器扩展）', en: 'Request channel (browser / network / program / extension)' });
+  return (
+    <span className="wb-statusbar-anchor">
+      <button type="button" className="wb-icon" onClick={() => setOpen((value) => !value)} title={label} aria-label={label} aria-expanded={open}>
+        <ShieldCheck size={14} />
+      </button>
+      <ProxySourcePopover open={open} onClose={() => setOpen(false)} channel={sendChannel} onChange={setSendChannel} />
+    </span>
+  );
+}
+
+/** 状态栏右侧的集合侧栏开关：与请求面板内的切换按钮共用同一份 context 状态。 */
+function StatusbarSidebarToggle() {
+  const { t } = useI18n();
+  const { collectionSidebarOpen, toggleCollectionSidebar } = useWorkbench();
+  const label = t({ zh: '切换集合侧栏', en: 'Toggle collection sidebar' });
+  return (
+    <button type="button" className="wb-icon" onClick={toggleCollectionSidebar} title={label} aria-label={label} aria-expanded={collectionSidebarOpen}>
+      {collectionSidebarOpen ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
+    </button>
   );
 }

@@ -12,6 +12,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { useToast } from '@/components/ui/Toast';
 import { envInheritanceChain, loadWorkbench, saveWorkbench } from '@/lib/apiworkbench/store';
 import { mergeVarLists, mergeVarScopes } from '@/lib/apiworkbench/vars';
+import type { SendChannel } from '@/lib/net';
 import type { WbCollection, WbEnvironment, WbVar, WorkbenchDoc } from '@/lib/apiworkbench/types';
 
 interface WorkbenchApi {
@@ -24,14 +25,23 @@ interface WorkbenchApi {
   envChain: WbEnvironment[];
   /** 继承链并成的一张变量表，脚本的 `pm.environment.*` 看的就是这个。 */
   envVars: WbVar[];
+  /** 取数通道（代理源：浏览器/扩展/网络/程序）。会话内共享，状态栏弹层与请求面板共用。 */
+  sendChannel: SendChannel;
+  setSendChannel: (channel: SendChannel) => void;
+  /** 右侧集合侧栏是否打开。状态栏按钮与请求面板内的切换共用这一份状态。 */
+  collectionSidebarOpen: boolean;
+  toggleCollectionSidebar: () => void;
 }
 
 const WorkbenchContext = createContext<WorkbenchApi | null>(null);
 
-export function WorkbenchProvider({ children }: { children: ReactNode }) {
+export function WorkbenchProvider({ children, initialChannel }: { children: ReactNode; initialChannel?: SendChannel }) {
   const { t } = useI18n();
   const toast = useToast();
   const [doc, setDoc] = useState<WorkbenchDoc>(() => loadWorkbench());
+  const [sendChannel, setSendChannel] = useState<SendChannel>(initialChannel ?? { source: 'browser', mode: 'direct' });
+  const [collectionSidebarOpen, setCollectionSidebarOpen] = useState(true);
+  const toggleCollectionSidebar = useCallback(() => setCollectionSidebarOpen((open) => !open), []);
   const dirtyRef = useRef(false);
   const quotaWarnedRef = useRef(false);
 
@@ -67,8 +77,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       activeEnv,
       envChain,
       envVars,
+      sendChannel,
+      setSendChannel,
+      collectionSidebarOpen,
+      toggleCollectionSidebar,
     };
-  }, [doc, update]);
+  }, [doc, update, sendChannel, collectionSidebarOpen, toggleCollectionSidebar]);
 
   return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;
 }

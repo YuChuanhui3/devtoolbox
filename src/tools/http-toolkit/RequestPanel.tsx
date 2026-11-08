@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Panel } from '@/components/ui/Panel';
-import { Segmented } from '@/components/ui/Segmented';
 import { Select } from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
 import { ActionBar } from '@/components/tool/ToolActions';
@@ -12,7 +11,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import type { Localized } from '@/i18n/locale';
 import { toToolError } from '@/lib/errors';
 import { copyText } from '@/lib/clipboard';
-import { FETCH_MODES, type FetchMode } from '@/lib/net';
+import { type FetchMode, type SendChannel } from '@/lib/net';
 import { newId } from '@/lib/apiworkbench/id';
 import { blankRequest, findRequest, newCollection, putRequest, walkRequests } from '@/lib/apiworkbench/tree';
 import { collectMissing } from '@/lib/apiworkbench/vars';
@@ -36,6 +35,7 @@ import { HistoryList } from './HistoryList';
 import { CollectionImportModal } from './CollectionImportModal';
 import { ShortcutHelp } from './ShortcutHelp';
 import { TokenConsentModal } from './TokenConsentModal';
+import { SaveAsPickerModal } from './SaveAsPickerModal';
 import { useWorkbenchShortcuts } from './useWorkbenchShortcuts';
 import { IMPORT_FORMATS, type ImportedBundle } from '@/lib/apiworkbench/importers';
 import { CodegenPanel } from './CodegenPanel';
@@ -61,6 +61,20 @@ interface DiffBase extends PreviousResponse {
 const MODE_LABEL: Partial<Record<FetchMode, Localized>> = {
   direct: { zh: '直连', en: 'Direct' },
 };
+/** 取数通道（代理源）展示名：状态栏弹层与这里的只读说明共用。 */
+const CHANNEL_LABEL: Record<string, Localized> = {
+  browser: { zh: '浏览器直连', en: 'Browser direct' },
+  extension: { zh: '浏览器扩展', en: 'Browser extension' },
+  network: { zh: '网络代理', en: 'Network proxy' },
+  program: { zh: '本地程序', en: 'Local program' },
+};
+/** 各代理源的说明文字：弹层与连接设置里的只读描述共用同一份。 */
+const CHANNEL_NOTE: Record<string, Localized> = {
+  browser: { zh: '浏览器直连目标站点，受 CORS 策略限制的站点可能取不到', en: 'Direct from the browser; CORS-restricted sites may fail' },
+  extension: { zh: '由已安装的浏览器扩展在页面侧接管 fetch，前端依旧直连；未安装时等于浏览器直连', en: 'An installed extension intercepts fetch on the page side; the frontend still fetches directly' },
+  network: { zh: '公共代理转发，URL 会暴露给代理方，仅调试用、可能限速', en: 'Routed through a public proxy; the URL is exposed to the proxy operator — debugging only, may be rate-limited' },
+  program: { zh: '本地代理程序转发，可带请求体与完整请求头；地址在状态栏通道弹层里配置', en: 'Forwarded to a local proxy program with full headers and body; configure its URL in the status-bar channel popover' },
+};
 const MODE_NOTE: Record<FetchMode, Localized> = {
   direct: { zh: '受目标站点 CORS 限制，仅部分站点可用；支持全部方法与请求体', en: 'Limited by the target\'s CORS policy; supports all methods and bodies' },
   corsproxy: { zh: '公共 CORS 代理：请求 URL 会暴露给代理方，仅调试用、可能限速、不透传请求体', en: 'Public CORS proxy: the request URL is exposed to the proxy operator; debugging only, may be rate-limited, bodies not carried' },
@@ -74,13 +88,16 @@ interface Editing {
   folderId: string | null;
 }
 
+/** 通道折算成 FetchMode：只有网络源走公共代理，其余源等价直连。 */
+function channelFetchMode(channel: SendChannel): FetchMode {
+  return channel.source === 'network' ? channel.mode : 'direct';
+}
+
 export function RequestPanel({ active, documentId, onDocumentChange }: { active: boolean; onNewTab?: () => void; documentId?: number; onDocumentChange?: (id: number, name: string, method: string) => void }) {
   const { t } = useI18n();
   const toast = useToast();
-  const { doc, update, scopeFor, activeEnv, envVars } = useWorkbench();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { doc, update, scopeFor, activeEnv, envVars, sendChannel, collectionSidebarOpen, toggleCollectionSidebar } = useWorkbench();
   const [sidebarView, setSidebarView] = useState<'collections' | 'history' | 'code'>('collections');
-  const [mode, setMode] = useState<FetchMode>('direct');
   const [editing, setEditing] = useState<Editing>(() => ({ request: blankRequest(), collectionId: null, folderId: null }));
   const [result, setResult] = useState<ResponseView | null>(null);
   const [error, setError] = useState<Localized | null>(null);
@@ -96,6 +113,7 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
   const [envModalOpen, setEnvModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [saveAsPickerOpen, setSaveAsPickerOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   /** 沙箱看门狗时长：会话内可调，不进存档（存档里只有脚本正文）。 */
   const [scriptDeadline, setScriptDeadline] = useState(DEFAULT_SCRIPT_DEADLINE_MS);
@@ -111,7 +129,7 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
   useEffect(() => {
     if (!active) return;
     const focus = () => {
-      setSidebarOpen(true);
+      if (!collectionSidebarOpen) toggleCollectionSidebar();
       setSidebarView('collections');
       requestAnimationFrame(() => searchRef.current?.focus());
     };
@@ -119,20 +137,21 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
     window.addEventListener('wb:search', focus);
     window.addEventListener('wb:help', help);
     return () => { window.removeEventListener('wb:search', focus); window.removeEventListener('wb:help', help); };
-  }, [active]);
+  }, [active, collectionSidebarOpen, toggleCollectionSidebar]);
 
   const collection = doc.collections.find((c) => c.id === editing.collectionId) ?? null;
   const scope = scopeFor(collection);
   const req = editing.request;
   const missing = collectMissing(requestInterpolatedFields(req), scope);
-  const proxying = mode !== 'direct';
+  const channel = sendChannel;
+  const proxying = channel.source !== 'browser' && channel.source !== 'extension';
   const historyKey = `${requestMethod(req)} ${finalUrl(req.url, req.params)}`;
   const previous = diffBase && diffBase.key === historyKey ? diffBase : null;
 
   // 代理通道拿不到增量字节，开着流式开关只会让下一次发送必然报错，所以切过去就关掉。
   useEffect(() => {
-    if (mode !== 'direct') setStreaming(false);
-  }, [mode]);
+    if (proxying) setStreaming(false);
+  }, [proxying]);
 
   // 换一个请求，上一个的脚本结果就不属于这里了，别留着让人以为这次也跑过。
   useEffect(() => {
@@ -252,11 +271,11 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
       response,
       deadlineMs: scriptDeadline,
       // 子请求跟着界面当前的取数通道走：代理模式下它同样出不了代理。
-      sendChannel: { mode },
+      sendChannel: { mode: channelFetchMode(channel) },
     }));
     setScriptRuns((prev) => [...prev.filter((item) => item.phase !== phase), { phase, outcome }]);
     return outcome;
-  }, [envVars, mode, scriptDeadline]);
+  }, [envVars, channel, scriptDeadline]);
 
   const send = async () => {
     const preScript = (req.preScript ?? '').trim();
@@ -306,7 +325,7 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
           return;
         }
       }
-      const base = { scope: runScope, mockEnabled: doc.mockEnabled, mockRoutes: doc.mockRoutes, mode };
+      const base = { scope: runScope, mockEnabled: doc.mockEnabled, mockRoutes: doc.mockRoutes, mode: channelFetchMode(channel), channel };
       const response = streaming
         ? await streamWbRequest(working, {
             ...base,
@@ -461,8 +480,8 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
         </span>
 
 
-      <div className={`wb-request-layout${sidebarOpen ? '' : ' wb-sidebar-hidden'}`}>
-        <aside className="wb-sidebar" hidden={!sidebarOpen}>
+      <div className={`wb-request-layout${collectionSidebarOpen ? '' : ' wb-sidebar-hidden'}`}>
+        <aside className="wb-sidebar" hidden={!collectionSidebarOpen}>
           <div className="wb-sidebar-breadcrumb">{t({ zh: '个人工作区', en: 'Personal Workspace' })}<ChevronRight size={12} />{t({ zh: '集合', en: 'Collections' })}</div>
           <div className="wb-sidebar-tabs">
             <button type="button" title={t({ zh: '集合', en: 'Collections' })} aria-label={t({ zh: '集合面板', en: 'Collections panel' })} aria-pressed={sidebarView === 'collections'} onClick={() => setSidebarView('collections')}><FolderTree size={16} /></button>
@@ -505,6 +524,8 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
               onChange={(request) => setEditing((e) => ({ ...e, request }))}
               onSend={() => void send()}
               onSave={save}
+              onSaveAs={saveAs}
+              onSaveAsPickerOpen={() => setSaveAsPickerOpen(true)}
               saving={saving}
               missing={missing}
               onImported={(imported) =>
@@ -538,16 +559,11 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
         </div>
       </div>
 
-      <details className="wb-connection"><summary>{t({ zh: '拦截器与连接设置', en: 'Interceptor & connection settings' })}<span>{t(MODE_LABEL[mode] ?? { zh: mode, en: mode })}</span></summary>
+      <details className="wb-connection"><summary>{t({ zh: '拦截器与连接设置', en: 'Interceptor & connection settings' })}<span>{t(CHANNEL_LABEL[channel.source] ?? { zh: channel.source, en: channel.source })}</span></summary>
       <ActionBar>
-        <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label={t({ zh: '切换集合侧栏', en: 'Toggle collection sidebar' })} aria-expanded={sidebarOpen}><PanelLeft size={15} /></Button>
-        <Segmented
-          size="sm"
-          value={mode}
-          onChange={setMode}
-          ariaLabel={t({ zh: '请求通道', en: 'Request channel' })}
-          options={FETCH_MODES.map((item) => ({ value: item.id, label: t(MODE_LABEL[item.id] ?? item.label) }))}
-        />
+        <Button variant="ghost" size="sm" onClick={toggleCollectionSidebar} aria-label={t({ zh: '切换集合侧栏', en: 'Toggle collection sidebar' })} aria-expanded={collectionSidebarOpen}><PanelLeft size={15} /></Button>
+        {/* 通道选择统一收进状态栏 ShieldCheck 弹层，这里只读展示当前通道。 */}
+        <span className="text-xs text-ink-3">{t(CHANNEL_LABEL[channel.source] ?? { zh: channel.source, en: channel.source })}{channel.source === 'network' ? ` · ${t(MODE_LABEL[channel.mode] ?? { zh: channel.mode, en: channel.mode })}` : ''}</span>
         <Checkbox
           checked={streaming}
           onChange={setStreaming}
@@ -566,7 +582,10 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
         ) : null}
 
         <p className="basis-full text-[11px] leading-4 text-ink-3">
-          {t(MODE_NOTE[mode])}
+          {t(CHANNEL_NOTE[channel.source] ?? MODE_NOTE[channelFetchMode(channel)])}
+          {channel.source === 'program' && !channel.programBase
+            ? t({ zh: '（未填程序地址时退回直连）', en: ' (falls back to direct without a program URL)' })
+            : ''}
           {doc.mockEnabled
             ? t({
                 zh: `。Mock 拦截已开启：命中 ${doc.mockRoutes.filter((r) => r.enabled).length} 条启用路由中的任一条即本地作答`,
@@ -578,6 +597,15 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
       </details>
       <EnvironmentModal open={envModalOpen} onClose={() => setEnvModalOpen(false)} />
       <CollectionImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={importCollection} />
+      <SaveAsPickerModal
+        open={saveAsPickerOpen}
+        onClose={() => setSaveAsPickerOpen(false)}
+        request={req}
+        onSaved={(copy) => {
+          setEditing({ request: copy, collectionId: editing.collectionId, folderId: editing.folderId });
+          toast.success(t({ zh: `已另存为「${copy.name}」`, en: `Saved a copy as "${copy.name}"` }));
+        }}
+      />
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <TokenConsentModal token={pendingToken?.token ?? null} onKeep={keepPendingToken} onDiscard={() => void discardPendingToken()} />
     </div>

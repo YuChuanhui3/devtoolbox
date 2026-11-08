@@ -8,6 +8,47 @@ import type { WbMockRoute, WbParam, WbRequest } from './types';
 
 const AbortError = () => new DOMException('stopped', 'AbortError');
 
+describe('sendWbRequest 取数通道', () => {
+  test('channel 解析 URL：浏览器/扩展直连，程序源改写 ?url=，网络源走公共代理', async () => {
+    const seen: string[] = [];
+    const fetcher = async (url: string) => { seen.push(url); return ok(); };
+
+    await sendWbRequest(request({ url: 'https://api.test/x' }), {
+      scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct', fetcher,
+      channel: { source: 'browser', mode: 'direct' },
+    });
+    expect(seen[0]).toBe('https://api.test/x');
+
+    await sendWbRequest(request({ url: 'https://api.test/x' }), {
+      scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct', fetcher,
+      channel: { source: 'extension', mode: 'direct' },
+    });
+    expect(seen[1]).toBe('https://api.test/x');
+
+    await sendWbRequest(request({ url: 'https://api.test/x' }), {
+      scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct', fetcher,
+      channel: { source: 'program', mode: 'direct', programBase: 'http://127.0.0.1:8080' },
+    });
+    expect(seen[2]).toBe(`http://127.0.0.1:8080?url=${encodeURIComponent('https://api.test/x')}`);
+
+    await sendWbRequest(request({ url: 'https://api.test/x' }), {
+      scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct', fetcher,
+      channel: { source: 'network', mode: 'corsproxy' },
+    });
+    expect(seen[3]).toBe(`https://corsproxy.io/?url=${encodeURIComponent('https://api.test/x')}`);
+  });
+
+  test('channel 缺省时回落 mode 老语义，via 标注保持 mode', async () => {
+    const seen: ProxyRequestOptions[] = [];
+    const response = await sendWbRequest(request({ url: 'https://api.test/y' }), {
+      scope: {}, mockEnabled: false, mockRoutes: [], mode: 'allorigins',
+      fetcher: async (_t, options) => { seen.push(options); return ok('legacy'); },
+    });
+    expect(seen[0].mode).toBe('allorigins');
+    expect(response.via).toBe('allorigins');
+  });
+});
+
 function mockRoute(partial: Partial<WbMockRoute> = {}): WbMockRoute {
   return {
     id: 'm1',

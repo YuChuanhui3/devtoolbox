@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { emptyWorkbench } from './store';
-import { blankRequest, filterFolder, findRequest, newCollection, putRequest, removeFolder, removeRequest, updateFolder, walkRequests } from './tree';
+import { blankRequest, filterFolder, findRequest, newCollection, putRequest, removeFolder, removeRequest, updateFolder, walkFolders, walkRequests } from './tree';
 import type { WbCollection } from './types';
 
 function fixture(): { collection: WbCollection; childId: string } {
@@ -14,6 +14,14 @@ function fixture(): { collection: WbCollection; childId: string } {
 }
 
 describe('tree ops', () => {
+  test('walkFolders 收集根与全部子文件夹并带层级', () => {
+    const nested = { id: 'f2', name: '内层', folders: [], requests: [] };
+    const root = { id: 'f1', name: '根', folders: [nested], requests: [] };
+    expect(walkFolders(root)).toEqual([
+      { folder: root, depth: 0 },
+      { folder: nested, depth: 1 },
+    ]);
+  });
   test('walkRequests 深度优先收集', () => {
     const { collection } = fixture();
     expect(walkRequests(collection.root)).toHaveLength(1);

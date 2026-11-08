@@ -10,6 +10,8 @@ import {
   MAX_BLOB_BYTES,
   proxiedUrl,
   proxyFetch,
+  resolveChannelUrl,
+  type SendChannel,
 } from './net';
 
 afterEach(() => {
@@ -28,6 +30,34 @@ describe('proxiedUrl', () => {
     expect(proxiedUrl(target, 'direct')).toBe(target);
     expect(proxiedUrl(target, 'corsproxy')).toBe(`https://corsproxy.io/?url=${encodeURIComponent(target)}`);
     expect(proxiedUrl(target, 'allorigins')).toContain('api.allorigins.win/raw');
+  });
+});
+
+describe('resolveChannelUrl', () => {
+  const target = 'https://ex.cn/a?b=1';
+
+  test('浏览器=直连，扩展由页面侧 hook 接管，前端同样直连', () => {
+    expect(resolveChannelUrl(target, { source: 'browser', mode: 'direct' })).toBe(target);
+    expect(resolveChannelUrl(target, { source: 'extension', mode: 'direct' })).toBe(target);
+  });
+
+  test('网络源沿用公共代理三通道', () => {
+    expect(resolveChannelUrl(target, { source: 'network', mode: 'direct' })).toBe(target);
+    expect(resolveChannelUrl(target, { source: 'network', mode: 'corsproxy' })).toBe(
+      `https://corsproxy.io/?url=${encodeURIComponent(target)}`,
+    );
+    expect(resolveChannelUrl(target, { source: 'network', mode: 'allorigins' })).toContain('api.allorigins.win/raw');
+  });
+
+  test('程序源拼出 {base}?url= 目标，base 缺省时退回直连', () => {
+    const channel: SendChannel = { source: 'program', mode: 'direct', programBase: 'http://127.0.0.1:8080' };
+    expect(resolveChannelUrl(target, channel)).toBe(`http://127.0.0.1:8080?url=${encodeURIComponent(target)}`);
+    expect(resolveChannelUrl(target, { source: 'program', mode: 'direct' })).toBe(target);
+  });
+
+  test('程序源只处理 http(s) 程序地址，非法 base 退回直连', () => {
+    expect(resolveChannelUrl(target, { source: 'program', mode: 'direct', programBase: 'ftp://x' })).toBe(target);
+    expect(resolveChannelUrl(target, { source: 'program', mode: 'direct', programBase: 'not a url' })).toBe(target);
   });
 });
 

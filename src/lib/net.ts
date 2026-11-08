@@ -8,6 +8,37 @@ export const FETCH_MODES: { id: FetchMode; label: string; note: string }[] = [
   { id: 'allorigins', label: 'allorigins.win', note: '公共抓取代理，可返回状态与内容' },
 ];
 
+/**
+ * 请求从哪个「代理源」出去。浏览器=页面直连；扩展=浏览器扩展在页面侧
+ * hook fetch/前端依旧直连；网络=公共 CORS 代理；程序=本地代理程序转发。
+ */
+export type ProxySource = 'browser' | 'extension' | 'network' | 'program';
+
+/** 取数通道：代理源 + （网络源下的）公共代理选择 + 程序源地址。 */
+export interface SendChannel {
+  source: ProxySource;
+  mode: FetchMode;
+  /** 程序源的转发基础地址，形如 http://127.0.0.1:8080。 */
+  programBase?: string;
+}
+
+/** 直连型通道（浏览器直连 / 扩展接管）不改写 URL。 */
+const isPassthrough = (channel: SendChannel): boolean => channel.source === 'browser' || channel.source === 'extension';
+
+/** 程序源要求 http(s) 基础地址，非法或缺省时退回直连。 */
+function programProxyUrl(target: string, base: string | undefined): string {
+  if (!base || !/^https?:\/\/.+/.test(base)) return target;
+  const trimmed = base.replace(/\/+$/, '');
+  return `${trimmed}?url=${encodeURIComponent(target)}`;
+}
+
+/** 把通道解析成实际请求的 URL；程序源拼 ?url=，其余沿用 proxiedUrl。 */
+export function resolveChannelUrl(target: string, channel: SendChannel): string {
+  if (isPassthrough(channel)) return target;
+  if (channel.source === 'program') return programProxyUrl(target, channel.programBase);
+  return proxiedUrl(target, channel.mode);
+}
+
 export const DEFAULT_TIMEOUT_MS = 15000;
 
 export function proxiedUrl(target: string, mode: FetchMode): string {
