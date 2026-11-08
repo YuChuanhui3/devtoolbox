@@ -22,7 +22,7 @@ DevToolbox is a free, open-source online toolbox for developers: **31 browser-ba
 | Category | Count | Representative tools |
 |---|---|---|
 | Encoding & Encryption 编码加密 | 3 | Codec Toolkit (Base64/URL/Unicode/Hex/JS-escape/Base32-62/Gzip/Morse on one shared input), Hash & Password Toolkit (MD5/SHA, bcrypt/scrypt, htpasswd), Cipher Toolkit (AES, DES/3DES/RC4, RSA, JWT) |
-| Developer Utilities 开发调试 | 12 | Developer Reference handbook (status codes/headers/methods/ports/MIME/Linux/MQTT), Random Toolkit (UUID/number/password), Regex Toolkit, Link Parser Toolkit (vmess/thunder/magnet/Type7), Dev Calc Toolkit (radix/size/CRC/PPI), Code Formatter Toolkit, Identity Generator, plus timestamp, URL parser, color, cron, diff, SSL cert, API Workbench (collections and environments, parameter table, GraphQL and multipart, OAuth 2.0, scripts and test assertions, WebSocket and SSE, OpenAPI / Postman / Hoppscotch / HAR exchange, code generation, local mock, load test), curl-to-code, text & code diff toolkit |
+| Developer Utilities 开发调试 | 12 | Developer Reference handbook (status codes/headers/methods/ports/MIME/Linux/MQTT), Random Toolkit (UUID/number/password), Regex Toolkit, Link Parser Toolkit (vmess/thunder/magnet/Type7), Dev Calc Toolkit (radix/size/CRC/PPI), Code Formatter Toolkit, Identity Generator, plus timestamp, URL parser, color, cron, diff, SSL cert, API Workbench (collections and environments, parameter table, GraphQL and multipart, OAuth 2.0, scripts and test assertions, WebSocket and SSE, OpenAPI / Postman / HAR exchange, code generation, local mock, load test), curl-to-code, text & code diff toolkit |
 | Data Formats 数据格式 | 2 | JSON Toolkit (format/minify/validate + JSONPath query + Schema + structural diff + nine-format converter JSON/XML/YAML/CSV/NDJSON/Markdown/SQL/Properties/Query with batch file conversion, all on one shared input), JSON to Java/TS/Go entities |
 | Network Tools 网络工具 | 8 | IP Toolkit (egress IP, geo lookup, subnet mask, IP↔number, random IP/MAC), Site Diagnosis Toolkit (DNS/NS/links/SEO/headers/WebCheck on one shared URL), UA Toolkit, Webmaster Toolkit (robots.txt + shields badge), Browser Toolkit (env info + cookies), API Workbench (including curl to code), File Transfer Toolkit (LAN WebRTC drop, phone-as-QR-scanner, air-gapped QR send / receive / salvage) |
 | Image Tools 图像处理 | 4 | Image compressor, format converter (JPG/PNG/WebP), image ↔ Base64, QR code generator |
@@ -82,7 +82,7 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 - **安全渲染**：Markdown 预览经 DOMPurify 过滤，禁止脚本、iframe、事件属性与 `javascript:` 链接。
 - **本地设置中心**：主题、语言（中文 / English）、草稿开关、本地匿名统计开关、本地数据清空、快捷键入口。
 - **按需加载**：每个工具独立分包，首页不加载全部工具代码。
-- **API 工作台**：Postman 式集合 / 环境与变量继承、参数表格与 URL 双向绑定、GraphQL 与 multipart 请求体、API Key 与 OAuth 2.0、Pre-request 脚本与 Tests 断言（内联 Worker 沙箱，失控脚本会被终止而不拖住页面）、响应多视图与差异对比、WebSocket 与 SSE、OpenAPI / Postman / Hoppscotch / HAR 互转导入、curl / fetch / axios / Python / Go / Java / PHP 代码生成、本地 Mock 挡板与可部署 Worker、并发压测与延迟分位统计。集合与环境只存本机。
+- **API 工作台**：Postman 式集合 / 环境与变量继承、参数表格与 URL 双向绑定、GraphQL 与 multipart 请求体、API Key 与 OAuth 2.0、Pre-request 脚本与 Tests 断言（内联 Worker 沙箱，失控脚本会被终止而不拖住页面）、响应多视图与差异对比、WebSocket 与 SSE、OpenAPI / Postman / HAR 等格式互转导入、curl / fetch / axios / Python / Go / Java / PHP 代码生成、本地 Mock 挡板与可部署 Worker、并发压测与延迟分位统计。集合与环境只存本机。
 - **文件传输工具箱**：同一 Wi-Fi 下基于 WebRTC DataChannel 点对点互传文件与文本；内网信令部署时手机只扫一次即可自动配对，静态托管自动回退离线配对。手机可充当电脑的扫码器实时回传二维码内容，主机也能直接生成原文二维码；二维码发送 / 接收合并在同一页签，DQX 帧集齐后自动显示原文；物理隔离网络支持逐帧发送、连续接收与录屏回收。文件和内容不经过服务器。
 
 ## 工具清单
@@ -95,7 +95,7 @@ Distributed under the **MIT License**. See [LICENSE](./LICENSE).
 
 ### 开发调试（12）
 
-开发速查手册（HTTP 状态码 / 请求头 / 方法 / 常用端口 / MIME / Linux 命令 / MQTT 七类合一）、随机生成工具箱（UUID / 随机数 / 密码）、正则工具箱（测试 + 转义）、链接解析工具箱（VMess/SS/SSR / 迅雷 / 种子磁力 / Cisco Type7）、开发换算计算工具箱（进制 / 文件大小 / CRC / PPI）、代码格式化工具箱（SQL + HTML/CSS/JS/TS/JSON/YAML/Markdown 格式化，含 HTML 实体转义与标签清理）、虚拟身份生成（银行卡 / 多国地址），以及时间戳转换、URL 地址解析、颜色转换、Cron 解析、自签名证书、API 工作台（集合与环境 / 参数表格 / GraphQL / multipart / OAuth 2.0 / 脚本与断言 / 响应多视图 / OpenAPI·Postman·Hoppscotch·HAR 互转 / 代码生成 / Mock / 压测 / WebSocket 与 SSE）。
+开发速查手册（HTTP 状态码 / 请求头 / 方法 / 常用端口 / MIME / Linux 命令 / MQTT 七类合一）、随机生成工具箱（UUID / 随机数 / 密码）、正则工具箱（测试 + 转义）、链接解析工具箱（VMess/SS/SSR / 迅雷 / 种子磁力 / Cisco Type7）、开发换算计算工具箱（进制 / 文件大小 / CRC / PPI）、代码格式化工具箱（SQL + HTML/CSS/JS/TS/JSON/YAML/Markdown 格式化，含 HTML 实体转义与标签清理）、虚拟身份生成（银行卡 / 多国地址），以及时间戳转换、URL 地址解析、颜色转换、Cron 解析、自签名证书、API 工作台（集合与环境 / 参数表格 / GraphQL / multipart / OAuth 2.0 / 脚本与断言 / 响应多视图 / OpenAPI·Postman·HAR 等互转 / 代码生成 / Mock / 压测 / WebSocket 与 SSE）。
 
 ### Markdown（1）
 
@@ -277,7 +277,7 @@ npm run zip:single     # → DevToolbox-offline.zip，约 1.6 MB，解压后就�
 本项目基于 [MIT License](./LICENSE) 开源。
 
 
-### 本地 API 工作台（Hoppscotch）
+### 本地 API 工作台
 
 API 工作台使用官方前端的本地模式，保留 REST、GraphQL、实时协议、集合运行器、脚本和测试；无需账号、后端、数据库或邮件服务。运行 `npm run api:start` 后启动 `npm run dev`。首次准备从固定镜像提取前端资源，之后仅运行 Node 静态服务。
 

@@ -87,18 +87,18 @@ function UpstreamWorkbench({ feature }: { feature: string }) {
         <iframe
           ref={frameRef}
           onLoad={syncTheme}
-          title="Hoppscotch API workspace"
+          title="API workspace"
           src={applicationUrl}
           allow="clipboard-read; clipboard-write; fullscreen; web-share"
           allowFullScreen
         />
       ) : (
         <main className="hopp-startup">
-          <span className="hopp-startup-mark">H</span>
+          <span className="hopp-startup-mark">D</span>
           <h1>
             {t({
-              zh: "Hoppscotch 本地工作台",
-              en: "Local Hoppscotch workspace",
+              zh: "本地 API 工作台",
+              en: "Local API workspace",
             })}
           </h1>
           <p>
@@ -142,7 +142,7 @@ function UpstreamWorkbench({ feature }: { feature: string }) {
       </button>
       {menu ? (
         <aside className="hopp-host-menu">
-          <strong>DevToolbox × Hoppscotch</strong>
+          <strong>{t({ zh: "工具箱集成", en: "Toolbox integration" })}</strong>
           <Link to="/tools">
             <ArrowLeft size={14} />
             {t({ zh: "返回工具箱", en: "Back to toolbox" })}
@@ -171,8 +171,8 @@ function UpstreamWorkbench({ feature }: { feature: string }) {
           </button>
           <p>
             {t({
-              zh: "在 Hoppscotch 的集合或环境面板中导入导出的 JSON。旧数据会保留。",
-              en: "Import the exported JSON in Hoppscotch collections or environments. Previous data is kept.",
+              zh: "在上游前端的集合或环境面板中导入导出的 JSON。旧数据会保留。",
+              en: "Import the exported JSON in the upstream client's collections or environments. Previous data is kept.",
             })}
           </p>
           <Link to="/tools/http-simulator?engine=local&mode=mock">
