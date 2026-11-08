@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Zap } from 'lucide-react';
+import { ChevronDown, FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Zap } from 'lucide-react';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useI18n } from '@/i18n/I18nProvider';
 import { foldSubMode } from '@/lib/apiworkbench/subAddress';
@@ -93,7 +93,7 @@ export default function HttpToolkitTool() {
     <WorkbenchProvider>
       <div className={`api-workbench hopp-workbench${dark ? ' wb-dark' : ''}`}>
       <header className="wb-titlebar">
-        <Link to="/tools" className="wb-brand" title={t({ zh: '返回工具箱', en: 'Back to toolbox' })}>DEVTOOLBOX <span>⌄</span></Link>
+        <Link to="/tools" className="wb-brand" title={t({ zh: '返回工具箱', en: 'Back to toolbox' })}>DEVTOOLBOX <ChevronDown className="wb-brand-caret" size={14} aria-hidden="true" /></Link>
         <button type="button" className="wb-command" onClick={() => { setMode('request'); requestAnimationFrame(() => window.dispatchEvent(new Event('wb:search'))); }}><Search size={15} />{t({ zh: '搜索请求与集合', en: 'Search requests and collections' })}<kbd>⌘ K</kbd></button>
         <span className="wb-header-actions">
           <span className="wb-local"><ShieldCheck size={14} />{t({ zh: '本地工作区', en: 'Local workspace' })}</span>

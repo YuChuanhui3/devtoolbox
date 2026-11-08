@@ -35,7 +35,8 @@
 .api-workbench button[class*='border'] { border-color: var(--line); }
 .wb-titlebar { height: 48px; flex: 0 0 48px; display: flex; align-items: center; padding: 0 8px 0 24px; gap: 16px; border-bottom: 1px solid var(--line); }
 .wb-brand { font-size: 12px; font-weight: 700; color: var(--ink); display: flex; gap: 12px; align-items: center; }
-.wb-brand span { font-size: 16px; font-weight: 400; }
+/* 品牌后的折叠符换成 SVG 图标，与行内文本垂直居中。 */
+.wb-brand-caret { display: inline-block; vertical-align: middle; }
 .wb-command { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: var(--surface-3); color: var(--ink-3); padding: 6px 8px; min-width: 278px; }
 .wb-command kbd { margin-left: auto; font-size: 10px; border: 1px solid var(--line-strong); border-radius: 3px; line-height: 13px; padding: 0 2px; }
 .wb-header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
