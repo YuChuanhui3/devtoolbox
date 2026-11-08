@@ -1,6 +1,6 @@
 import { readStorage, writeStorage } from '../storage';
 import { MAX_SOCKETS, MAX_WS_URL_LENGTH } from './ws';
-import { CUSTOM_METHOD_PATTERN, WB_METHODS, WORKBENCH_VERSION } from './types';
+import { CUSTOM_METHOD_PATTERN, WB_METHODS, WORKBENCH_VERSION, type MqttQos, type MqttSubscription } from './types';
 import type {
   WbAuth,
   WbBody,
@@ -285,12 +285,15 @@ function sanitizeMockRoute(raw: unknown): WbMockRoute | null {
   };
 }
 
+const SOCKET_KINDS: WbSocket['kind'][] = ['websocket', 'sse', 'socketio', 'mqtt'];
+
 function sanitizeSocket(raw: unknown): WbSocket | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const s = raw as Partial<WbSocket>;
   if (typeof s.url !== 'string' || !s.url.trim()) return null;
   const url = s.url.trim().slice(0, MAX_WS_URL_LENGTH);
-  return {
+  const kind = SOCKET_KINDS.includes(s.kind) ? s.kind : 'websocket';
+  const base: WbSocket = {
     id: str(s.id),
     name: (str(s.name).trim() || url).slice(0, 120),
     url,
@@ -298,7 +301,63 @@ function sanitizeSocket(raw: unknown): WbSocket | null {
       ? [...new Set(s.protocols.map((p) => str(p).trim()).filter(Boolean))].slice(0, 8)
       : [],
     note: typeof s.note === 'string' ? s.note : undefined,
+    kind,
   };
+  if (kind === 'sse') {
+    base.sseHeaders = Array.isArray(s.sseHeaders)
+      ? s.sseHeaders
+          .map((row) => {
+            if (typeof row !== 'object' || row === null) return null;
+            const r = row as Partial<{ key: string; value: string; enabled: boolean }>;
+            const key = str(r.key).trim();
+            if (!key) return null;
+            return { key, value: str(r.value), enabled: bool(r.enabled, true) };
+          })
+          .filter((row): row is { key: string; value: string; enabled: boolean } => row !== null)
+          .slice(0, 50)
+      : [];
+    base.sseReconnect = bool(s.sseReconnect, true);
+  }
+  if (kind === 'socketio') {
+    base.socketIoNamespace = str(s.socketIoNamespace).trim().slice(0, 200);
+    base.socketIoQuery = str(s.socketIoQuery).trim();
+    const auth = str(s.socketIoAuth).trim();
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) base.socketIoAuth = auth;
+      } catch {
+        // 非法 auth 原文丢弃，保存后面板以空表单重填，避免污染存档。
+      }
+    }
+  }
+  if (kind === 'mqtt') {
+    base.mqttUsername = str(s.mqttUsername);
+    base.mqttPassword = str(s.mqttPassword);
+    base.mqttClientId = str(s.mqttClientId).trim().slice(0, 23);
+    base.mqttKeepAlive = Math.min(Math.max(num(s.mqttKeepAlive, 60), 1), 65535);
+    base.mqttCleanSession = bool(s.mqttCleanSession, true);
+    base.mqttWillTopic = str(s.mqttWillTopic).trim();
+    base.mqttWillMessage = str(s.mqttWillMessage);
+    const willQos = num(s.mqttWillQos, 0);
+    base.mqttWillQos = willQos === 1 || willQos === 2 ? willQos : 0;
+    base.mqttWillRetain = bool(s.mqttWillRetain, false);
+    base.mqttSubscriptions = Array.isArray(s.mqttSubscriptions)
+      ? s.mqttSubscriptions
+          .map((row) => {
+            if (typeof row !== 'object' || row === null) return null;
+            const r = row as Partial<{ topic: string; qos: number }>;
+            const topic = str(r.topic).trim();
+            if (!topic) return null;
+            const qos = num(r.qos, 0);
+            const normalized: MqttQos = qos === 1 || qos === 2 ? qos : 0;
+            return { topic, qos: normalized };
+          })
+          .filter((row): row is MqttSubscription => row !== null)
+          .slice(0, 100)
+      : [];
+  }
+  return base;
 }
 
 function sanitizeHistoryEntry(raw: unknown): WbHistoryEntry | null {

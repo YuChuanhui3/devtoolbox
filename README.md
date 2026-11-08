@@ -279,6 +279,6 @@ npm run zip:single     # → DevToolbox-offline.zip，约 1.6 MB，解压后就�
 
 ### 本地 API 工作台
 
-API 工作台使用官方前端的本地模式，保留 REST、GraphQL、实时协议、集合运行器、脚本和测试；无需账号、后端、数据库或邮件服务。运行 `npm run api:start` 后启动 `npm run dev`。首次准备从固定镜像提取前端资源，之后仅运行 Node 静态服务。
+API 工作台是纯本地实现：REST、GraphQL、WebSocket、SSE、Socket.IO、MQTT、集合运行器、脚本和测试都在浏览器里跑，无需账号、后端、数据库或邮件服务，也不依赖任何 Hoppscotch 服务或官方前端。集合、环境与历史只存在本机浏览器，直接 `npm run dev` 即可使用。
 
-[部署、版本与本地数据说明](integrations/hoppscotch/README.md)。原有本地 Mock、压测和历史数据从集成菜单进入。curl 转代码已合并到 API 工作台，旧地址自动跳转。
+curl 转代码已合并到 API 工作台，旧地址自动跳转。

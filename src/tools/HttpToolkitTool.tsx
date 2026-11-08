@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Gauge, FileText, Link2, Search, ArrowLeft, ShieldCheck, PanelLeftClose, Globe } from 'lucide-react';
+import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, Globe, Radio, Network, MessageSquare } from 'lucide-react';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToolkitMode } from '@/hooks/useToolkitMode';
@@ -13,7 +13,13 @@ import { StressPanel } from './http-toolkit/StressPanel';
 import './http-toolkit/workbench.css';
 import { WorkbenchProvider } from './http-toolkit/WorkbenchContext';
 
-type HttpToolkitMode = 'request' | 'websocket' | 'openapi' | 'mock' | 'stress';
+// 三个实时协议面板各自带一个浏览器协议栈（socket.io-client / mqtt.js），
+// 与 OpenAPI/Mock/Stress 的代码体量同级，懒加载避免撑大工作台首屏 chunk。
+const SsePanel = lazy(() => import('./http-toolkit/SsePanel'));
+const SocketIoPanel = lazy(() => import('./http-toolkit/SocketIoPanel'));
+const MqttPanel = lazy(() => import('./http-toolkit/MqttPanel'));
+
+type HttpToolkitMode = 'request' | 'websocket' | 'sse' | 'socketio' | 'mqtt' | 'openapi' | 'mock' | 'stress';
 
 export default function HttpToolkitTool() {
   const { t } = useI18n();
@@ -26,7 +32,7 @@ export default function HttpToolkitTool() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
-  const [mode, setMode] = useToolkitMode<HttpToolkitMode>(['request', 'websocket', 'openapi', 'mock', 'stress'], 'request');
+  const [mode, setMode] = useToolkitMode<HttpToolkitMode>(['request', 'websocket', 'sse', 'socketio', 'mqtt', 'openapi', 'mock', 'stress'], 'request');
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -56,6 +62,7 @@ export default function HttpToolkitTool() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // 「完整工作台」链接在纯本地引擎下没有上游 iframe 可回，移除出口。
   return (
     <WorkbenchProvider>
       <div className={`api-workbench hopp-workbench${dark ? ' wb-dark' : ''}`}>
@@ -64,7 +71,6 @@ export default function HttpToolkitTool() {
         <button type="button" className="wb-command" onClick={() => { setMode('request'); requestAnimationFrame(() => window.dispatchEvent(new Event('wb:search'))); }}><Search size={15} />{t({ zh: '搜索请求与集合', en: 'Search requests and collections' })}<kbd>⌘ K</kbd></button>
         <span className="wb-header-actions">
           <span className="wb-local"><ShieldCheck size={14} />{t({ zh: '本地工作区', en: 'Local workspace' })}</span>
-          <Link to="/tools/http-simulator" className="wb-back"><ArrowLeft size={14} />{t({ zh: '完整工作台', en: 'Full workspace' })}</Link>
         </span>
       </header>
       <div className="wb-app-body">
@@ -81,6 +87,9 @@ export default function HttpToolkitTool() {
           {([
             ['request', 'REST', Link2],
             ['websocket', 'WebSocket', Globe],
+            ['sse', 'SSE', Radio],
+            ['socketio', 'Socket.IO', MessageSquare],
+            ['mqtt', 'MQTT', Network],
             ['openapi', 'OpenAPI', FileText],
             ['mock', 'Mock', FlaskConical],
             ['stress', t({ zh: '压测', en: 'Stress' }), Gauge],
@@ -93,6 +102,21 @@ export default function HttpToolkitTool() {
       </LazyPanel>
       <LazyPanel active={mode === 'websocket'}>
         <WebSocketPanel active={mode === 'websocket'} />
+      </LazyPanel>
+      <LazyPanel active={mode === 'sse'}>
+        <Suspense fallback={null}>
+          <SsePanel active={mode === 'sse'} />
+        </Suspense>
+      </LazyPanel>
+      <LazyPanel active={mode === 'socketio'}>
+        <Suspense fallback={null}>
+          <SocketIoPanel active={mode === 'socketio'} />
+        </Suspense>
+      </LazyPanel>
+      <LazyPanel active={mode === 'mqtt'}>
+        <Suspense fallback={null}>
+          <MqttPanel active={mode === 'mqtt'} />
+        </Suspense>
       </LazyPanel>
       <LazyPanel active={mode === 'openapi'}>
         <OpenApiPanel active={mode === 'openapi'} onJumpToRequest={() => setMode('request')} />

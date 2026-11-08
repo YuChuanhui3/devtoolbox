@@ -142,14 +142,53 @@ export interface WbMockRoute {
 
 export type WbVia = FetchMode | 'mock';
 
+/** 实时连接的协议种类；缺省（旧数据）按 websocket 处理。 */
+export type WbSocketKind = 'websocket' | 'sse' | 'socketio' | 'mqtt';
+
+/** MQTT QoS 等级与订阅表行（mqtt.ts 的内核类型在存储侧复用这里）。 */
+export type MqttQos = 0 | 1 | 2;
+
+export interface MqttSubscription {
+  topic: string;
+  qos: MqttQos;
+}
+
 export interface WbSocket {
   id: string;
   name: string;
-  /** 可含 {{var}} 占位，ws:// 或 wss://。 */
+  /** 可含 {{var}} 占位，ws:// 或 wss://（sse 为 http(s)，socketio 为 http(s)，mqtt 为 ws/wss 或可纠正的 mqtt(s)）。 */
   url: string;
-  /** Sec-WebSocket-Protocol 候选，逗号分隔写法在存储时已归一为数组。 */
+  /** WebSocket 的 Sec-WebSocket-Protocol 候选，逗号分隔写法在存储时已归一为数组。 */
   protocols: string[];
   note?: string;
+  /** 协议种类；旧数据没有该字段，读取时归一为 websocket。 */
+  kind?: WbSocketKind;
+  /** SSE：随连接发送的请求头（值支持 {{var}}）。 */
+  sseHeaders?: Array<{ key: string; value: string; enabled?: boolean }>;
+  /** SSE：断线后是否自动重连。 */
+  sseReconnect?: boolean;
+  /** Socket.IO：命名空间（空 = 根）。 */
+  socketIoNamespace?: string;
+  /** Socket.IO：随连接发送的查询串。 */
+  socketIoQuery?: string;
+  /** Socket.IO：连接 auth 载荷（JSON 文本，值支持 {{var}}）。 */
+  socketIoAuth?: string;
+  /** MQTT：用户名/密码（留空不认证）。 */
+  mqttUsername?: string;
+  mqttPassword?: string;
+  /** MQTT：Client ID（空 = 连接时随机生成）。 */
+  mqttClientId?: string;
+  /** MQTT：心跳秒数。 */
+  mqttKeepAlive?: number;
+  /** MQTT：清洁会话。 */
+  mqttCleanSession?: boolean;
+  /** MQTT：Last Will，两者都非空才设置。 */
+  mqttWillTopic?: string;
+  mqttWillMessage?: string;
+  mqttWillQos?: number;
+  mqttWillRetain?: boolean;
+  /** MQTT：订阅表（主题过滤器 + QoS）。 */
+  mqttSubscriptions?: MqttSubscription[];
 }
 
 export interface WbHistoryEntry {
