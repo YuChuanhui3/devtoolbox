@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, Zap } from 'lucide-react';
+import { FlaskConical, Gauge, FileText, Link2, Search, ShieldCheck, PanelLeftClose, PanelLeftOpen, Zap } from 'lucide-react';
 import { LazyPanel } from '@/components/tool/LazyPanel';
 import { useI18n } from '@/i18n/I18nProvider';
 import { foldSubMode } from '@/lib/apiworkbench/subAddress';
@@ -28,6 +28,9 @@ export default function HttpToolkitTool() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
+  // 左侧页签导航的开合。会话内有效，不进存档：页签布局偏好与请求数据是两回事。
+  // 默认收起，与 Hoppscotch 一致——导航栏只露图标行时工作区更宽。
+  const [navCollapsed, setNavCollapsed] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // 页签解析与 URL 折叠同源：搜索面板写的 ?mode=<协议> 或 ?mode=graphql 在解析成
@@ -96,7 +99,8 @@ export default function HttpToolkitTool() {
         </span>
       </header>
       <div className="wb-app-body">
-      <nav className="wb-navigation" aria-label={t({ zh: 'API 工作台页签', en: 'API workbench tab' })}>
+      {/* 页签导航可由状态栏按钮折叠；hidden 让 tab 彻底退出无障碍树与布局。 */}
+      <nav className="wb-navigation" aria-label={t({ zh: 'API 工作台页签', en: 'API workbench tab' })} hidden={navCollapsed}>
         <div role="tablist" aria-label={t({ zh: '工作区', en: 'Workspace' })} aria-orientation="vertical" onKeyDown={(event) => {
           const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
           if (!keys.includes(event.key)) return;
@@ -136,7 +140,15 @@ export default function HttpToolkitTool() {
 
       </div>
       </div>
-      <footer className="wb-statusbar"><PanelLeftClose size={14} /><ShieldCheck size={14} /><span>{t({ zh: '本地存储', en: 'Local storage' })}</span></footer>
+      <footer className="wb-statusbar">
+        {/* 折叠/展开左侧页签导航（含 REST、实时、OpenAPI、Mock、压测五个一级页签）。 */}
+        <button type="button" className="wb-icon" onClick={() => setNavCollapsed((collapsed) => !collapsed)} title={navCollapsed ? t({ zh: '展开页签导航', en: 'Expand tab navigation' }) : t({ zh: '折叠页签导航', en: 'Collapse tab navigation' })} aria-label={navCollapsed ? t({ zh: '展开页签导航', en: 'Expand tab navigation' }) : t({ zh: '折叠页签导航', en: 'Collapse tab navigation' })} aria-expanded={!navCollapsed}>
+          {/* 图标语义：收起时露「展开」，展开时露「收起」。 */}
+          {navCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+        </button>
+        <ShieldCheck size={14} />
+        <span>{t({ zh: '本地存储', en: 'Local storage' })}</span>
+      </footer>
       </div>
     </WorkbenchProvider>
   );

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -51,6 +51,8 @@ function renderTool(entry: string) {
 describe('HttpToolkitTool 二级寻址', () => {
   test('?mode=graphql 折回请求页签并带上 sub', () => {
     renderTool('/tools/http-simulator?mode=graphql');
+    // 页签导航默认收起，断言页签前先展开。
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByTestId('location')).toHaveTextContent('?sub=graphql');
     // 导航上五个一级页签：REST / 实时 / OpenAPI / Mock / 压测。
     expect(screen.getByRole('tab', { name: 'REST' })).toHaveAttribute('aria-selected', 'true');
@@ -59,13 +61,37 @@ describe('HttpToolkitTool 二级寻址', () => {
 
   test('真页签的 mode 不被改写', () => {
     renderTool('/tools/http-simulator?mode=mock');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByTestId('location')).toHaveTextContent('?mode=mock');
+  });
+});
+
+describe('HttpToolkitTool 状态栏页签导航开关', () => {
+  test('默认收起（对齐 Hoppscotch），点击展开页签导航，再点折叠', () => {
+    renderTool('/tools/http-simulator');
+    const navigation = document.querySelector('.wb-navigation');
+    const toggle = screen.getByRole('button', { name: /折叠页签导航|展开页签导航/ });
+
+    // 默认收起：导航隐藏、图标为「展开」态。
+    expect(navigation).toHaveAttribute('hidden');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAttribute('title', '展开页签导航');
+
+    fireEvent.click(toggle);
+    expect(navigation).not.toHaveAttribute('hidden');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('title', '折叠页签导航');
+
+    fireEvent.click(toggle);
+    expect(navigation).toHaveAttribute('hidden');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 });
 
 describe('HttpToolkitTool 实时协议页签', () => {
   test('导航上是五个一级页签，实时协议聚合在「实时」内', () => {
     renderTool('/tools/http-simulator');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     for (const label of ['REST', '实时', 'OpenAPI', 'Mock']) {
       expect(screen.getByRole('tab', { name: label })).toBeInTheDocument();
     }
@@ -76,6 +102,7 @@ describe('HttpToolkitTool 实时协议页签', () => {
 
   test('?mode=websocket 折进实时页签并落到 WebSocket 协议（proto 缺省）', async () => {
     renderTool('/tools/http-simulator?mode=websocket');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime');
     expect(screen.getByTestId('location')).not.toHaveTextContent('proto=');
     expect(screen.getByRole('tab', { name: '实时' })).toHaveAttribute('aria-selected', 'true');
@@ -88,6 +115,7 @@ describe('HttpToolkitTool 实时协议页签', () => {
 
   test('?mode=sse 折进实时页签并带 proto=sse', async () => {
     renderTool('/tools/http-simulator?mode=sse');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime&proto=sse');
     expect(await screen.findByRole('tab', { name: 'SSE' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByLabelText('SSE 地址')).toBeInTheDocument();
@@ -95,6 +123,7 @@ describe('HttpToolkitTool 实时协议页签', () => {
 
   test('?mode=socketio 折进实时页签并带 proto=socketio', async () => {
     renderTool('/tools/http-simulator?mode=socketio');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime&proto=socketio');
     expect(await screen.findByRole('tab', { name: 'Socket.IO' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByLabelText('Socket.IO 服务地址')).toBeInTheDocument();
@@ -102,6 +131,7 @@ describe('HttpToolkitTool 实时协议页签', () => {
 
   test('?mode=mqtt 折进实时页签并带 proto=mqtt', async () => {
     renderTool('/tools/http-simulator?mode=mqtt');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByTestId('location')).toHaveTextContent('?mode=realtime&proto=mqtt');
     expect(await screen.findByRole('tab', { name: 'MQTT' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByLabelText('Broker 地址')).toBeInTheDocument();
@@ -109,17 +139,20 @@ describe('HttpToolkitTool 实时协议页签', () => {
 
   test('?mode=realtime 直达实时页签，默认 WebSocket 协议', async () => {
     renderTool('/tools/http-simulator?mode=realtime');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByRole('tab', { name: '实时' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByRole('tab', { name: 'WebSocket' })).toHaveAttribute('aria-selected', 'true');
   });
 
   test('?mode=realtime&proto=mqtt 直达 MQTT 协议', async () => {
     renderTool('/tools/http-simulator?mode=realtime&proto=mqtt');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(await screen.findByLabelText('Broker 地址')).toBeInTheDocument();
   });
 
   test('?engine=local 与裸路径行为一致（引擎参数已被移除，忽略即可）', () => {
     renderTool('/tools/http-simulator?engine=local');
+    fireEvent.click(screen.getByRole('button', { name: '展开页签导航' }));
     expect(screen.getByRole('tab', { name: 'REST' })).toHaveAttribute('aria-selected', 'true');
   });
 });
