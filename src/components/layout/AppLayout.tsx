@@ -48,52 +48,43 @@ export function AppLayout() {
         {t({ zh: '跳到主要内容', en: 'Skip to main content' })}
       </a>
 
-      {isApiWorkbench ? null : (
-        <Header
-          onOpenMenu={() => setMenuOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onShowShortcuts={() => setShortcutsOpen(true)}
-        />
-      )}
+      <Header
+        onOpenMenu={() => setMenuOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onShowShortcuts={() => setShortcutsOpen(true)}
+      />
 
-      {isApiWorkbench ? (
-        // 工作台自带标题栏、页签导航与集合侧栏，全局外壳再叠一层会让侧栏二次出现；
-        // 这里让它独占视口，像独立应用一样铺开。
-        <main id="main-content" className="min-h-0 min-w-0 flex-1">
+      <div className={cn("mx-auto flex w-full max-w-[1440px] flex-1 items-stretch", isApiWorkbench && "min-h-0 overflow-hidden")}>
+        <div
+          className={cn(
+            'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 border-r border-line transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:block',
+            sidebarCollapsed ? 'w-16' : 'w-60',
+            isApiWorkbench && 'relative top-0 h-full',
+          )}
+        >
+          <Sidebar collapsed={sidebarCollapsed} />
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={sidebarCollapsed ? t({ zh: '展开侧边栏', en: 'Expand sidebar' }) : t({ zh: '折叠侧边栏', en: 'Collapse sidebar' })}
+            aria-label={sidebarCollapsed ? t({ zh: '展开侧边栏', en: 'Expand sidebar' }) : t({ zh: '折叠侧边栏', en: 'Collapse sidebar' })}
+            aria-pressed={sidebarCollapsed}
+            className="absolute -right-3 top-7 z-40 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface text-ink-3 shadow-card transition-[transform,color,border-color] duration-300 ease-out hover:scale-110 hover:border-accent/40 hover:text-accent active:scale-95"
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <PanelLeftClose className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+
+        <main id="main-content" className={cn("min-w-0 flex-1 px-3 py-5 sm:px-5 lg:px-7 lg:py-7", isApiWorkbench && "h-full min-h-0")}>
           <Outlet />
         </main>
-      ) : (
-        <div className="mx-auto flex w-full max-w-[1440px] flex-1 items-stretch">
-          <div
-            className={cn(
-              'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 border-r border-line transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:block',
-              sidebarCollapsed ? 'w-16' : 'w-60',
-            )}
-          >
-            <Sidebar collapsed={sidebarCollapsed} />
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              title={sidebarCollapsed ? t({ zh: '展开侧边栏', en: 'Expand sidebar' }) : t({ zh: '折叠侧边栏', en: 'Collapse sidebar' })}
-              aria-label={sidebarCollapsed ? t({ zh: '展开侧边栏', en: 'Expand sidebar' }) : t({ zh: '折叠侧边栏', en: 'Collapse sidebar' })}
-              aria-pressed={sidebarCollapsed}
-              className="absolute -right-3 top-7 z-40 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface text-ink-3 shadow-card transition-[transform,color,border-color] duration-300 ease-out hover:scale-110 hover:border-accent/40 hover:text-accent active:scale-95"
-            >
-              {sidebarCollapsed ? (
-                <PanelLeftOpen className="h-3.5 w-3.5" aria-hidden="true" />
-              ) : (
-                <PanelLeftClose className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-            </button>
-          </div>
+      </div>
 
-          <main id="main-content" className="min-w-0 flex-1 px-3 py-5 sm:px-5 lg:px-7 lg:py-7">
-            <Outlet />
-          </main>
-        </div>
-      )}
-
-      {isApiWorkbench ? null : <Footer onShowShortcuts={() => setShortcutsOpen(true)} />}
+      {!isApiWorkbench ? <Footer onShowShortcuts={() => setShortcutsOpen(true)} /> : null}
 
       {menuOpen ? (
         <div className="fixed inset-0 z-[80] md:hidden">

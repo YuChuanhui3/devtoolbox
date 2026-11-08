@@ -1,22 +1,36 @@
+import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Segmented } from '@/components/ui/Segmented';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useToast } from '@/components/ui/Toast';
 import { useI18n } from '@/i18n/I18nProvider';
 import { downloadText, safeFilename } from '@/lib/download';
 import { exportPostman } from '@/lib/apiworkbench/transfer';
+import { exportHoppscotchCollections } from '@/lib/apiworkbench/hoppscotch';
 import type { L10n } from '@/i18n/locale';
 import type { WbCollection } from '@/lib/apiworkbench/types';
 
-/** 这个格式装不下什么，导出前就得说清楚，不能让人拿回去才发现请求体没了。 */
-const DROPS: L10n[] = [
-  { zh: 'multipart 请求体（Postman 的 JSON 里文件字节本来也存不住）', en: 'multipart bodies (file bytes never survive a Postman JSON export)' },
-  { zh: 'GraphQL 请求体（他们认 graphql mode，本项目只写 raw）', en: 'GraphQL bodies (only raw bodies are written)' },
-  { zh: 'API Key 与 OAuth 2.0 认证（只带 Basic / Bearer）', en: 'API key and OAuth 2.0 auth (Basic / Bearer only)' },
-];
+type ExportFormat = 'postman' | 'hoppscotch';
 
-const FILE_SUFFIX = '.postman_collection.json';
+/** 每种格式装不下什么，导出前就得说清楚，不能让人拿回去才发现请求体没了。 */
+const DROPS: Record<ExportFormat, L10n[]> = {
+  postman: [
+    { zh: 'multipart 请求体（Postman 的 JSON 里文件字节本来也存不住）', en: 'multipart bodies (file bytes never survive a Postman JSON export)' },
+    { zh: 'GraphQL 请求体（他们认 graphql mode，本项目只写 raw）', en: 'GraphQL bodies (only raw bodies are written)' },
+    { zh: 'API Key 与 OAuth 2.0 认证（只带 Basic / Bearer）', en: 'API key and OAuth 2.0 auth (Basic / Bearer only)' },
+  ],
+  hoppscotch: [
+    { zh: 'multipart 的文件名与字节（他们导出成 value: [null]）', en: 'multipart file names and bytes (they serialize as value: [null])' },
+    { zh: '密钥变量的值（按他们自己的迁移做法留空）', en: 'secret variable values (blanked, same as their own migration)' },
+  ],
+};
+
+const FILE_SUFFIX: Record<ExportFormat, string> = {
+  postman: '.postman_collection.json',
+  hoppscotch: '.hoppscotch-collection.json',
+};
 
 export interface CollectionExportModalProps {
   open: boolean;
@@ -27,12 +41,15 @@ export interface CollectionExportModalProps {
 export function CollectionExportModal({ open, onClose, collection }: CollectionExportModalProps) {
   const { t } = useI18n();
   const toast = useToast();
+  const [format, setFormat] = useState<ExportFormat>('postman');
   if (!collection) return null;
 
   const save = () => {
-    const text = JSON.stringify(exportPostman(collection), null, 2);
+    const text = format === 'postman'
+      ? JSON.stringify(exportPostman(collection), null, 2)
+      : exportHoppscotchCollections([collection]);
     downloadText(
-      safeFilename(`${collection.name || 'collection'}${FILE_SUFFIX}`, 'collection.json'),
+      safeFilename(`${collection.name || 'collection'}${FILE_SUFFIX[format]}`, 'collection.json'),
       text,
       'application/json;charset=utf-8',
     );
@@ -47,17 +64,27 @@ export function CollectionExportModal({ open, onClose, collection }: CollectionE
       maxWidth={520}
       title={t({ zh: `导出集合「${collection.name}」`, en: `Export collection "${collection.name}"` })}
       description={t({
-        zh: '导出的 Postman v2.1 集合能在原客户端「Import」回来。装不下的东西列在下面，不是遗漏是诚实。',
-        en: 'The exported Postman v2.1 collection can be imported back into the original client. What does not fit is listed below.',
+        zh: '两种格式都能在原客户端「Import」回来。装不下的东西列在下面，不是遗漏是诚实。',
+        en: 'Both formats can be imported back into the original client. What does not fit is listed below.',
       })}
       bodyClassName="space-y-3"
     >
+      <Segmented<ExportFormat>
+        size="sm"
+        value={format}
+        onChange={setFormat}
+        ariaLabel={t({ zh: '导出格式', en: 'Export format' })}
+        options={[
+          { value: 'postman', label: 'Postman v2.1' },
+          { value: 'hoppscotch', label: 'Hoppscotch v12' },
+        ]}
+      />
       <ToolAlert
         tone="info"
         title={t({ zh: '这个格式带不走的', en: 'What this format cannot carry' })}
         hint={t({
-          zh: DROPS.map((item) => `· ${item.zh}`).join('\n'),
-          en: DROPS.map((item) => `· ${item.en}`).join('\n'),
+          zh: DROPS[format].map((item) => `· ${item.zh}`).join('\n'),
+          en: DROPS[format].map((item) => `· ${item.en}`).join('\n'),
         })}
       />
       <div className="flex justify-end gap-2">

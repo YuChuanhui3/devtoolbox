@@ -92,6 +92,7 @@ export function ResponseViewer({ result, error, hint, previous, requestUrl }: {
           <span>{t({ zh: '发送请求', en: 'Send Request' })}</span><kbd>⌘</kbd><kbd>↩</kbd>
           <span>{t({ zh: '快捷键', en: 'Keyboard shortcuts' })}</span><kbd>⌘</kbd><kbd>/</kbd>
           <span>{t({ zh: '搜索请求与集合', en: 'Search requests & collections' })}</span><kbd>⌘</kbd><kbd>K</kbd>
+          <a href="https://docs.hoppscotch.io" target="_blank" rel="noreferrer">{t({ zh: '文档', en: 'Documentation' })} ↗</a>
         </div>
       </section>
     );

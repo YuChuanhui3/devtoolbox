@@ -229,7 +229,7 @@ export function CollectionTree(props: TreeProps) {
         <span className="text-xs font-semibold text-ink">{t({ zh: '集合', en: 'Collections' })}</span>
         <span className="flex items-center gap-1">
           {props.onImport ? (
-            <Button variant="ghost" size="sm" onClick={props.onImport} aria-label={t({ zh: '导入集合（Postman / HAR）', en: 'Import collections (Postman / HAR)' })}>
+            <Button variant="ghost" size="sm" onClick={props.onImport} aria-label={t({ zh: '导入集合（Postman / Hoppscotch / HAR）', en: 'Import collections (Postman / Hoppscotch / HAR)' })}>
               <FileUp className="h-3 w-3" aria-hidden="true" />
               {t({ zh: '导入', en: 'Import' })}
             </Button>

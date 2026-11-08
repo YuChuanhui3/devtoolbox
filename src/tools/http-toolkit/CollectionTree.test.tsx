@@ -51,7 +51,7 @@ describe('CollectionTree 导入导出入口', () => {
 
   test('空集合时也提供导入入口', () => {
     renderTree();
-    expect(screen.getByRole('button', { name: '导入集合（Postman / HAR）' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '导入集合（Postman / Hoppscotch / HAR）' })).toBeInTheDocument();
   });
 
   test('导出弹窗默认 Postman v2.1，含头/体/auth 与并进 URL 的参数', async () => {
@@ -85,6 +85,20 @@ describe('CollectionTree 导入导出入口', () => {
       body: { mode: 'raw', raw: '{"a":1}', options: { raw: { language: 'json' } } },
       auth: { type: 'bearer', bearer: [{ key: 'token', value: 'tkn' }] },
     });
+  });
+
+  test('切到 Hoppscotch 后导出他们的 v12 集合数组', async () => {
+    renderTree(docWith([collectionWith([{ ...blankRequest(), name: 'R1', url: 'https://api.test/r' }])]));
+    await userEvent.click(screen.getByRole('button', { name: '导出集合' }));
+    const dialog = await screen.findByRole('dialog', { name: '导出集合「Local」' });
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'Hoppscotch v12' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: '下载 JSON' }));
+
+    const [filename, text] = downloadText.mock.calls[0];
+    expect(filename).toBe('Local.hoppscotch-collection.json');
+    const parsed = JSON.parse(text) as { v: number; requests: Record<string, unknown>[] }[];
+    expect(parsed[0].v).toBe(12);
+    expect(parsed[0].requests[0]).toMatchObject({ v: '1', endpoint: 'https://api.test/r' });
   });
 
   test('搜索按名称与 URL 过滤，文件夹名命中就整支留下', () => {

@@ -20,3 +20,5 @@ coverage/
 *.log
 smoke-*.json
 
+# Generated official local API client assets and process state
+.cache/hoppscotch/

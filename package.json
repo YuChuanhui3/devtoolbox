@@ -23,7 +23,12 @@
     "typecheck": "tsc -b",
     "test": "vitest",
     "test:run": "vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "api:setup": "node scripts/hoppscotch.mjs setup",
+    "api:start": "node scripts/hoppscotch.mjs up",
+    "api:stop": "node scripts/hoppscotch.mjs stop",
+    "api:status": "node scripts/hoppscotch.mjs status",
+    "api:logs": "node scripts/hoppscotch.mjs logs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

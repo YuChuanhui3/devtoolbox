@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Download, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
+import { useToast } from '@/components/ui/Toast';
 import { useI18n } from '@/i18n/I18nProvider';
+import { downloadText } from '@/lib/download';
 import { newId } from '@/lib/apiworkbench/id';
 import { envInheritanceChain } from '@/lib/apiworkbench/store';
+import { exportHoppscotchEnvironments } from '@/lib/apiworkbench/hoppscotch';
 import { useWorkbench } from './WorkbenchContext';
 import { VarTable } from './VarTable';
 import type { WbEnvironment } from '@/lib/apiworkbench/types';
 
 export function EnvironmentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n();
+  const toast = useToast();
   const { doc, update } = useWorkbench();
   const [selectedId, setSelectedId] = useState<string | null>(doc.environments[0]?.id ?? null);
 
@@ -74,7 +78,25 @@ export function EnvironmentModal({ open, onClose }: { open: boolean; onClose: ()
           <Plus className="h-3 w-3" aria-hidden="true" />
           {t({ zh: '新建环境', en: 'New environment' })}
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={doc.environments.length === 0}
+          onClick={() => {
+            downloadText('hoppscotch-environments.json', exportHoppscotchEnvironments(doc.environments), 'application/json;charset=utf-8');
+            toast.success(t({ zh: '已开始下载', en: 'Download started' }));
+          }}
+        >
+          <Download className="h-3 w-3" aria-hidden="true" />
+          {t({ zh: '导出全部为 Hoppscotch', en: 'Export all (Hoppscotch)' })}
+        </Button>
       </div>
+      <p className="text-[11px] leading-4 text-ink-3">
+        {t({
+          zh: '导出是他们的 v2 环境数组，密钥变量的值按同样的迁移做法留空；反向导入用集合面板的「导入」，环境会一起收进来。',
+          en: 'This writes their v2 environment array with secret values blanked, as their own migration does. To bring environments back in, use Import on the collections panel.',
+        })}
+      </p>
 
       {selected ? (
         <div className="min-w-0 space-y-3">
