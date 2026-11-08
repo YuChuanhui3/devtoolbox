@@ -91,13 +91,7 @@ export function ResponseViewer({ result, error, hint, previous, requestUrl }: {
   if (error) return <ToolAlert tone="error" title={error} hint={hint} />;
   if (!result) {
     return (
-      <section className="wb-response-empty" aria-label={t({ zh: '响应区域', en: 'Response area' })}>
-        <div className="wb-shortcut-guide">
-          <span>{t({ zh: '发送请求', en: 'Send Request' })}</span><kbd>⌘</kbd><kbd>↩</kbd>
-          <span>{t({ zh: '快捷键', en: 'Keyboard shortcuts' })}</span><kbd>⌘</kbd><kbd>/</kbd>
-          <span>{t({ zh: '搜索请求与集合', en: 'Search requests & collections' })}</span><kbd>⌘</kbd><kbd>K</kbd>
-        </div>
-      </section>
+      <section className="wb-response-empty" aria-label={t({ zh: '响应区域', en: 'Response area' })} />
     );
   }
   const mime = baseMime(result.headers);

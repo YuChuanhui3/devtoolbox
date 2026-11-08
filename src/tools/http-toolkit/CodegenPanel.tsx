@@ -3,13 +3,27 @@ import { CopyButton } from '@/components/tool/ToolActions';
 import { Select } from '@/components/ui/Select';
 import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
+import { highlightCode } from '@/lib/highlight';
 import { CODEGEN_LANGUAGES, generateSnippet, snippetPlan, type CodegenId } from '@/lib/apiworkbench/codegen';
 import type { WbRequest } from '@/lib/apiworkbench/types';
+
+/** 生成目标语言 → highlight.js 注册名。curl 是 shell 语法，fetch/axios 都是 JS。 */
+const HIGHLIGHT_LANGUAGE: Record<CodegenId, string> = {
+  curl: 'bash',
+  fetch: 'javascript',
+  axios: 'javascript',
+  'node-axios': 'javascript',
+  python: 'python',
+  go: 'go',
+  java: 'java',
+  php: 'php',
+};
 
 /**
  * 请求 → 多语言代码片段。
  *
  * 语言用 Select 而不是第 6 排页签：8 个 Segmented 段在本项目宽度下必然换行。
+ * 片段用 highlight.js 着色（与 Markdown 代码块同一套封装和主题）。
  */
 export function CodegenPanel({ request }: { request: WbRequest }) {
   const { t } = useI18n();
@@ -17,6 +31,8 @@ export function CodegenPanel({ request }: { request: WbRequest }) {
   const plan = useMemo(() => snippetPlan(request), [request]);
   const snippet = useMemo(() => generateSnippet(request, lang), [request, lang]);
   const files = plan.body.files;
+  const hljsLanguage = HIGHLIGHT_LANGUAGE[lang];
+  const highlighted = useMemo(() => highlightCode(snippet, hljsLanguage), [snippet, hljsLanguage]);
 
   return (
     <div className="min-w-0 space-y-2.5">
@@ -64,7 +80,7 @@ export function CodegenPanel({ request }: { request: WbRequest }) {
       ) : null}
 
       <pre className="code-scroll max-h-80 min-w-0 overflow-auto rounded-card border border-line bg-surface-2/40 p-2.5 text-xs leading-5">
-        <code>{snippet}</code>
+        <code className={`hljs language-${hljsLanguage}`} dangerouslySetInnerHTML={{ __html: highlighted }} />
       </pre>
     </div>
   );

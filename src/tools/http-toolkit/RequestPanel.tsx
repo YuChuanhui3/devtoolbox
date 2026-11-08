@@ -68,18 +68,6 @@ const CHANNEL_LABEL: Record<string, Localized> = {
   network: { zh: '网络代理', en: 'Network proxy' },
   program: { zh: '本地程序', en: 'Local program' },
 };
-/** 各代理源的说明文字：弹层与连接设置里的只读描述共用同一份。 */
-const CHANNEL_NOTE: Record<string, Localized> = {
-  browser: { zh: '浏览器直连目标站点，受 CORS 策略限制的站点可能取不到', en: 'Direct from the browser; CORS-restricted sites may fail' },
-  extension: { zh: '由已安装的浏览器扩展在页面侧接管 fetch，前端依旧直连；未安装时等于浏览器直连', en: 'An installed extension intercepts fetch on the page side; the frontend still fetches directly' },
-  network: { zh: '公共代理转发，URL 会暴露给代理方，仅调试用、可能限速', en: 'Routed through a public proxy; the URL is exposed to the proxy operator — debugging only, may be rate-limited' },
-  program: { zh: '本地代理程序转发，可带请求体与完整请求头；地址在状态栏通道弹层里配置', en: 'Forwarded to a local proxy program with full headers and body; configure its URL in the status-bar channel popover' },
-};
-const MODE_NOTE: Record<FetchMode, Localized> = {
-  direct: { zh: '受目标站点 CORS 限制，仅部分站点可用；支持全部方法与请求体', en: 'Limited by the target\'s CORS policy; supports all methods and bodies' },
-  corsproxy: { zh: '公共 CORS 代理：请求 URL 会暴露给代理方，仅调试用、可能限速、不透传请求体', en: 'Public CORS proxy: the request URL is exposed to the proxy operator; debugging only, may be rate-limited, bodies not carried' },
-  allorigins: { zh: '公共抓取代理：URL 会暴露给代理方，可返回状态与内容', en: 'Public fetch proxy: the URL is exposed to the proxy operator; returns status and content' },
-};
 
 interface Editing {
   request: WbRequest;
@@ -581,18 +569,14 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
           </Button>
         ) : null}
 
-        <p className="basis-full text-[11px] leading-4 text-ink-3">
-          {t(CHANNEL_NOTE[channel.source] ?? MODE_NOTE[channelFetchMode(channel)])}
-          {channel.source === 'program' && !channel.programBase
-            ? t({ zh: '（未填程序地址时退回直连）', en: ' (falls back to direct without a program URL)' })
-            : ''}
-          {doc.mockEnabled
-            ? t({
-                zh: `。Mock 拦截已开启：命中 ${doc.mockRoutes.filter((r) => r.enabled).length} 条启用路由中的任一条即本地作答`,
-                en: `. Mock interception is on: a hit on any of ${doc.mockRoutes.filter((r) => r.enabled).length} enabled routes is answered locally`,
-              })
-            : ''}
-        </p>
+        {doc.mockEnabled ? (
+          <p className="basis-full text-[11px] leading-4 text-ink-3">
+            {t({
+              zh: `Mock 拦截已开启：命中 ${doc.mockRoutes.filter((r) => r.enabled).length} 条启用路由中的任一条即本地作答`,
+              en: `Mock interception is on: a hit on any of ${doc.mockRoutes.filter((r) => r.enabled).length} enabled routes is answered locally`,
+            })}
+          </p>
+        ) : null}
       </ActionBar>
       </details>
       <EnvironmentModal open={envModalOpen} onClose={() => setEnvModalOpen(false)} />
