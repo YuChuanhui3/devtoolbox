@@ -19,7 +19,7 @@ describe('complete Hoppscotch integration', () => {
   test('mounts the actual application only when the static client is ready', async () => {
     fetchStatus.mockResolvedValue({ ok: true, json: async () => ({ ready: true, url: 'http://127.0.0.1:3173' }) });
     mount();
-    const frame = await screen.findByTitle('Hoppscotch API workspace');
+    const frame = await screen.findByTitle('API workspace');
     expect(frame).toHaveAttribute('src', 'http://127.0.0.1:3173/');
     expect(frame).toHaveAttribute('allow', expect.stringContaining('clipboard-write'));
   });
@@ -28,18 +28,18 @@ describe('complete Hoppscotch integration', () => {
     mount();
     expect(await screen.findByRole('button', { name: '重新连接' })).toBeInTheDocument();
     expect(screen.getByText('npm run api:start')).toBeInTheDocument();
-    expect(screen.queryByTitle('Hoppscotch API workspace')).toBeNull();
+    expect(screen.queryByTitle('API workspace')).toBeNull();
   });
   test('does not embed an executable URL from a malformed status response', async () => {
     fetchStatus.mockResolvedValue({ ok: true, json: async () => ({ ready: true, url: 'javascript:alert(1)' }) });
     mount();
     await screen.findByRole('button', { name: '重新连接' });
-    expect(screen.queryByTitle('Hoppscotch API workspace')).toBeNull();
+    expect(screen.queryByTitle('API workspace')).toBeNull();
   });
   test('routes MQTT search links into the upstream realtime client', async () => {
     fetchStatus.mockResolvedValue({ ok: true, json: async () => ({ ready: true, url: 'http://127.0.0.1:3173' }) });
     mount('?mode=mqtt');
-    expect(await screen.findByTitle('Hoppscotch API workspace')).toHaveAttribute('src', 'http://127.0.0.1:3173/realtime/mqtt');
+    expect(await screen.findByTitle('API workspace')).toHaveAttribute('src', 'http://127.0.0.1:3173/realtime/mqtt');
   });
   test('retains access to the old local Mock extension', async () => {
     mount('?mode=mock');
@@ -49,7 +49,7 @@ describe('complete Hoppscotch integration', () => {
   test('exposes migration without administration from the integration menu', async () => {
     fetchStatus.mockResolvedValue({ ok: true, json: async () => ({ ready: true, url: 'http://127.0.0.1:3173' }) });
     mount();
-    await screen.findByTitle('Hoppscotch API workspace');
+    await screen.findByTitle('API workspace');
     fireEvent.click(screen.getByRole('button', { name: '工具箱集成菜单' }));
     expect(screen.queryByRole('link', { name: '实例管理' })).toBeNull();
     expect(screen.queryByRole('link', { name: '本地登录邮件' })).toBeNull();
