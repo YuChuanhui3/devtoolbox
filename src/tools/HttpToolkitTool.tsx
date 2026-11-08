@@ -29,7 +29,7 @@ export default function HttpToolkitTool() {
     return () => observer.disconnect();
   }, []);
   // 左侧页签导航的开合。会话内有效，不进存档：页签布局偏好与请求数据是两回事。
-  // 默认收起，与 Hoppscotch 一致——导航栏只露图标行时工作区更宽。
+  // 默认收起（只露图标），与 Hoppscotch 一致；展开时名称显示在图标下方。
   const [navCollapsed, setNavCollapsed] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -99,8 +99,7 @@ export default function HttpToolkitTool() {
         </span>
       </header>
       <div className="wb-app-body">
-      {/* 页签导航可由状态栏按钮折叠；hidden 让 tab 彻底退出无障碍树与布局。 */}
-      <nav className="wb-navigation" aria-label={t({ zh: 'API 工作台页签', en: 'API workbench tab' })} hidden={navCollapsed}>
+      <nav className={`wb-navigation${navCollapsed ? ' wb-nav-collapsed' : ''}`} aria-label={t({ zh: 'API 工作台页签', en: 'API workbench tab' })}>
         <div role="tablist" aria-label={t({ zh: '工作区', en: 'Workspace' })} aria-orientation="vertical" onKeyDown={(event) => {
           const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
           if (!keys.includes(event.key)) return;
@@ -116,7 +115,12 @@ export default function HttpToolkitTool() {
             ['openapi', 'OpenAPI', FileText],
             ['mock', 'Mock', FlaskConical],
             ['stress', t({ zh: '压测', en: 'Stress' }), Gauge],
-          ] as const).map(([value, label, Icon]) => <button key={value} type="button" role="tab" aria-selected={mode === value} tabIndex={mode === value ? 0 : -1} title={label} aria-label={label} onClick={() => setMode(value)}><Icon size={17} /></button>)}
+          ] as const).map(([value, label, Icon]) => (
+            <button key={value} type="button" role="tab" aria-selected={mode === value} tabIndex={mode === value ? 0 : -1} title={label} aria-label={label} onClick={() => setMode(value)}>
+              <Icon size={17} />
+              <span className="wb-nav-label">{label}</span>
+            </button>
+          ))}
         </div>
       </nav>
       <div className="wb-content">

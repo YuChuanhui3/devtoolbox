@@ -44,8 +44,16 @@
 .wb-icon { width: 32px; height: 32px; display: inline-grid; place-items: center; color: var(--ink-2); background: transparent; }
 .wb-icon:hover { background: var(--surface-2); color: var(--ink); }
 .wb-app-body { flex: 1; min-height: 0; display: flex; }
-.wb-navigation { width: 48px; flex: 0 0 48px; border-right: 1px solid var(--line); background: var(--surface-2); }
-.wb-navigation[hidden] { display: none; }
+.wb-navigation { width: 48px; flex: 0 0 48px; border-right: 1px solid var(--line); background: var(--surface-2); transition: width 150ms ease; }
+.wb-navigation [role='tablist'] { display: flex; flex-direction: column; }
+.wb-navigation [role='tab'] { height: 48px; width: 48px; display: grid; place-items: center; border-radius: 0; color: var(--ink-3); border-left: 2px solid transparent; }
+.wb-navigation [role='tab'][aria-selected='true'] { color: var(--ink); border-left-color: var(--accent); background: var(--surface-2); }
+/* 收起=只露图标；展开=图标在上、名称在下，导航栏加宽。名称始终挂在 DOM 上，
+   收起的列里只是视觉上隐去；按钮自身的 aria-label 已提供名称，读屏不受影响。 */
+.wb-nav-label { display: none; }
+.wb-navigation:not(.wb-nav-collapsed) { width: 72px; flex-basis: 72px; }
+.wb-navigation:not(.wb-nav-collapsed) [role='tab'] { height: 56px; width: 72px; grid-template-rows: 20px 16px; row-gap: 2px; padding-top: 4px; }
+.wb-navigation:not(.wb-nav-collapsed) .wb-nav-label { display: block; font-size: 10px; line-height: 1; }
 /* 请求协议 Select 的 chevron 距右边框太贴边。注意 chevron 是 absolute 且参照
    wrapper（.wb-request-identity > span，自带 12px 右内边距）而非按钮本身，
    所以这里的 right 要叠上 wrapper 的 12px，按钮内文本则靠 padding-right 让位。 */
