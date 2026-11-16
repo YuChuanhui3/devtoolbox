@@ -21,6 +21,7 @@ export interface ResponseView {
   via: WbVia;
   /** 直连拿到的图片/PDF 字节，只活在本页内存里。 */
   blob?: Blob | null;
+  body?: Uint8Array;
   /** 流式响应解析出的帧；没有就是普通一次性响应。 */
   events?: StreamedEvent[];
   /** 被主动叫停的流：正文与帧是已收到的部分。 */
@@ -78,6 +79,7 @@ export function ResponseViewer({ result, error, hint, previous, requestUrl }: {
   /** 下载按钮给文件起名用的请求 URL（响应头里的 content-disposition 优先）。 */
   requestUrl?: string;
 }) {
+  const responseBlob = result?.body ? new Blob([new Uint8Array(result.body)], { type: result.headers.find(([key]) => key.toLowerCase() === 'content-type')?.[1] ?? 'application/octet-stream' }) : result?.blob;
   const { t } = useI18n();
   const [override, setOverride] = useState<ViewId | null>(null);
   // 换一次响应就回到该类型默认的那一栏，别把上次的选择带到新响应上。
@@ -168,10 +170,10 @@ export function ResponseViewer({ result, error, hint, previous, requestUrl }: {
           <span className="text-xs font-medium text-ink-2">{t(VIEW_LABEL[view])}</span>
         )}
         <span className="ml-auto flex items-center gap-1.5">
-          {result.blob ? (
+          {responseBlob ? (
             <DownloadButton
               filename={filename}
-              blob={result.blob}
+              blob={responseBlob}
               mime={mime || 'application/octet-stream'}
               label={{ zh: '下载', en: 'Download' }}
             />
@@ -182,9 +184,9 @@ export function ResponseViewer({ result, error, hint, previous, requestUrl }: {
       {view === 'events' ? (
         <EventList events={result.events ?? []} aborted={Boolean(result.aborted)} discarded={Boolean(result.sseDiscarded)} />
       ) : view === 'image' ? (
-        <ImageBody blob={result.blob ?? null} bytes={result.bytes} mime={mime} />
+        <ImageBody blob={responseBlob ?? null} bytes={result.bytes} mime={mime} />
       ) : view === 'info' ? (
-        <BinaryBody blob={result.blob ?? null} bytes={result.bytes} mime={mime} filename={filename} />
+        <BinaryBody blob={responseBlob ?? null} bytes={result.bytes} mime={mime} filename={filename} />
       ) : view === 'preview' ? (
         <HtmlPreview html={result.text} />
       ) : view === 'diff' ? (

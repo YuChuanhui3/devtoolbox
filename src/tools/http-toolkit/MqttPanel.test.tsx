@@ -1,3 +1,4 @@
+import { restoreWorkbench } from '@/lib/apiworkbench/persistence';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { I18nProvider } from '@/i18n/I18nProvider';
@@ -117,7 +118,7 @@ describe('MqttPanel', () => {
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'p' } });
     fireEvent.click(screen.getByRole('button', { name: '连接' }));
 
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(connectMock).toHaveBeenCalledTimes(1);
     });
     const [url, opts] = connectMock.mock.calls[0]!;
@@ -142,13 +143,13 @@ describe('MqttPanel', () => {
     act(() => {
       client.open();
     });
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(client.subscriptions.some((item) => item.topic === 'sensor/#' && item.qos === 0)).toBe(true);
     });
     act(() => {
       client.deliver('sensor/room-1/temp', '21.5');
     });
-    await waitFor(() => {
+    await waitFor(async () => {
       const log = document.querySelector('.max-h-\\[460px\\]');
       expect(log?.textContent).toContain('sensor/room-1/temp');
       expect(log?.textContent).toContain('21.5');
@@ -170,7 +171,7 @@ describe('MqttPanel', () => {
     fireEvent.change(screen.getByLabelText('发布内容（JSON 或纯文本）'), { target: { value: '{"on":true}' } });
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(client.published).toHaveLength(1);
       expect(client.published[0]).toMatchObject({ topic: 'cmd/room-1', payload: '{"on":true}', qos: 0, retain: false });
     });
@@ -193,7 +194,7 @@ describe('MqttPanel', () => {
 
     fireEvent.change(screen.getByLabelText('订阅主题过滤器'), { target: { value: 'alarm/#' } });
     fireEvent.click(screen.getByRole('button', { name: '订阅' }));
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(client.subscriptions.some((item) => item.topic === 'alarm/#')).toBe(true);
     });
     // 订阅列表出现该行。
@@ -207,9 +208,9 @@ describe('MqttPanel', () => {
     fireEvent.change(screen.getByLabelText('订阅主题过滤器'), { target: { value: 'sensor/#' } });
     fireEvent.click(screen.getByRole('button', { name: '订阅' }));
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
-    await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem(WORKBENCH_STORAGE_KEY) ?? '{}');
-      const saved = stored.sockets.find((item: { url: string }) => item.url === 'wss://mqtt.test');
+    await waitFor(async () => {
+      const stored = await restoreWorkbench();
+      const saved = stored.sockets.find((item: { url: string }) => item.url === 'wss://mqtt.test')!;
       expect(saved.kind).toBe('mqtt');
       expect(saved.mqttSubscriptions).toEqual([{ topic: 'sensor/#', qos: 0 }]);
     });
@@ -231,7 +232,7 @@ describe('MqttPanel', () => {
     act(() => {
       FakeMqttClient.instances[0]!.fail('Connection refused');
     });
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(document.body.textContent).toContain('Connection refused');
     });

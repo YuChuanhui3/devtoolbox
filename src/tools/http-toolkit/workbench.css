@@ -97,13 +97,29 @@
 .wb-urlbar > button svg { display: none; }
 .wb-urlbar > button:last-child { padding-inline: 18px; gap: 20px; background: var(--surface-2); }
 .wb-request-editor > div[class*='rounded-card'] { border-radius: 0; border: 0; }
-.wb-request-editor > div[class*='rounded-card'] > div:first-child { padding: 0 16px; gap: 0; background: transparent; min-height: 32px; flex-wrap: wrap; }
+/* 工作台内的其他页签组（响应区、查询参数工具栏等）共用同一套扁平页签外观。 */
 .api-workbench [role='tablist']:not(.wb-navigation *) { border: 0; border-radius: 0; padding: 0; gap: 0; background: transparent; }
 .api-workbench [role='tab']:not(.wb-navigation *) { border-radius: 0; background: transparent; border-bottom: 2px solid transparent; font-size: 12px; min-height: 32px; padding: 8px 12px; color: var(--ink-2); }
 .api-workbench [role='tab'][aria-selected='true']:not(.wb-navigation *) { border-bottom-color: var(--accent); color: var(--ink); }
-.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tab']:first-child { padding-left: 0; }
-.wb-request-editor > div[class*='rounded-card'] > div:first-child > div:last-child { margin-left: auto; }
-.wb-request-editor > div[class*='rounded-card'] > div:first-child > div:last-child button { height: 28px; padding-inline: 6px; font-size: 10px; }
+/* 请求编辑区页签条与 Hoppscotch 的请求选项卡一致：整条无底色、无圆角、吸顶；
+   页签 32px 高（8px 内边距 + 16px 行高）、600 字重；激活项用两侧各内缩 16px 的 2px 下划线。 */
+.wb-request-editor > div[class*='rounded-card'] > div:first-child { position: sticky; top: 0; z-index: 10; padding: 0; gap: 0; background: var(--surface); min-height: 32px; flex-wrap: nowrap; }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tablist'] { flex: 1 1 auto; border: 0; border-radius: 0; padding: 0; gap: 0; background: transparent; flex-wrap: nowrap; min-width: 0; overflow-x: auto; }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tab'] { position: relative; flex-shrink: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink-2); font-size: 12px; line-height: 16px; font-weight: 600; padding: 8px 16px; min-height: 32px; }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tab']:hover { color: var(--ink); }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tab']::after { content: ''; position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; background: transparent; }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tab'][aria-selected='true'] { color: var(--ink); }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tab'][aria-selected='true']::after { background: var(--accent); }
+/* Hoppscotch 的 tab-info：页签内的计数小徽标（8px 字、1rem 高、描边圆角）。 */
+.wb-tab-info { display: inline-flex; align-items: center; justify-content: center; min-width: 1rem; height: 1rem; margin-left: 8px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-3); font-size: 8px; font-weight: 600; line-height: 1; }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child [role='tab'][aria-selected='true'] .wb-tab-info { color: var(--ink-2); border-color: var(--line-strong); }
+/* Hoppscotch 用 4px 浅色小圆点表示该页签里有内容。 */
+.wb-tab-dot { width: 4px; height: 4px; margin-left: 8px; border-radius: 9999px; background: var(--accent); opacity: 0.6; }
+/* 右侧动作：Hoppscotch 次级图标按钮——32×32、4px 圆角、悬停只换文字色与浅底。 */
+.wb-request-editor > div[class*='rounded-card'] > div:first-child > div:last-child { margin-left: auto; gap: 2px; padding-right: 8px; }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child > div:last-child button { width: 32px; height: 32px; padding: 0; border-radius: 4px; color: var(--ink-2); background: transparent; }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child > div:last-child button:hover { color: var(--ink); background: var(--surface-2); }
+.wb-request-editor > div[class*='rounded-card'] > div:first-child > div:last-child button svg { width: 16px; height: 16px; }
 .wb-request-editor > div[class*='rounded-card'] > div:last-child { padding: 0; }
 .wb-sidebar { position: absolute; top: 0; right: 0; bottom: 0; width: var(--wb-sidebar); border-left: 1px solid var(--line); background: var(--surface); padding-left: 48px; overflow: auto; }
 .wb-sidebar[hidden], .wb-sidebar [hidden], .wb-documents-shell > [hidden] { display: none; }
@@ -191,7 +207,7 @@
   .wb-urlbar > :first-child { width: 80px; }
   .wb-urlbar > input { flex-basis: calc(100% - 80px); }
   .wb-urlbar > button { margin-left: 0; margin-right: 8px; }
-  .wb-request-editor > div[class*='rounded-card'] > div:first-child { padding-inline: 10px; }
+  .wb-request-editor > div[class*='rounded-card'] > div:first-child > div:last-child { padding-right: 4px; }
   .api-workbench [role='tab']:not(.wb-navigation *) { font-size: 11px; padding-inline: 8px; }
   .wb-connection { display: none; }
 }

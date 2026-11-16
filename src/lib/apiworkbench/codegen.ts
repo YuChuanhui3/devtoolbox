@@ -1,4 +1,5 @@
 import type { Localized } from '@/i18n/locale';
+import { type BuiltRequest } from './send';
 import { finalUrl } from './params';
 import { toCurl } from './transfer';
 import { extractVars } from './vars';
@@ -105,7 +106,15 @@ function graphqlJson(req: WbRequest): string {
 const EMPTY_BODY: SnippetBody = { kind: 'none', text: '', fields: [], files: [] };
 
 /** 把请求拆成语言无关的一张计划表；生成器只排版，不再各自猜语义。 */
-export function snippetPlan(req: WbRequest): SnippetPlan {
+export function snippetPlan(req: WbRequest, prepared?: BuiltRequest): SnippetPlan {
+  if (prepared) {
+    const body: SnippetBody = typeof prepared.body === 'string'
+      ? { kind: 'raw', text: prepared.body, fields: [], files: [] }
+      : prepared.body instanceof FormData
+        ? { kind: 'multipart', text: '', fields: [...prepared.body.entries()].filter((entry): entry is [string, string] => typeof entry[1] === 'string'), files: [...prepared.body.entries()].filter((entry): entry is [string, File] => typeof entry[1] !== 'string').map(([key, file]) => ({ key, name: file.name, mime: file.type })) }
+        : EMPTY_BODY;
+    return { method: prepared.method, url: prepared.url, headers: Object.entries(prepared.headers), basic: null, body, variables: [] };
+  }
   const method = req.customMethod?.trim() || req.method;
   let url = finalUrl(req.url, req.params);
   const headers: [string, string][] = [];
@@ -376,9 +385,13 @@ function generatePhp(plan: SnippetPlan): string {
  * 这里不走 `lib/curl` 的 curlToCode：那条链路的输入是一行 curl 命令，
  * `-F` 文件字段进不去，而工作台请求是结构化的，不需要绕道 shell 再猜回来。
  */
-export function generateSnippet(req: WbRequest, id: CodegenId): string {
-  if (id === 'curl') return toCurl(req);
-  const plan = snippetPlan(req);
+export function generateSnippet(req: WbRequest, id: CodegenId, prepared?: BuiltRequest): string {
+  if (id === 'curl') {
+    if (!prepared) return toCurl(req);
+    const quote = (v: string) => "'" + v.replaceAll("'", "'\\''") + "'";
+    return ['curl -X ' + prepared.method + ' ' + quote(prepared.url), ...Object.entries(prepared.headers).map(([k, v]) => '-H ' + quote(k + ': ' + v)), ...(typeof prepared.body === 'string' ? ['--data-raw ' + quote(prepared.body)] : prepared.body ? [...prepared.body.entries()].map(([k,v]) => '-F ' + quote(k + '=' + (typeof v === 'string' ? v : '@' + v.name))) : [])].join(' \\\n  ');
+  }
+  const plan = snippetPlan(req, prepared);
   const language = CODEGEN_LANGUAGES.find((item) => item.id === id) ?? CODEGEN_LANGUAGES[0];
   const code = id === 'fetch'
     ? generateFetch(plan)

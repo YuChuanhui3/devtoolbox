@@ -1,3 +1,4 @@
+import { restoreWorkbench } from '@/lib/apiworkbench/persistence';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { I18nProvider } from '@/i18n/I18nProvider';
@@ -76,11 +77,11 @@ describe('SsePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '连接' }));
 
     // 日志区出现 IN 行与事件类型统计即说明流被消费（pretty JSON 会换行缩进，不断言原文连续子串）。
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(document.body.textContent).toContain('事件类型：');
       expect(document.body.textContent).toContain('tick ×1');
     });
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(document.body.textContent).toContain('IN');
       expect(document.body.textContent).toContain('"n": 1');
     });
@@ -93,7 +94,7 @@ describe('SsePanel', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '连接' }));
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -105,7 +106,7 @@ describe('SsePanel', () => {
     // 环境里有 host，但换一个未定义的变量名验证拦截。
     fireEvent.change(screen.getByLabelText('SSE 地址'), { target: { value: 'https://{{missing}}/metrics' } });
     fireEvent.click(screen.getByRole('button', { name: '连接' }));
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(screen.getByRole('alert').textContent).toContain('missing');
     });
   });
@@ -115,9 +116,9 @@ describe('SsePanel', () => {
     fireEvent.change(screen.getByLabelText('SSE 地址'), { target: { value: 'https://stream.test/metrics' } });
     fireEvent.change(screen.getByLabelText('连接名称'), { target: { value: '指标流' } });
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
-    await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem(WORKBENCH_STORAGE_KEY) ?? '{}');
-      const saved = stored.sockets.find((item: { url: string }) => item.url === 'https://stream.test/metrics');
+    await waitFor(async () => {
+      const stored = await restoreWorkbench();
+      const saved = stored.sockets.find((item: { url: string }) => item.url === 'https://stream.test/metrics')!;
       expect(saved.kind).toBe('sse');
       expect(saved.name).toBe('指标流');
     });
@@ -135,7 +136,7 @@ describe('SsePanel', () => {
     renderPanel();
     fireEvent.change(screen.getByLabelText('SSE 地址'), { target: { value: 'https://stream.test/metrics' } });
     fireEvent.click(screen.getByRole('button', { name: '连接' }));
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(document.body.textContent).toContain('tick ×1');
     });
   });

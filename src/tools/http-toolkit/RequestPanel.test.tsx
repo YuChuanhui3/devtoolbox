@@ -1,3 +1,4 @@
+import { restoreWorkbench } from '@/lib/apiworkbench/persistence';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -103,15 +104,15 @@ describe('RequestPanel 分裂保存与另存为', () => {
 
     await waitFor(() => expect(screen.getByText(/已另存为/)).toBeInTheDocument());
     // 存档有 500ms 防抖，轮询等到副本落盘再断言位置。
-    const storedDoc = await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem(WORKBENCH_STORAGE_KEY) ?? '{}');
-      const col = stored.collections.find((c: { id: string }) => c.id === 'col-1');
-      const dir = col.root.folders.find((f: { id: string }) => f.id === 'dir-1');
+    const storedDoc = await waitFor(async () => {
+      const stored = await restoreWorkbench();
+      const col = stored.collections.find((c: { id: string }) => c.id === 'col-1')!;
+      const dir = col.root.folders.find((f: { id: string }) => f.id === 'dir-1')!;
       if (dir.requests.length > 0) return stored;
       throw new Error('副本尚未落盘');
     });
-    const saved = storedDoc.collections.find((c: { id: string }) => c.id === 'col-1');
-    const dir = saved.root.folders.find((f: { id: string }) => f.id === 'dir-1');
+    const saved = storedDoc.collections.find((c: { id: string }) => c.id === 'col-1')!;
+    const dir = saved.root.folders.find((f: { id: string }) => f.id === 'dir-1')!;
     expect(dir.requests.length).toBe(1);
     expect(dir.requests[0].url).toContain('save-as');
     expect(saved.root.requests.length).toBe(0);
@@ -140,6 +141,7 @@ describe('RequestPanel mock interception', () => {
       ok: true,
       status: 200,
       text: async () => 'hello',
+      arrayBuffer: async () => new TextEncoder().encode('hello').buffer,
       headers: new Headers(),
     }));
     vi.stubGlobal('fetch', fetchMock);
@@ -161,11 +163,14 @@ describe('RequestPanel 参数表格', () => {
     fireEvent.change(screen.getByLabelText('请求 URL'), { target: { value: 'https://api.test/x?page=2' } });
     expect(screen.getByLabelText('参数名称 1')).toHaveValue('page');
     expect(screen.getByLabelText('参数值 1')).toHaveValue('2');
+    // 页签徽标与 Hoppscotch 同口径：启用且填了内容的参数才计数
+    expect(screen.getByRole('tab', { name: '参数' }).querySelector('.wb-tab-info')).toHaveTextContent('1');
 
     fireEvent.click(screen.getByRole('button', { name: '添加参数' }));
     fireEvent.change(screen.getByLabelText('参数名称 2'), { target: { value: 'q' } });
     fireEvent.change(screen.getByLabelText('参数值 2'), { target: { value: '{{kw}}' } });
     expect(screen.getByLabelText('请求 URL')).toHaveValue('https://api.test/x?page=2&q={{kw}}');
+    expect(screen.getByRole('tab', { name: '参数' }).querySelector('.wb-tab-info')).toHaveTextContent('2');
   });
 
   test('取消勾选只从 URL 摘掉这一条，值仍留在表格里', () => {
@@ -176,8 +181,10 @@ describe('RequestPanel 参数表格', () => {
     // 按标签取行内开关：工具栏上还有一个「流式接收」的 checkbox，按下标取会误命中它
     fireEvent.click(screen.getAllByLabelText('启用参数')[0]);
     expect(screen.getByLabelText('请求 URL')).toHaveValue('https://api.test/x?b=2');
+    expect(screen.getByRole('tab', { name: '参数' }).querySelector('.wb-tab-info')).toHaveTextContent('1');
     fireEvent.click(screen.getAllByLabelText('启用参数')[0]);
     expect(screen.getByLabelText('请求 URL')).toHaveValue('https://api.test/x?a=1&b=2');
+    expect(screen.getByRole('tab', { name: '参数' }).querySelector('.wb-tab-info')).toHaveTextContent('2');
   });
 });
 
@@ -208,7 +215,10 @@ describe('RequestPanel 方法、请求体与认证', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: '请求体' }));
     fireEvent.click(screen.getByRole('tab', { name: 'GraphQL' }));
+    // 空请求体不亮圆点，写了 query 才亮（与 Hoppscotch 的 body indicator 一致）
+    expect(screen.getByRole('tab', { name: '请求体' }).querySelector('.wb-tab-dot')).toBeNull();
     fireEvent.change(screen.getByLabelText('GraphQL Query'), { target: { value: 'query { me }' } });
+    expect(screen.getByRole('tab', { name: '请求体' }).querySelector('.wb-tab-dot')).not.toBeNull();
     expect(screen.getByRole('button', { name: '复制为 curl' })).toBeInTheDocument();
     expect(screen.getByLabelText('GraphQL Variables')).toBeInTheDocument();
   });
@@ -300,7 +310,7 @@ describe('RequestPanel 集合导入', () => {  test('粘贴 Postman 集合 JSON 
     expect(dialog).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Pong/ }));
-    fireEvent.click(screen.getByRole('tab', { name: '后请求脚本' }));
+    fireEvent.click(screen.getByRole('tab', { name: '请求后脚本' }));
     expect(screen.getByDisplayValue('pm.test("x", () => pm.expect(1).to.be(1));')).toBeInTheDocument();
   });
 
@@ -358,6 +368,7 @@ function jsonResponse(text: string) {
     ok: true,
     headers: new Headers([['Content-Type', 'application/json']]),
     text: async () => text,
+    arrayBuffer: async () => new TextEncoder().encode(text).buffer,
   } as unknown as Response;
 }
 
@@ -382,7 +393,7 @@ describe('RequestPanel 流式与差异', () => {
     expect(screen.getByText('id 7')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: '原文' }));
-    const joined = preBlocks().find((text) => text.includes('data: o'));
+    const joined = preBlocks().find((text) => text.includes('data: o'))!;
     expect(joined).toBe('data: one\n\nevent: tick\ndata: two\nid: 7\n\n');
   });
 
@@ -497,7 +508,7 @@ describe('RequestPanel 授权回跳的令牌确认', () => {
     fireEvent.click(screen.getByRole('button', { name: '存到本机' }));
     expect(await screen.findByText('访问令牌已存到本机，记得保存请求才会留在集合里')).toBeInTheDocument();
     expect(screen.getByLabelText('清除令牌')).toBeInTheDocument();
-    expect(localStorage.getItem(WORKBENCH_STORAGE_KEY)).not.toContain('redirect-token-987654');
+    expect(JSON.stringify(await restoreWorkbench())).not.toContain('redirect-token-987654');
   });
 
   test('点丢弃就把令牌留在原地，请求里不出现令牌', async () => {

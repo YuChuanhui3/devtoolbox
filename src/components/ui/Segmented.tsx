@@ -6,6 +6,8 @@ export interface SegmentedOption<T extends string> {
   label: ReactNode;
   icon?: ReactNode;
   disabled?: boolean;
+  /** 靠右对齐（对应 Hoppscotch 的 align-last，例如「变量」/「代码」）。 */
+  alignLast?: boolean;
 }
 
 interface SegmentedProps<T extends string> {
@@ -70,6 +72,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md text-xs font-medium transition-colors duration-300 ease-in-out disabled:cursor-not-allowed disabled:opacity-40',
+              option.alignLast && 'ml-auto',
               size === 'sm' ? 'min-h-7 px-2.5 py-0.5' : 'min-h-9 px-3.5 py-1.5',
               active
                 ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)]'

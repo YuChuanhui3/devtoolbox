@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Import, Plus, Send, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { CopyIconButton } from '@/components/tool/ToolActions';
@@ -111,8 +110,24 @@ export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadline
     }
   };
 
-  const enabledParams = (request.params ?? []).filter((p) => p.enabled).length;
-  const scriptCount = (request.preScript?.trim() ? 1 : 0) + (request.testScript?.trim() ? 1 : 0);
+  // Hoppscotch 的计数口径：启用且填了内容（key/value 任一非空）才计入页签徽标。
+  const enabledParams = (request.params ?? []).filter((p) => p.enabled && (p.key || p.value)).length;
+  const activeHeaders = request.headers.filter((h) => h.enabled && (h.key || h.value)).length;
+  const hasPreScript = Boolean(request.preScript?.trim());
+  const hasTestScript = Boolean(request.testScript?.trim());
+  const scriptCount = (hasPreScript ? 1 : 0) + (hasTestScript ? 1 : 0);
+  const bodyFilled =
+    request.body.mode === 'graphql'
+      ? Boolean(request.body.graphql?.query?.trim() || request.body.graphql?.variables?.trim())
+      : request.body.mode === 'multipart'
+        ? Boolean(request.body.multipart?.some((part) => part.key || part.value))
+        : request.body.mode !== 'none' && Boolean(request.body.text?.trim());
+
+  /** Hoppscotch 的页签计数徽标：贴在页签文字尾部，选中时描边与文字一起加深。 */
+  const tabInfo = (count: number) =>
+    count ? <span className="wb-tab-info" aria-hidden="true">{count}</span> : null;
+  /** Hoppscotch 用一个小圆点表示该页签里有内容（脚本页签）。 */
+  const tabDot = (on: boolean) => (on ? <span className="wb-tab-dot" aria-hidden="true" /> : null);
 
   return (
     <div className="wb-request-editor min-w-0 space-y-3">
@@ -221,18 +236,15 @@ export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadline
             onChange={setSection}
             ariaLabel={t({ zh: '请求编辑区', en: 'Request editor section' })}
             options={[
-              { value: 'params', label: t({ zh: '参数', en: 'Parameters' }) },
-              { value: 'body', label: t({ zh: '请求体', en: 'Body' }) },
-              { value: 'headers', label: t({ zh: '请求头', en: 'Headers' }) },
+              { value: 'params', label: <>{t({ zh: '参数', en: 'Parameters' })}{tabInfo(enabledParams)}</> },
+              { value: 'body', label: <>{t({ zh: '请求体', en: 'Body' })}{tabDot(bodyFilled)}</> },
+              { value: 'headers', label: <>{t({ zh: '请求头', en: 'Headers' })}{tabInfo(activeHeaders)}</> },
               { value: 'auth', label: t({ zh: '授权', en: 'Authorization' }) },
-              { value: 'scripts', label: t({ zh: '预请求脚本', en: 'Pre-request Script' }) },
-              { value: 'postscript', label: t({ zh: '后请求脚本', en: 'Post-request Script' }) },
-              { value: 'code', label: t({ zh: '代码', en: 'Code' }) },
+              { value: 'scripts', label: <>{t({ zh: '预请求脚本', en: 'Pre-request Script' })}{tabDot(hasPreScript)}</> },
+              { value: 'postscript', label: <>{t({ zh: '请求后脚本', en: 'Post-request Script' })}{tabDot(hasTestScript)}</> },
+              { value: 'code', label: t({ zh: '代码', en: 'Code' }), alignLast: true },
             ]}
           />
-          {section === 'headers' ? <Badge tone="neutral">{request.headers.length}</Badge> : null}
-          {section === 'params' && enabledParams ? <Badge tone="neutral">{enabledParams}</Badge> : null}
-          {scriptCount ? <Badge tone="accent">{t({ zh: `脚本 ${scriptCount} 段`, en: `${scriptCount} script(s)` })}</Badge> : null}
           <div className="ml-auto flex items-center gap-1.5">
             <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)} aria-label={t({ zh: '导入 curl', en: 'Import curl' })} title={t({ zh: '导入 curl', en: 'Import curl' })}>
               <Import className="h-3.5 w-3.5" aria-hidden="true" />
@@ -260,6 +272,7 @@ export function RequestEditor({ request, scope, proxying, deadlineMs, onDeadline
                 <span>{t({ zh: '值', en: 'Value' })}</span>
                 <span className="justify-self-end">{t({ zh: '删除', en: 'Remove' })}</span>
               </div>
+              <p className="text-xs text-muted-foreground">{t({ zh: '认证配置生成的请求头优先于同名用户头（名称不区分大小写）；Content-Type 由请求体自动补充，用户填写时优先。来源：认证 / 请求体 / 用户。', en: 'Auth headers override user headers case-insensitively. Body Content-Type is added only when absent. Sources: auth / body / user.' })}</p>
               {request.headers.map((row, index) => (
                 <div key={index} className={HEADER_COLS}>
                   <Checkbox

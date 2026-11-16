@@ -1,3 +1,4 @@
+import { restoreWorkbench } from '@/lib/apiworkbench/persistence';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { I18nProvider } from '@/i18n/I18nProvider';
@@ -122,7 +123,7 @@ describe('SocketIoPanel', () => {
     fireEvent.change(screen.getByLabelText('命名空间（留空为根）'), { target: { value: '/chat' } });
     fireEvent.click(screen.getByRole('button', { name: '连接' }));
 
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(FakeSocket.instances).toHaveLength(1);
     });
     const socket = FakeSocket.instances[0]!;
@@ -134,7 +135,7 @@ describe('SocketIoPanel', () => {
     act(() => {
       socket.open();
     });
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(screen.getAllByText('已连接').length).toBeGreaterThan(0);
     });
   });
@@ -154,7 +155,7 @@ describe('SocketIoPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '发送（带 ack）' }));
 
     // payload 经 pretty JSON 缩进后断言行内字段，而不是连续子串。
-    await waitFor(() => {
+    await waitFor(async () => {
       const log = document.querySelector('.max-h-\\[460px\\]');
       expect(log?.textContent).toContain('chat message');
       expect(log?.textContent).toContain('ACK');
@@ -175,7 +176,7 @@ describe('SocketIoPanel', () => {
       socket.open();
       socket.receive('notification', { title: '新消息' });
     });
-    await waitFor(() => {
+    await waitFor(async () => {
       const log = document.querySelector('.max-h-\\[460px\\]');
       expect(log?.textContent).toContain('notification');
       expect(log?.textContent).toContain('新消息');
@@ -190,7 +191,7 @@ describe('SocketIoPanel', () => {
     act(() => {
       FakeSocket.instances[0]!.fail('invalid namespace');
     });
-    await waitFor(() => {
+    await waitFor(async () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(document.body.textContent).toContain('invalid namespace');
     });
@@ -202,9 +203,9 @@ describe('SocketIoPanel', () => {
     fireEvent.change(screen.getByLabelText('命名空间（留空为根）'), { target: { value: '/chat' } });
     fireEvent.change(screen.getByLabelText('连接名称'), { target: { value: '聊天服务' } });
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
-    await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem(WORKBENCH_STORAGE_KEY) ?? '{}');
-      const saved = stored.sockets.find((item: { url: string }) => item.url === 'http://io.test');
+    await waitFor(async () => {
+      const stored = await restoreWorkbench();
+      const saved = stored.sockets.find((item: { url: string }) => item.url === 'http://io.test')!;
       expect(saved.kind).toBe('socketio');
       expect(saved.socketIoNamespace).toBe('/chat');
     });

@@ -10,7 +10,8 @@ import {
 } from 'react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useToast } from '@/components/ui/Toast';
-import { envInheritanceChain, loadWorkbench, saveWorkbench } from '@/lib/apiworkbench/store';
+import { envInheritanceChain, loadWorkbench } from '@/lib/apiworkbench/store';
+import { persistWorkbench, restoreWorkbench } from '@/lib/apiworkbench/persistence';
 import { mergeVarLists, mergeVarScopes } from '@/lib/apiworkbench/vars';
 import type { SendChannel } from '@/lib/net';
 import type { WbCollection, WbEnvironment, WbVar, WorkbenchDoc } from '@/lib/apiworkbench/types';
@@ -43,27 +44,50 @@ export function WorkbenchProvider({ children, initialChannel }: { children: Reac
   const [collectionSidebarOpen, setCollectionSidebarOpen] = useState(true);
   const toggleCollectionSidebar = useCallback(() => setCollectionSidebarOpen((open) => !open), []);
   const dirtyRef = useRef(false);
+  const [ready, setReady] = useState(false);
+  const hydrated = useRef(false);
+  const pendingUpdates = useRef<Array<(doc: WorkbenchDoc) => WorkbenchDoc>>([]);
+  const writes = useRef(Promise.resolve());
+  useEffect(() => {
+    let active = true;
+    restoreWorkbench().then((saved) => {
+      if (active) {
+        const restored = pendingUpdates.current.reduce((current, fn) => fn(current), saved);
+        setDoc((current) => JSON.stringify(current) === JSON.stringify(restored) ? current : restored);
+        pendingUpdates.current = [];
+        hydrated.current = true;
+        setReady(true);
+      }
+    }).catch(() => {
+      if (!active) return;
+      toast.error(t({ zh: '本地数据库读取或迁移失败，原数据已保留', en: 'Local database migration failed; existing data retained' }));
+    });
+    return () => { active = false; };
+  }, []);
   const quotaWarnedRef = useRef(false);
 
   const update = useCallback((fn: (current: WorkbenchDoc) => WorkbenchDoc) => {
+    if (!hydrated.current) pendingUpdates.current.push(fn);
     dirtyRef.current = true;
     setDoc((current) => fn(current));
   }, []);
 
   useEffect(() => {
-    if (!dirtyRef.current) return;
+    if (!ready || !dirtyRef.current) return;
     const timer = window.setTimeout(() => {
       dirtyRef.current = false;
-      if (!saveWorkbench(doc) && !quotaWarnedRef.current) {
+      writes.current = writes.current.then(() => persistWorkbench(doc)).then(() => { quotaWarnedRef.current = false; }).catch(() => {
+      if (!quotaWarnedRef.current) {
         quotaWarnedRef.current = true;
         toast.error(t({
           zh: '本地存储写入失败（可能配额已满），请导出或清理旧集合',
           en: 'Local storage write failed (quota likely exhausted) — export or clean old collections',
         }));
       }
+      });
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [doc, toast, t]);
+  }, [doc, ready, toast, t]);
 
   const value = useMemo<WorkbenchApi>(() => {
     const activeEnv = doc.environments.find((e) => e.id === doc.activeEnvId) ?? null;

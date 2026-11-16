@@ -5,6 +5,7 @@ import { ToolAlert } from '@/components/tool/ToolAlert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { highlightCode } from '@/lib/highlight';
 import { CODEGEN_LANGUAGES, generateSnippet, snippetPlan, type CodegenId } from '@/lib/apiworkbench/codegen';
+import { buildRequest } from '@/lib/apiworkbench/send';
 import type { WbRequest } from '@/lib/apiworkbench/types';
 
 /** 生成目标语言 → highlight.js 注册名。curl 是 shell 语法，fetch/axios 都是 JS。 */
@@ -25,11 +26,15 @@ const HIGHLIGHT_LANGUAGE: Record<CodegenId, string> = {
  * 语言用 Select 而不是第 6 排页签：8 个 Segmented 段在本项目宽度下必然换行。
  * 片段用 highlight.js 着色（与 Markdown 代码块同一套封装和主题）。
  */
-export function CodegenPanel({ request }: { request: WbRequest }) {
+export function CodegenPanel({ request, scope }: { request: WbRequest; scope?: Record<string, string> }) {
   const { t } = useI18n();
   const [lang, setLang] = useState<CodegenId>('curl');
-  const plan = useMemo(() => snippetPlan(request), [request]);
-  const snippet = useMemo(() => generateSnippet(request, lang), [request, lang]);
+  const prepared = useMemo(() => {
+    if (!scope) return undefined;
+    try { return buildRequest(request, { scope, mode: 'direct', mockEnabled: false, mockRoutes: [] }); } catch { return undefined; }
+  }, [request, scope]);
+  const plan = useMemo(() => snippetPlan(request, prepared), [request, prepared]);
+  const snippet = useMemo(() => generateSnippet(request, lang, prepared), [request, lang, prepared]);
   const files = plan.body.files;
   const hljsLanguage = HIGHLIGHT_LANGUAGE[lang];
   const highlighted = useMemo(() => highlightCode(snippet, hljsLanguage), [snippet, hljsLanguage]);

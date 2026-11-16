@@ -1,3 +1,4 @@
+import { restoreWorkbench } from '@/lib/apiworkbench/persistence';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { I18nProvider } from '@/i18n/I18nProvider';
@@ -101,7 +102,7 @@ function connectedSocket(url = 'wss://echo.test/ws') {
 }
 
 function logLine(matcher: (text: string) => boolean) {
-  return Array.from(document.querySelectorAll('pre')).find((node) => matcher(node.textContent ?? ''));
+  return Array.from(document.querySelectorAll('pre')).find((node) => matcher(node.textContent ?? ''))!;
 }
 
 describe('WebSocketPanel', () => {
@@ -178,8 +179,8 @@ describe('WebSocketPanel', () => {
 
     setUrl('wss://orders.test/ws?v=2');
     fireEvent.click(screen.getByRole('button', { name: '更新连接' }));
-    await waitFor(() => {
-      const saved = JSON.parse(localStorage.getItem(WORKBENCH_STORAGE_KEY) ?? '{}');
+    await waitFor(async () => {
+      const saved = await restoreWorkbench();
       expect(saved.sockets[0].url).toBe('wss://orders.test/ws?v=2');
     });
   });

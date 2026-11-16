@@ -139,3 +139,23 @@ describe('WorkbenchContext 变量作用域', () => {
     expect(screen.getByText('scope=only_here=yes,token=collection')).toBeInTheDocument();
   });
 });
+
+test('加载数据库时的编辑在恢复后重放，保留已有环境', async () => {
+  const { persistWorkbench, restoreWorkbench } = await import('@/lib/apiworkbench/persistence');
+  const { sanitizeWorkbench } = await import('@/lib/apiworkbench/store');
+  await persistWorkbench(sanitizeWorkbench({ environments: [{ id: 'kept', name: 'Kept', variables: [] }] }));
+  localStorage.removeItem(WORKBENCH_STORAGE_KEY);
+  function EditingProbe() {
+    const { doc, update } = useWorkbench();
+    return <><button onClick={() => update((current) => ({ ...current, mockEnabled: true }))}>early edit</button><span>{doc.environments.map((env) => env.name).join(',')}</span></>;
+  }
+  render(<I18nProvider><ToastProvider><WorkbenchProvider><EditingProbe /></WorkbenchProvider></ToastProvider></I18nProvider>);
+  fireEvent.click(screen.getByText('early edit'));
+  expect(await screen.findByText('Kept')).toBeInTheDocument();
+  const { waitFor } = await import('@testing-library/react');
+  await waitFor(async () => {
+    const saved = await restoreWorkbench();
+    expect(saved.mockEnabled).toBe(true);
+    expect(saved.environments[0].name).toBe('Kept');
+  });
+});

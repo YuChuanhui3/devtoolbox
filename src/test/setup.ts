@@ -1,3 +1,6 @@
+import { IDBFactory } from 'fake-indexeddb';
+import { beforeEach } from 'vitest';
+beforeEach(() => { globalThis.indexedDB = new IDBFactory(); });
 import '@testing-library/jest-dom/vitest';
 import { webcrypto } from 'node:crypto';
 

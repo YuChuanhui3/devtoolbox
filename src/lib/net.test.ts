@@ -208,3 +208,52 @@ describe('dnsResolve', () => {
     await expect(dnsResolve('  ', 'A')).rejects.toThrow('请输入域名');
   });
 });
+
+describe('ordinary response byte limit', () => {
+  test('cancels oversized streams and preserves the size error', async () => {
+    const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new Uint8Array(5)); },
+      cancel,
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream)));
+    await expect(proxyFetch('https://example.com', { maxBytes: 4 })).rejects.toMatchObject({ code: 'too-large' });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(stream.locked).toBe(false);
+  });
+
+  test('accepts exact byte limit and decodes split UTF-8', async () => {
+    const bytes = new TextEncoder().encode('你好');
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.slice(0, 2));
+        controller.enqueue(bytes.slice(2));
+        controller.close();
+      },
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream)));
+    await expect(proxyFetch('https://example.com', { maxBytes: 6 })).resolves.toMatchObject({ text: '你好', bytes: 6 });
+  });
+
+  test('keeps read failures distinct from size failures', async () => {
+    const stream = new ReadableStream({ start(controller) { controller.error(new Error('connection lost')); } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream)));
+    await expect(proxyFetch('https://example.com')).rejects.toThrow('请求失败：connection lost');
+  });
+});
+
+describe('raw response bodies', () => {
+  test('decodes declared charset while preserving exact bytes', async () => {
+    const raw = new Uint8Array([0x63, 0x61, 0x66, 0xe9]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(raw, { headers: { 'Content-Type': 'text/plain; charset="windows-1252"' } })));
+    const result = await proxyFetch('https://example.com');
+    expect(result.text).toBe('café');
+    expect(result.body).toEqual(raw);
+    expect(result.bytes).toBe(4);
+  });
+  test('retains arbitrary binary bytes without preview opt-in', async () => {
+    const raw = new Uint8Array([0, 255, 128, 13, 10]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(raw, { headers: { 'Content-Type': 'application/octet-stream; charset=unknown' } })));
+    expect((await proxyFetch('https://example.com')).body).toEqual(raw);
+  });
+});

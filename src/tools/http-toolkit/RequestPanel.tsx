@@ -1,3 +1,4 @@
+import { executeRequest } from '@/lib/apiworkbench/execute';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Settings2, PanelLeft, FolderTree, History, Layers, Code2, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
@@ -18,13 +19,12 @@ import { collectMissing } from '@/lib/apiworkbench/vars';
 import {
   DEFAULT_SCRIPT_DEADLINE_MS,
   applyEnvWrites,
-  applyRequestPatch,
   type EnvWrite,
   type ScriptPhase,
 } from '@/lib/apiworkbench/scriptEngine';
 import { runScriptInSandbox, type ScriptOutcome } from '@/lib/apiworkbench/sandbox';
 import { buildScriptPayload } from '@/lib/apiworkbench/scripts';
-import { requestMethod, requestInterpolatedFields, sendWbRequest, streamWbRequest, type StreamedEvent, type WbResponse } from '@/lib/apiworkbench/send';
+import { requestMethod, requestInterpolatedFields, type StreamedEvent, type WbResponse } from '@/lib/apiworkbench/send';
 import { finalUrl } from '@/lib/apiworkbench/params';
 import { completeAuthCode, loadPendingAuth, stripAuthParams, type OAuthToken } from '@/lib/apiworkbench/oauth';
 import type { WbHistoryEntry, WbRequest } from '@/lib/apiworkbench/types';
@@ -281,57 +281,20 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
     const controller = new AbortController();
     abortRef.current = controller;
     const collected: StreamedEvent[] = [];
-    let working = req;
-    let runScope = scope;
     try {
-      if (preScript) {
-        const outcome = await runScriptPhase('prerequest', preScript, working, runScope);
-        const pre = outcome.kind === 'ok' ? outcome.result : null;
-        if (pre) {
-          working = applyRequestPatch(working, pre.patch);
-          runScope = { ...runScope, ...pre.varWrites };
-          persistEnvWrites(pre.envWrites);
-        }
-        if (!pre || pre.error) {
-          setError({ zh: '预请求脚本没跑通，请求没有发出', en: 'The pre-request script did not finish, so the request was not sent' });
-          setHint({
-            zh: '原因和行号见下方「脚本结果」。脚本没跑通就不发请求，免得拿一份改错了的请求去打线上。',
-            en: 'The reason and line number are in Script results below. A failed pre-request script blocks the send, so a half-edited request never leaves.',
-          });
-          return;
-        }
-        const stillMissing = collectMissing(requestInterpolatedFields(working), runScope);
-        if (stillMissing.length > 0) {
-          setError({
-            zh: `预请求脚本跑完了，变量仍然缺：${stillMissing.map((name) => `{{${name}}}`).join(' ')}`,
-            en: `The pre-request script ran but these variables are still undefined: ${stillMissing.map((name) => `{{${name}}}`).join(' ')}`,
-          });
-          setHint({
-            zh: '脚本里用 pm.variables.set 只影响这一次发送；要长期生效就 pm.environment.set 写进当前环境。',
-            en: 'pm.variables.set only covers this send; use pm.environment.set to keep values in the active environment.',
-          });
-          return;
-        }
-      }
-      const base = { scope: runScope, mockEnabled: doc.mockEnabled, mockRoutes: doc.mockRoutes, mode: channelFetchMode(channel), channel };
-      const response = streaming
-        ? await streamWbRequest(working, {
-            ...base,
-            signal: controller.signal,
-            onEvent: (event) => {
-              collected.push(event);
-              if (collected.length > MAX_STREAM_EVENTS) {
-                // 只留最近这些：界面跟得上，也不假装历史帧还在。
-                setDroppedEvents(collected.length - MAX_STREAM_EVENTS);
-                setEvents(collected.slice(-MAX_STREAM_EVENTS));
-              } else {
-                setEvents([...collected]);
-              }
-            },
-          })
-        : await sendWbRequest(working, base);
+      await executeRequest({
+        request: req,
+        context: { scope, mockEnabled: doc.mockEnabled, mockRoutes: doc.mockRoutes, mode: channelFetchMode(channel), channel },
+        streaming, signal: controller.signal, runScriptPhase, persistEnvWrites,
+        setError, setHint, setScriptSkipped,
+        onEvent: (event) => {
+          collected.push(event);
+          setDroppedEvents(Math.max(0, collected.length - MAX_STREAM_EVENTS));
+          setEvents(collected.slice(-MAX_STREAM_EVENTS));
+        },
+        onResponse: (working, prepared, response) => {
       // 脚本可能改过 URL，比较基准要按真正发出去的那条算，不然差异视图会拿错对象。
-      const sentKey = `${requestMethod(working)} ${finalUrl(working.url, working.params)}`;
+      const sentKey = `${prepared.method} ${prepared.url}`;
       // 差异视图要比的是「这一条之前的那一条」，所以先取旧值再覆盖；没有旧值就不给差异页签。
       const prior = response.status > 0 ? previousRef.current.get(sentKey) : undefined;
       setDiffBase(prior && sentKey === historyKey ? { key: historyKey, ...prior } : null);
@@ -344,7 +307,7 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
         const entry: WbHistoryEntry = {
           id: newId(),
           at: Date.now(),
-          request: working,
+          request: { ...working, url: prepared.url, method: working.method, customMethod: prepared.method, params: [], headers: Object.entries(prepared.headers).map(([key, value]) => ({ key, value, enabled: true })), auth: { type: 'none' }, body: prepared.body instanceof FormData ? working.body : { mode: prepared.body === undefined ? 'none' : 'text', text: prepared.body ?? '' } },
           status: response.status,
           ms: response.ms,
           bytes: response.bytes,
@@ -353,24 +316,15 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
         };
         update((d) => ({ ...d, history: [entry, ...d.history].slice(0, 100) }));
       }
-      const testScript = (working.testScript ?? '').trim();
-      if (testScript && response.status > 0) {
-        const outcome = await runScriptPhase('test', testScript, working, runScope, response);
-        const post = outcome.kind === 'ok' ? outcome.result : null;
-        if (post) persistEnvWrites(post.envWrites);
-      } else if (testScript) {
-        setScriptSkipped({
-          zh: '测试脚本未执行：这次没有拿到可读的响应',
-          en: 'The test script did not run: there was no readable response to test',
-        });
-      }
+        },
+      });
     } catch (caught) {
       const err = toToolError(caught);
       setError(err.localized);
       setHint(err.hint);
       if ((req.testScript ?? '').trim()) {
         setScriptSkipped({
-          zh: '测试脚本未执行：请求没能发出，没有响应可测',
+          zh: '测试脚本未执行：未收到可测试的响应',
           en: 'The test script did not run: the request never got a response to test',
         });
       }
@@ -498,7 +452,7 @@ export function RequestPanel({ active, documentId, onDocumentChange }: { active:
             onClear={() => update((d) => ({ ...d, history: [] }))}
           />
           </div>
-          <div hidden={sidebarView !== 'code'} className="wb-sidebar-code"><CodegenPanel request={req} /></div>
+          <div hidden={sidebarView !== 'code'} className="wb-sidebar-code"><CodegenPanel request={req} scope={scope} /></div>
         </aside>
 
         <div className="wb-editor-column">

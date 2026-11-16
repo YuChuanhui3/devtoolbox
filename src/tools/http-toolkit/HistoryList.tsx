@@ -93,7 +93,7 @@ export function HistoryList({ history, onSelect, onClear }: {
         </div>
       ) : null}
       <p className="px-3 pb-2 pt-0.5 text-[10px] text-ink-3">
-        {t({ zh: '记录仅保存在本机 localStorage（含响应体前 4KB）。', en: `History stays in this browser's localStorage (first 4KB of each body). Key: ${WORKBENCH_STORAGE_KEY}` })}
+        {t({ zh: '记录仅保存在本机 IndexedDB（含响应体前 4KB）。', en: `History stays in this browser's IndexedDB (first 4KB of each body). Key: ${WORKBENCH_STORAGE_KEY}` })}
       </p>
     </div>
   );

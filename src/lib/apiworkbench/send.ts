@@ -1,5 +1,6 @@
+import { bytesToBase64 } from '../base64';
 import { ToolError } from '../errors';
-import { proxyFetch, proxiedUrl, resolveChannelUrl, type FetchMode, type ProxyRequestOptions, type SendChannel, type TimedResponse } from '../net';
+import { responseDecoder, proxyFetch, proxiedUrl, resolveChannelUrl, type FetchMode, type ProxyRequestOptions, type SendChannel, type TimedResponse } from '../net';
 import { matchMockRoute, renderMockBody } from './mock';
 import { interpolate } from './vars';
 import { finalUrl } from './params';
@@ -7,6 +8,22 @@ import { readFile } from './files';
 import { isEventStream } from './response';
 import { createSseState, feedSse, flushSse, type SseEvent } from './sse';
 import type { WbAuth, WbMockRoute, WbRequest, WbVia } from './types';
+
+/** Once dispatch starts, a failed response does not prove the server did nothing. */
+export class MaybeSentError extends ToolError {
+  readonly code = 'maybe-sent';
+  constructor() {
+    super(
+      { zh: '无法读取完整响应：请求可能已到达服务端并被执行', en: 'Could not read the complete response: the request may already have reached the server and executed' },
+      { zh: '未自动重发。请先核实服务端结果；确认重复执行安全后，可手动选择通道并点击发送。超时或停止也不代表服务端已取消。', en: 'No automatic retry was made. Check the server result first; if repeating is safe, manually select a channel and click Send. A timeout or stop does not mean the server cancelled execution.' },
+    );
+  }
+}
+
+function dispatchError(method: string, error: unknown): unknown {
+  if (error instanceof ToolError && 'code' in error) return error;
+  return ['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method.toUpperCase()) ? error : new MaybeSentError();
+}
 
 export interface WbResponse extends TimedResponse {
   via: WbVia;
@@ -24,8 +41,21 @@ function channelFetchMode(channel: SendChannel | undefined, fallback: FetchMode)
 
 /** 通道生效时按 source 解析目标 URL；缺省通道回落老 mode 语义。 */
 function channelUrl(target: string, channel: SendChannel | undefined, fallback: FetchMode): string {
-  if (!channel) return proxiedUrl(target, fallback);
-  return resolveChannelUrl(target, channel);
+  try {
+    if (channel?.source === 'program') {
+      const base = new URL(channel.programBase ?? '');
+      if (!['http:', 'https:'].includes(base.protocol)) throw new Error('protocol');
+    }
+    const url = channel ? resolveChannelUrl(target, channel) : proxiedUrl(target, fallback);
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('protocol');
+    return url;
+  } catch {
+    throw new ToolError(
+      { zh: '请求或通道地址无效，尚未发送', en: 'Invalid request or channel URL; nothing was sent' },
+      { zh: '请填写完整的 HTTP(S) 地址后手动发送', en: 'Enter a complete HTTP(S) URL, then send manually' },
+    );
+  }
 }
 
 export interface SendContext {
@@ -40,6 +70,7 @@ export interface SendContext {
    */
   channel?: SendChannel;
   timeoutMs?: number;
+  prepared?: BuiltRequest;
   /** 注入以便单测断言 mock 命中时零网络调用。 */
   fetcher?: (target: string, options: ProxyRequestOptions) => Promise<TimedResponse>;
   sleep?: (ms: number) => Promise<void>;
@@ -50,6 +81,7 @@ export interface BuiltRequest {
   method: string;
   headers: Record<string, string>;
   body?: string | FormData;
+  headerSources?: Record<string, 'user' | 'auth' | 'body'>;
 }
 
 /** 自定义动词优先，但只有一个生效。 */
@@ -89,19 +121,23 @@ function appendQuery(url: string, key: string, value: string): string {
 
 function applyAuth(auth: WbAuth, headers: Record<string, string>, scope: SendContext['scope']): (value: string) => string {
   const text = (raw: string) => interpolate(raw, scope).text;
+  const set = (key: string, value: string) => {
+    for (const existing of Object.keys(headers)) if (existing.toLowerCase() === key.toLowerCase()) delete headers[existing];
+    headers[key] = value;
+  };
   if (auth.type === 'basic') {
     const raw = `${text(auth.username ?? '')}:${text(auth.password ?? '')}`;
-    const token = typeof btoa === 'function' ? btoa(raw) : Buffer.from(raw, 'binary').toString('base64');
-    headers.Authorization = `Basic ${token}`;
+    const token = bytesToBase64(new TextEncoder().encode(raw));
+    set('Authorization', `Basic ${token}`);
   } else if (auth.type === 'bearer' && auth.token) {
-    headers.Authorization = `Bearer ${text(auth.token)}`;
+    set('Authorization', `Bearer ${text(auth.token)}`);
   } else if (auth.type === 'oauth2' && auth.accessToken) {
-    headers.Authorization = `${auth.tokenType?.trim() || 'Bearer'} ${text(auth.accessToken)}`;
+    set('Authorization', `${auth.tokenType?.trim() || 'Bearer'} ${text(auth.accessToken)}`);
   } else if (auth.type === 'api-key' && auth.key) {
     const value = text(auth.value ?? '');
     if (auth.in !== 'query') {
       const prefix = auth.headerPrefix?.trim();
-      headers[text(auth.key)] = prefix ? `${prefix} ${value}` : value;
+      set(text(auth.key).trim(), prefix ? `${prefix} ${value}` : value);
       return (url) => url;
     }
     const key = text(auth.key);
@@ -208,7 +244,13 @@ export function buildRequest(req: WbRequest, ctx: SendContext): BuiltRequest {
     const contentType = bodyModeDefaults(req.body.mode);
     if (contentType) headers['Content-Type'] = contentType;
   }
-  return { url: applyAuth(req.auth, headers, ctx.scope)(target.text), method, headers, body };
+  const headerSources: NonNullable<BuiltRequest['headerSources']> = {};
+  for (const key of Object.keys(headers)) headerSources[key] = req.headers.some(row => row.enabled && interpolate(row.key, ctx.scope).text.toLowerCase() === key.toLowerCase()) ? 'user' : 'body';
+  const url = applyAuth(req.auth, headers, ctx.scope)(target.text);
+  const authKey = req.auth.type === 'api-key' ? (req.auth.in === 'query' ? '' : interpolate(req.auth.key ?? '', ctx.scope).text.trim()) : req.auth.type === 'basic' || (req.auth.type === 'bearer' && req.auth.token) || (req.auth.type === 'oauth2' && req.auth.accessToken) ? 'Authorization' : '';
+  for (const key of Object.keys(headerSources)) if (!(key in headers)) delete headerSources[key];
+  if (authKey && authKey in headers) headerSources[authKey] = 'auth';
+  return { url, method, headers, body, headerSources };
 }
 
 /**
@@ -268,6 +310,7 @@ async function mockResponse(
     ok: hit.route.status >= 200 && hit.route.status < 400,
     headers,
     text,
+    body: new TextEncoder().encode(text),
     bytes: new TextEncoder().encode(text).length,
     ms: Math.max(delay, Date.now() - start),
     via: 'mock',
@@ -277,14 +320,17 @@ async function mockResponse(
 /** 插值 → mock 分流 → 真实请求。mock 命中时完全不触网。 */
 export async function sendWbRequest(req: WbRequest, ctx: SendContext): Promise<WbResponse> {
   const fetcher = ctx.fetcher ?? proxyFetch;
-  const built = buildRequest(req, ctx);
+  const built = ctx.prepared ?? buildRequest(req, ctx);
   const start = Date.now();
 
   const hit = mockMatch(req, ctx, built);
   if (hit) return mockResponse(hit, ctx, start);
 
   const fetcherMode = channelFetchMode(ctx.channel, ctx.mode);
-  const response = await fetcher(channelUrl(built.url, ctx.channel, ctx.mode), {
+  const url = channelUrl(built.url, ctx.channel, ctx.mode);
+  let response: TimedResponse;
+  try {
+  response = await fetcher(url, {
     mode: fetcherMode,
     method: built.method,
     headers: Object.keys(built.headers).length ? built.headers : undefined,
@@ -293,6 +339,9 @@ export async function sendWbRequest(req: WbRequest, ctx: SendContext): Promise<W
     // 图片与 PDF 要字节才能预览；代理通道给不出字节时自然退回占位文本。
     wantBlob: fetcherMode === 'direct',
   });
+  } catch (error) {
+    throw dispatchError(built.method, error);
+  }
   return { ...response, via: ctx.channel?.source ?? ctx.mode };
 }
 
@@ -319,7 +368,7 @@ export interface StreamContext extends SendContext {
  * 所以这里选择报错而不是假装在流。Mock 命中时同样一次性作答。
  */
 export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promise<WbResponse> {
-  const built = buildRequest(req, ctx);
+  const built = ctx.prepared ?? buildRequest(req, ctx);
   if (ctx.mockEnabled) {
     const hit = mockMatch(req, ctx, built);
     if (hit) return mockResponse(hit, ctx, Date.now());
@@ -350,8 +399,9 @@ export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promi
     });
   } catch (caught) {
     // 连接阶段就被中止：没有状态也没有字节，给一个空响应并标明中止，别抛成「请求失败」。
+    if (isAbort(caught) && !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(built.method.toUpperCase())) throw new MaybeSentError();
     if (isAbort(caught)) return { status: 0, ok: false, headers: [], text: '', bytes: 0, ms: elapsed(), via: 'direct', aborted: true };
-    throw networkError(caught);
+    throw dispatchError(built.method, networkError(caught));
   }
 
   const headers: [string, string][] = [];
@@ -360,6 +410,7 @@ export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promi
   let sse = createSseState();
   let text = '';
   let bytes = 0;
+  const chunks: Uint8Array[] = [];
   let aborted = false;
   let discarded = false;
 
@@ -370,9 +421,11 @@ export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promi
   // 拿不到可读流（某些环境不给 body）就退回整段读取，语义不变、只是不增量。
   const reader = response.body?.getReader?.();
   if (!reader) {
-    const chunk = await response.text();
+    const raw = new Uint8Array(await response.arrayBuffer());
+    chunks.push(raw);
+    const chunk = responseDecoder(response.headers.get('content-type') ?? '').decode(raw);
     text = chunk;
-    bytes = new TextEncoder().encode(chunk).length;
+    bytes = raw.byteLength;
     ctx.onChunk?.(bytes);
     if (eventStream) {
       const fed = feedSse(sse, chunk);
@@ -381,11 +434,12 @@ export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promi
       emit([...fed.events, ...tail.events]);
     }
   } else {
-    const decoder = new TextDecoder('utf-8');
+    const decoder = eventStream ? new TextDecoder('utf-8') : responseDecoder(response.headers.get('content-type') ?? '');
     try {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (value) chunks.push(value);
         bytes += value?.byteLength ?? 0;
         const chunk = decoder.decode(value ?? new Uint8Array(), { stream: true });
         text += chunk;
@@ -397,7 +451,7 @@ export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promi
       }
       text += decoder.decode();
     } catch (caught) {
-      if (!isAbort(caught)) throw networkError(caught);
+      if (!isAbort(caught)) throw dispatchError(built.method, networkError(caught));
       aborted = true;
     }
     // 服务端常常不发最后那个空行：补一个分隔符让最后一帧落地，再 flush 收半行。
@@ -414,7 +468,12 @@ export async function streamWbRequest(req: WbRequest, ctx: StreamContext): Promi
     }
   }
 
+  const body = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   return {
+    body,
+    blob: new Blob([body], { type: response.headers.get('content-type') ?? 'application/octet-stream' }),
     status: response.status,
     ok: response.ok,
     headers,

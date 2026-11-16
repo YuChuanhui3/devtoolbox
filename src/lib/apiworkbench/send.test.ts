@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { ToolError } from '../errors';
-import type { ProxyRequestOptions, TimedResponse } from '../net';
+import { ResponseTooLargeError, type ProxyRequestOptions, type TimedResponse } from '../net';
 import { buildRequest, requestMethod, sendWbRequest, streamWbRequest, type StreamContext, type StreamedEvent } from './send';
 import { blankRequest } from './tree';
 import { clearHeldFiles, holdFile, newFileRef } from './files';
@@ -543,7 +543,7 @@ describe('streamWbRequest', () => {
       ok: true,
       headers: new Headers([['content-type', 'text/event-stream']]),
       body: null,
-      text: async () => 'data: solo\n\n',
+      arrayBuffer: async () => new TextEncoder().encode('data: solo\n\n').buffer,
     } as unknown as Response;
     const response = await streamWbRequest(request(), streamCtx({
       opener: async () => bare,
@@ -572,3 +572,42 @@ describe('streamWbRequest', () => {
     expect(seen!.init.body).toBe('{}');
   });
 });
+
+describe('dispatch failure safety', () => {
+  for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'CUSTOM']) {
+    test(`${method} reports maybe-sent and dispatches only once`, async () => {
+      let calls = 0;
+      await expect(sendWbRequest(request({ method: method as WbRequest['method'] }), {
+        scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct',
+        fetcher: async () => { calls++; throw new TypeError('Failed to fetch'); },
+      })).rejects.toMatchObject({ code: 'maybe-sent' });
+      expect(calls).toBe(1);
+    });
+  }
+  test('safe method retains original failure without fallback', async () => {
+    let calls = 0;
+    const error = new TypeError('Failed to fetch');
+    await expect(sendWbRequest(request({ method: 'GET' }), {
+      scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct',
+      fetcher: async () => { calls++; throw error; },
+    })).rejects.toBe(error);
+    expect(calls).toBe(1);
+  });
+});
+
+ test('POST preserves response size classification', async () => {
+   const error = new ResponseTooLargeError(10);
+   await expect(sendWbRequest(request({ method: 'POST' }), {
+     scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct',
+     fetcher: async () => { throw error; },
+   })).rejects.toBe(error);
+ });
+ test('POST invalid program channel fails before dispatch', async () => {
+   let calls = 0;
+   await expect(sendWbRequest(request({ method: 'POST' }), {
+     scope: {}, mockEnabled: false, mockRoutes: [], mode: 'direct',
+     channel: { source: 'program', mode: 'direct', programBase: 'invalid' },
+     fetcher: async () => { calls++; return ok(); },
+   })).rejects.toMatchObject({ message: '请求或通道地址无效，尚未发送' });
+   expect(calls).toBe(0);
+ });

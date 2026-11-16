@@ -56,6 +56,7 @@ describe('StressPanel', () => {
       ok: true,
       status: 200,
       text: async () => 'ok',
+      arrayBuffer: async () => new TextEncoder().encode('ok').buffer,
       headers: new Headers(),
     })));
     renderPanel();
@@ -74,6 +75,7 @@ describe('StressPanel', () => {
       ok: false,
       status: 503,
       text: async () => 'busy',
+      arrayBuffer: async () => new TextEncoder().encode('busy').buffer,
       headers: new Headers(),
     })));
     renderPanel();
