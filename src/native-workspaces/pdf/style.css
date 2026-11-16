@@ -1,0 +1,3000 @@
+[data-native-workspace="pdf"] {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fff;
+  --surface-2: #f2f1ee;
+  --canvas: #ecebe7;
+  --ink: #151515;
+  --muted: #62615c;
+  --border: #deddd7;
+  --strong: #c4c3bd;
+  /* Warm red from icon.png, with a lighter accent for dark surfaces. */
+  --brand: #bf3f3f;
+  --accent: var(--brand);
+  --accent-ink: #fff;
+  --wash: #fbeeee;
+  --danger: #b92323;
+  --scrim: #0007;
+  /* The phone's notch and corner insets (viewport-fit=cover); zero on other screens. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+  font-synthesis: none;
+}
+@media (prefers-color-scheme: dark) {
+  [data-native-workspace="pdf"]:not([data-theme='light']) {
+    color-scheme: dark;
+    --page: #101010;
+    --surface: #181818;
+    --surface-2: #222221;
+    --canvas: #0d0d0d;
+    --ink: #f5f5f2;
+    --muted: #aaa99f;
+    --border: #333330;
+    --strong: #555550;
+    --accent: #ef9290;
+    --accent-ink: #101010;
+    --wash: #3b2222;
+    --danger: #ff9090;
+    --scrim: #000a;
+  }
+}
+[data-native-workspace="pdf"][data-theme='dark'] {
+  color-scheme: dark;
+  --page: #101010;
+  --surface: #181818;
+  --surface-2: #222221;
+  --canvas: #0d0d0d;
+  --ink: #f5f5f2;
+  --muted: #aaa99f;
+  --border: #333330;
+  --strong: #555550;
+  --accent: #ef9290;
+  --accent-ink: #101010;
+  --wash: #3b2222;
+  --danger: #ff9090;
+  --scrim: #000a;
+}
+[data-native-workspace="pdf"] * {
+  box-sizing: border-box;
+}
+[data-native-workspace="pdf"] {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+}
+[data-native-workspace="pdf"] button,
+[data-native-workspace="pdf"] input,
+[data-native-workspace="pdf"] select,
+[data-native-workspace="pdf"] textarea {
+  font: inherit;
+}
+[data-native-workspace="pdf"] button,
+[data-native-workspace="pdf"] a,
+[data-native-workspace="pdf"] input,
+[data-native-workspace="pdf"] select,
+[data-native-workspace="pdf"] textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+[data-native-workspace="pdf"] button {
+  cursor: pointer;
+}
+[data-native-workspace="pdf"] button:disabled,
+[data-native-workspace="pdf"] .statusbar .icon-btn[aria-disabled='true'],
+[data-native-workspace="pdf"] .appbar .icon-btn[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.4;
+}
+/* Short document refreshes block input without dimming the whole application. */
+[data-native-workspace="pdf"] button.busy-enabled:disabled,
+[data-native-workspace="pdf"] .statusbar .icon-btn.busy-enabled[aria-disabled='true'],
+[data-native-workspace="pdf"] .appbar .icon-btn.busy-enabled[aria-disabled='true'] {
+  opacity: 1;
+}
+[data-native-workspace="pdf"] button,
+[data-native-workspace="pdf"] select,
+[data-native-workspace="pdf"] input,
+[data-native-workspace="pdf"] textarea {
+  color: inherit;
+}
+[data-native-workspace="pdf"] button {
+  border: 0;
+  background: none;
+}
+[data-native-workspace="pdf"] a {
+  color: var(--accent);
+}
+[data-native-workspace="pdf"] button:focus-visible,
+[data-native-workspace="pdf"] a:focus-visible,
+[data-native-workspace="pdf"] input:focus-visible,
+[data-native-workspace="pdf"] select:focus-visible,
+[data-native-workspace="pdf"] textarea:focus-visible,
+[data-native-workspace="pdf"] [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+[data-native-workspace="pdf"] h1,
+[data-native-workspace="pdf"] h2,
+[data-native-workspace="pdf"] h3,
+[data-native-workspace="pdf"] p {
+  margin: 0;
+}
+[data-native-workspace="pdf"] h2 {
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  font-weight: 600;
+}
+[data-native-workspace="pdf"] h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+[data-native-workspace="pdf"] p {
+  line-height: 1.65;
+}
+[data-native-workspace="pdf"] svg {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+[data-native-workspace="pdf"] button svg {
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] [hidden] {
+  display: none !important;
+}
+[data-native-workspace="pdf"] .muted {
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+[data-native-workspace="pdf"] .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+[data-native-workspace="pdf"] .skip-link {
+  position: fixed;
+  top: -100px;
+  left: max(16px, var(--safe-left));
+  padding: 12px;
+  background: var(--surface);
+  z-index: 100;
+}
+[data-native-workspace="pdf"] .skip-link:focus {
+  top: max(12px, var(--safe-top));
+}
+[data-native-workspace="pdf"] .btn,
+[data-native-workspace="pdf"] .icon-btn,
+[data-native-workspace="pdf"] .tool-btn,
+[data-native-workspace="pdf"] .text-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 7px;
+  min-height: 38px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+[data-native-workspace="pdf"] .btn {
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  background: var(--surface);
+}
+/* Hover tints only where there is a pointer to hover with: after a tap on a touch screen the
+   tint would otherwise stay on the button. A press shows it everywhere. */
+@media (hover: hover) {
+  [data-native-workspace="pdf"] .btn:hover:is(:not(:disabled), .busy-enabled), [data-native-workspace="pdf"] .icon-btn:hover:is(:not(:disabled, [aria-disabled='true']), .busy-enabled), [data-native-workspace="pdf"] .tool-btn:hover:is(:not(:disabled), .busy-enabled) {
+    background: var(--surface-2);
+    border-color: var(--strong);
+  }
+}
+[data-native-workspace="pdf"] .btn:active:is(:not(:disabled), .busy-enabled), [data-native-workspace="pdf"] .icon-btn:active:is(:not(:disabled, [aria-disabled='true']), .busy-enabled), [data-native-workspace="pdf"] .tool-btn:active:is(:not(:disabled), .busy-enabled) {
+  background: var(--surface-2);
+  border-color: var(--strong);
+}
+[data-native-workspace="pdf"] .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+@media (hover: hover) {
+  [data-native-workspace="pdf"] .btn.primary:hover:is(:not(:disabled), .busy-enabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    filter: brightness(0.94);
+  }
+}
+[data-native-workspace="pdf"] .btn.primary:active:is(:not(:disabled), .busy-enabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(0.94);
+}
+[data-native-workspace="pdf"] .danger {
+  color: var(--danger);
+}
+[data-native-workspace="pdf"] .icon-btn {
+  width: 36px;
+  min-width: 36px;
+  padding: 6px;
+}
+[data-native-workspace="pdf"] .text-btn {
+  color: var(--muted);
+  padding: 6px;
+}
+@media (hover: hover) {
+  [data-native-workspace="pdf"] .text-btn:hover:is(:not(:disabled), .busy-enabled) {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+}
+[data-native-workspace="pdf"] .text-btn:active:is(:not(:disabled), .busy-enabled) {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .input,
+[data-native-workspace="pdf"] select {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 9px 11px;
+  min-height: 38px;
+  max-width: 100%;
+}
+[data-native-workspace="pdf"] .input::placeholder {
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+[data-native-workspace="pdf"] textarea {
+  resize: vertical;
+}
+[data-native-workspace="pdf"] .topbar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 max(30px, var(--safe-right)) 0 max(30px, var(--safe-left));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+[data-native-workspace="pdf"] .brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+}
+[data-native-workspace="pdf"] .app-icon {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+[data-native-workspace="pdf"] .header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+[data-native-workspace="pdf"] .account-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 8px;
+}
+/* <puter-user-menu> (puter.js; src/user-menu.js): where the loaded puter.js has it, it holds the
+   Apps launcher and the account, after Settings, and names the account in its own menu. Its
+   parts take the title bar's icon button and primary button looks; its menu and Apps panel
+   take the app's card, in both themes. */
+[data-native-workspace="pdf"] .user-menu-slot {
+  display: none;
+}
+[data-native-workspace="pdf"] .header-right:has(puter-user-menu) .account-label {
+  display: none;
+}
+[data-native-workspace="pdf"] puter-user-menu {
+  flex: none;
+}
+[data-native-workspace="pdf"] puter-user-menu::part(apps-button) {
+  border-radius: 8px;
+  color: var(--ink);
+}
+[data-native-workspace="pdf"] puter-user-menu::part(sign-in) {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  white-space: nowrap;
+}
+[data-native-workspace="pdf"] .editor-topbar puter-user-menu::part(sign-in) {
+  font-size: 12px;
+}
+@media (hover: hover) {
+  [data-native-workspace="pdf"] puter-user-menu::part(apps-button):hover {
+    background: var(--surface-2);
+  }
+  [data-native-workspace="pdf"] puter-user-menu::part(sign-in):hover {
+    filter: brightness(0.94);
+  }
+}
+[data-native-workspace="pdf"] puter-user-menu::part(menu),
+[data-native-workspace="pdf"] puter-user-menu::part(apps-panel) {
+  background: var(--surface);
+  border-color: var(--strong);
+  --caret-border: var(--strong);
+  --caret-fill: var(--surface);
+}
+[data-native-workspace="pdf"] .home {
+  min-height: var(--native-height);
+  display: flex;
+  flex-direction: column;
+}
+[data-native-workspace="pdf"] .home-main {
+  width: min(100%, 1112px);
+  margin: 0 auto;
+  padding: 40px 36px 32px;
+  flex: 1;
+}
+/* It takes the focus when the library replaces a PDF, as the starting point for Tab. */
+[data-native-workspace="pdf"] .home-main:focus-visible {
+  outline: none;
+}
+[data-native-workspace="pdf"] .start-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(230px, 1fr);
+  gap: 20px;
+  margin: 34px 0 48px;
+}
+[data-native-workspace="pdf"] .open-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 20px;
+  text-align: left;
+  background: var(--surface);
+  padding: 28px;
+  transition: border-color 0.15s;
+}
+[data-native-workspace="pdf"] .open-card:hover {
+  border-color: var(--accent);
+}
+[data-native-workspace="pdf"] .open-card-icon {
+  width: 52px;
+  height: 56px;
+  background: var(--wash);
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  grid-row: 1/4;
+}
+[data-native-workspace="pdf"] .open-card strong {
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  font-weight: 600;
+  margin: 1px 0 7px;
+}
+[data-native-workspace="pdf"] .open-card > span:not(.open-card-icon):not(.card-cta) {
+  color: var(--muted);
+  font-size: 13px;
+}
+[data-native-workspace="pdf"] .open-card .card-cta {
+  color: var(--accent);
+  font-weight: 550;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 22px;
+}
+[data-native-workspace="pdf"] .quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+[data-native-workspace="pdf"] .quick-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+  min-height: 48px;
+  font-size: 13px;
+  font-weight: 500;
+}
+[data-native-workspace="pdf"] .quick-action svg {
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .quick-action:hover {
+  border-color: var(--strong);
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .library-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+[data-native-workspace="pdf"] .library-tools {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: auto;
+}
+[data-native-workspace="pdf"] .sort-select {
+  font-size: 12px;
+  border-color: transparent;
+  background: transparent;
+}
+[data-native-workspace="pdf"] .search-wrap {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+[data-native-workspace="pdf"] .search-wrap > svg {
+  position: absolute;
+  left: 12px;
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .search-input {
+  padding-left: 36px;
+  width: 210px;
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .file-list {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+[data-native-workspace="pdf"] .empty-library {
+  min-height: 238px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 30px;
+  text-align: center;
+}
+[data-native-workspace="pdf"] .empty-library > svg {
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+[data-native-workspace="pdf"] .empty-library p {
+  color: var(--muted);
+  max-width: 370px;
+  font-size: 13px;
+}
+[data-native-workspace="pdf"] .empty-library .btn {
+  margin-top: 6px;
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .file-row,
+[data-native-workspace="pdf"] .file-table-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 90px 36px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 20px;
+}
+[data-native-workspace="pdf"] .file-row + .file-row {
+  border-top: 1px solid var(--border);
+}
+[data-native-workspace="pdf"] .file-row:hover {
+  background: var(--page);
+}
+[data-native-workspace="pdf"] .file-table-head {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--page);
+  border-bottom: 1px solid var(--border);
+}
+[data-native-workspace="pdf"] .file-open {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+  min-width: 0;
+  text-align: left;
+}
+[data-native-workspace="pdf"] .file-open svg {
+  color: var(--accent);
+}
+[data-native-workspace="pdf"] .file-open span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+[data-native-workspace="pdf"] .file-date,
+[data-native-workspace="pdf"] .file-size {
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .local-note {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 24px;
+}
+[data-native-workspace="pdf"] .home-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 30px;
+  color: var(--muted);
+  font-size: 11px;
+}
+[data-native-workspace="pdf"] .home-footer .text-btn {
+  font-size: 11px;
+}
+[data-native-workspace="pdf"] .dropping:after {
+  content: 'Drop a PDF, or pictures, to open them';
+  position: fixed;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--accent);
+  border: 2px dashed var(--accent);
+  border-radius: 14px;
+  z-index: 90;
+  font-size: 24px;
+  pointer-events: none;
+}
+/* Focused editor */
+[data-native-workspace="pdf"] .editor {
+  height: var(--native-height);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+}
+/* The banner stacks the title row, the menu bar, the tools, and the tool's options. */
+[data-native-workspace="pdf"] .editor-header {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+[data-native-workspace="pdf"] .document-title {
+  font: inherit;
+  min-width: 0;
+}
+/* Two rows: the title row, then the menu bar. On a phone the menu bar folds into a button. */
+[data-native-workspace="pdf"] .editor-topbar {
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  min-height: 0;
+  padding: 0 max(16px, var(--safe-right)) 0 max(16px, var(--safe-left));
+  gap: 0;
+}
+[data-native-workspace="pdf"] .topbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 50px;
+  min-width: 0;
+}
+[data-native-workspace="pdf"] .menubar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 30px;
+  margin: -4px 0 2px -9px;
+}
+[data-native-workspace="pdf"] .menu-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  [data-native-workspace="pdf"] .menu-btn:hover {
+    background: var(--surface-2);
+  }
+}
+[data-native-workspace="pdf"] .menu-btn:active,
+[data-native-workspace="pdf"] .menu-btn[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .menu-btn:focus-visible {
+  outline-offset: -1px;
+}
+[data-native-workspace="pdf"] .mobile-only {
+  display: none !important;
+}
+/* Popover menus */
+[data-native-workspace="pdf"] .menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 200px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--strong);
+  border-radius: 10px;
+  outline: none;
+  animation: menu-in 0.12s ease;
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+[data-native-workspace="pdf"] .menu-sub {
+  animation: none;
+}
+[data-native-workspace="pdf"] .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--ink);
+}
+[data-native-workspace="pdf"] .menu-item:hover,
+[data-native-workspace="pdf"] .menu-item[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+/* Keyboard focus roves through the items, so it needs more than the hover tint to be seen. */
+[data-native-workspace="pdf"] .menu-item:focus-visible {
+  background: var(--surface-2);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+[data-native-workspace="pdf"] .menu-item.danger {
+  color: var(--danger);
+}
+[data-native-workspace="pdf"] .menu-item:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+/* The label keeps its ink and gains weight; only the check mark takes the accent, so a
+   checked item cannot be mistaken for a destructive one now that the accent is red. */
+[data-native-workspace="pdf"] .menu-item.checked {
+  font-weight: 600;
+}
+[data-native-workspace="pdf"] .menu-icon {
+  width: 18px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  flex: none;
+}
+[data-native-workspace="pdf"] .menu-item.danger .menu-icon {
+  color: inherit;
+}
+[data-native-workspace="pdf"] .menu-item.checked .menu-icon {
+  color: var(--accent);
+}
+[data-native-workspace="pdf"] .menu-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-native-workspace="pdf"] .menu-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+[data-native-workspace="pdf"] .menu-shortcut {
+  font-size: 11px;
+  color: var(--muted);
+  flex: none;
+}
+[data-native-workspace="pdf"] .menu-arrow {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  flex: none;
+  margin-right: -2px;
+}
+[data-native-workspace="pdf"] .menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 4px;
+}
+[data-native-workspace="pdf"] .menu-header {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+[data-native-workspace="pdf"] .editor-brand {
+  margin: 0 7px;
+}
+[data-native-workspace="pdf"] .document-info {
+  min-width: 0;
+}
+[data-native-workspace="pdf"] .document-name {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 0;
+  min-height: 24px;
+  max-width: min(34vw, 450px, 100%);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+[data-native-workspace="pdf"] .document-name:hover {
+  color: var(--accent);
+}
+[data-native-workspace="pdf"] .status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  min-width: 0;
+}
+[data-native-workspace="pdf"] .save-status {
+  font-size: 10px;
+  color: var(--muted);
+  display: block;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-native-workspace="pdf"] .protection-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  /* Reads as a 16px badge; the extra height is hit area for fingers, outside the row's flow. */
+  min-height: 24px;
+  min-width: 24px;
+  margin-block: -4px;
+  padding: 0 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+[data-native-workspace="pdf"] .protection-badge svg {
+  width: 11px;
+  height: 11px;
+}
+[data-native-workspace="pdf"] .protection-badge:hover:is(:not(:disabled), .busy-enabled) {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+/* Stamp dialog */
+[data-native-workspace="pdf"] .stamp-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+[data-native-workspace="pdf"] .stamp-chip {
+  color: var(--ink);
+  border: 2px solid var(--stamp-color, var(--strong));
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-native-workspace="pdf"] .stamp-chip:hover {
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .stamp-chip[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--accent);
+}
+[data-native-workspace="pdf"] .stamp-preview-wrap {
+  position: relative;
+}
+[data-native-workspace="pdf"] .stamp-preview-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  margin: 0;
+  text-align: center;
+  color: #62615c;
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .stamp-preview {
+  display: block;
+  width: 100%;
+  height: 84px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+[data-native-workspace="pdf"] .field input[type='color']#stamp-color {
+  width: 100%;
+}
+[data-native-workspace="pdf"] .protect-restrictions {
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+}
+[data-native-workspace="pdf"] .editor-topbar .btn {
+  font-size: 12px;
+  min-height: 34px;
+}
+[data-native-workspace="pdf"] .editor-topbar .header-right {
+  gap: 7px;
+}
+[data-native-workspace="pdf"] .toolbar {
+  min-height: 49px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px max(16px, var(--safe-right)) 5px max(16px, var(--safe-left));
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+[data-native-workspace="pdf"] .tool-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+}
+[data-native-workspace="pdf"] .tool-btn {
+  font-size: 12px;
+  padding: 7px 10px;
+  min-height: 34px;
+  gap: 6px;
+}
+[data-native-workspace="pdf"] .tool-btn[aria-pressed='true'] {
+  background: var(--wash);
+  color: var(--accent);
+}
+[data-native-workspace="pdf"] .toolbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Zoom lives in the status bar, as in the neighboring apps. */
+[data-native-workspace="pdf"] .zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+}
+[data-native-workspace="pdf"] .zoom-controls .icon-btn {
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 4px;
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .zoom-controls .icon-btn:hover:is(:not(:disabled, [aria-disabled='true']), .busy-enabled) {
+  color: var(--ink);
+}
+[data-native-workspace="pdf"] .zoom-select {
+  font-size: 11px;
+  min-height: 26px;
+  padding: 2px 6px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink);
+  width: auto;
+  min-width: 90px;
+  font-variant-numeric: tabular-nums;
+}
+[data-native-workspace="pdf"] .zoom-select:hover {
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .contextbar {
+  min-height: 40px;
+  padding: 5px max(24px, var(--safe-right)) 5px max(24px, var(--safe-left));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+[data-native-workspace="pdf"] .tool-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .tool-options {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+[data-native-workspace="pdf"] .tool-options select {
+  font-size: 11px;
+  min-height: 27px;
+  padding: 2px 6px;
+}
+[data-native-workspace="pdf"] .tool-options input[type='color'] {
+  width: 27px;
+  height: 27px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  padding: 3px;
+  cursor: pointer;
+}
+[data-native-workspace="pdf"] .tool-options .style-toggle {
+  width: 28px;
+  min-width: 28px;
+  min-height: 27px;
+}
+[data-native-workspace="pdf"] .tool-options .style-toggle[aria-pressed='true'],
+[data-native-workspace="pdf"] .tool-options .style-toggle[aria-pressed='mixed'] {
+  color: var(--accent);
+  background: var(--wash);
+}
+[data-native-workspace="pdf"] .tool-options .text-btn {
+  font-size: 11px;
+  min-height: 26px;
+  padding: 3px 6px;
+}
+[data-native-workspace="pdf"] .editor-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+[data-native-workspace="pdf"] .properties-sidebar {
+  flex: 0 0 264px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+}
+[data-native-workspace="pdf"] .properties-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+[data-native-workspace="pdf"] .properties-heading h2 {
+  margin: 0;
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .properties-content {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+}
+[data-native-workspace="pdf"] .properties-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+[data-native-workspace="pdf"] .properties-content .image-edit-panel,
+[data-native-workspace="pdf"] .properties-content .path-style-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+[data-native-workspace="pdf"] .properties-content .image-edit-panel > label,
+[data-native-workspace="pdf"] .properties-content .path-style-controls > label {
+  justify-content: space-between;
+}
+[data-native-workspace="pdf"] .properties-content .image-edit-panel .image-ratio {
+  justify-content: flex-start;
+}
+[data-native-workspace="pdf"] .properties-content .image-edit-panel > .icon-btn {
+  align-self: flex-end;
+}
+[data-native-workspace="pdf"] .properties-content .text-position-controls {
+  margin-bottom: 16px;
+}
+[data-native-workspace="pdf"] .properties-content input[type='number'] {
+  min-height: 32px;
+}
+[data-native-workspace="pdf"] .properties-content .highlight-edit-panel {
+  flex-wrap: wrap;
+}
+[data-native-workspace="pdf"] .text-edit-handles {
+  position: absolute;
+  z-index: 7;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .text-edit-handles .text-move,
+[data-native-workspace="pdf"] .text-edit-handles .text-move:hover {
+  position: absolute;
+  inset: -7px;
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  min-height: 0;
+  padding: 0;
+  border: 1.5px solid var(--brand);
+  border-radius: 1px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: move;
+}
+[data-native-workspace="pdf"] .text-edit-handles.is-typing .text-move {
+  /* Only the border takes drag gestures while the inside is available for typing. */
+  clip-path: polygon(
+    evenodd,
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 0,
+    7px 7px,
+    calc(100% - 7px) 7px,
+    calc(100% - 7px) calc(100% - 7px),
+    7px calc(100% - 7px),
+    7px 7px
+  );
+}
+[data-native-workspace="pdf"] .text-edit-handles .text-move:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+[data-native-workspace="pdf"] .text-edit-handles .text-width {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  min-height: 0;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 2px solid var(--brand);
+  border-radius: 2px;
+  background: var(--surface);
+  pointer-events: auto;
+}
+[data-native-workspace="pdf"] .text-edit-handles .btn :is(span, svg) {
+  display: none;
+}
+[data-native-workspace="pdf"] .text-object-selected {
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .select-text-objects .text-target {
+  cursor: move;
+  touch-action: none;
+}
+[data-native-workspace="pdf"] .text-targets.select-text-objects {
+  /* Annotations and form fields take precedence over the text beneath them. */
+  z-index: 2;
+}
+@media (max-width: 1000px) {
+  [data-native-workspace="pdf"] .editor-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  [data-native-workspace="pdf"] .editor-main > .workspace {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  [data-native-workspace="pdf"] .editor-main > .page-sidebar {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+  }
+  [data-native-workspace="pdf"] .properties-sidebar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-height: min(32dvh, 260px);
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  [data-native-workspace="pdf"] .properties-sidebar.is-empty:not(.is-switching) {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .properties-sidebar.is-switching {
+    min-height: min(var(--properties-transition-height), 32dvh, 260px);
+  }
+  [data-native-workspace="pdf"] .properties-heading {
+    min-height: 32px;
+    padding-block: 8px;
+  }
+  [data-native-workspace="pdf"] .properties-content {
+    padding: 12px max(16px, var(--safe-right)) 12px max(16px, var(--safe-left));
+  }
+  [data-native-workspace="pdf"] .properties-content .image-edit-panel,
+  [data-native-workspace="pdf"] .properties-content .path-style-controls {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+}
+[data-native-workspace="pdf"] .page-sidebar {
+  width: 184px;
+  min-width: 184px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+[data-native-workspace="pdf"] .sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 15px;
+  height: 48px;
+}
+[data-native-workspace="pdf"] .sidebar-head h2 {
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .sidebar-head .icon-btn {
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+}
+[data-native-workspace="pdf"] .sidebar-tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 4px;
+  flex: none;
+}
+[data-native-workspace="pdf"] .sidebar-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .sidebar-tab:hover {
+  color: var(--ink);
+}
+[data-native-workspace="pdf"] .sidebar-tab[aria-selected='true'] {
+  color: var(--accent);
+  background: var(--wash);
+}
+[data-native-workspace="pdf"] .tab-count {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 15px;
+  text-align: center;
+}
+[data-native-workspace="pdf"] .comments-panel {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 8px 16px;
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .comments-page {
+  margin: 10px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+[data-native-workspace="pdf"] .comments-empty {
+  margin: 12px 8px;
+  line-height: 1.5;
+}
+[data-native-workspace="pdf"] .comments-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-native-workspace="pdf"] .comment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--ink);
+  line-height: 1.35;
+}
+[data-native-workspace="pdf"] .comment-item:hover {
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .comment-swatch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--comment-color, var(--surface-2));
+  /* The glyph follows the mark's own color, which is the same in both themes. */
+  color: var(--comment-ink, var(--ink));
+}
+.comment-[data-native-workspace="pdf"] {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+[data-native-workspace="pdf"] .comment-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+[data-native-workspace="pdf"] .comment-meta {
+  font-size: 10px;
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .outline {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 8px 16px;
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-native-workspace="pdf"] .outline-note {
+  margin: 12px 8px;
+  line-height: 1.5;
+}
+[data-native-workspace="pdf"] .outline-row {
+  position: relative;
+}
+[data-native-workspace="pdf"] .outline-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+[data-native-workspace="pdf"] .outline-item:hover:not([aria-disabled='true']) {
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .outline-item[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+[data-native-workspace="pdf"] .outline-item[aria-current='page'] {
+  background: var(--wash);
+  color: var(--accent);
+}
+[data-native-workspace="pdf"] .outline-item.bold {
+  font-weight: 600;
+}
+[data-native-workspace="pdf"] .outline-item.italic {
+  font-style: italic;
+}
+[data-native-workspace="pdf"] .outline-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-native-workspace="pdf"] .outline-toggle {
+  position: absolute;
+  top: 3px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border-radius: 4px;
+  z-index: 1;
+}
+[data-native-workspace="pdf"] .outline-toggle svg {
+  transition: transform 0.12s;
+}
+[data-native-workspace="pdf"] .outline-toggle.open svg {
+  transform: rotate(90deg);
+}
+[data-native-workspace="pdf"] .thumbnails {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-native-workspace="pdf"] .thumbnail {
+  padding: 10px 8px 7px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  flex-shrink: 0;
+}
+[data-native-workspace="pdf"] .thumbnail[aria-current='page'] {
+  border-color: var(--accent);
+  background: var(--wash);
+  color: var(--accent);
+}
+[data-native-workspace="pdf"] .thumbnail:hover {
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .thumb-item {
+  position: relative;
+}
+[data-native-workspace="pdf"] .thumb-menu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+[data-native-workspace="pdf"] .thumb-item:hover .thumb-menu,
+[data-native-workspace="pdf"] .thumb-item:focus-within .thumb-menu,
+[data-native-workspace="pdf"] .thumb-menu[aria-expanded='true'] {
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  [data-native-workspace="pdf"] .thumb-menu {
+    opacity: 1;
+  }
+}
+[data-native-workspace="pdf"] .thumbnails.reordering,
+[data-native-workspace="pdf"] .thumbnails.reordering .thumbnail {
+  cursor: grabbing;
+  user-select: none;
+}
+[data-native-workspace="pdf"] .thumb-item.dragging {
+  opacity: 0.45;
+}
+[data-native-workspace="pdf"] .thumb-drop {
+  height: 3px;
+  margin: -8.5px 0;
+  border-radius: 2px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+[data-native-workspace="pdf"] .thumb-paper {
+  min-height: 140px;
+  width: 114px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+[data-native-workspace="pdf"] .thumb-paper canvas {
+  display: block;
+  box-sizing: content-box;
+  background: #fff;
+  border: 1px solid #ddd;
+  width: 112px;
+  max-width: calc(100% - 2px);
+  height: 138px;
+}
+[data-native-workspace="pdf"] .thumbnail > span {
+  font-size: 10px;
+}
+[data-native-workspace="pdf"] .workspace {
+  background: var(--canvas);
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  /* Classic scrollbars take layout space. Fit-width sizes the page from this width, so a
+     scrollbar that appears and disappears with the page height would refit without end. */
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  /* Page-layer panels use z-index; keep them below the overlaid pages panel on small screens. */
+  isolation: isolate;
+}
+[data-native-workspace="pdf"] .paper-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: fit-content;
+  width: 100%;
+  padding: 30px 24px 24px;
+}
+/* Dark page colors: the rendered page, its drafts, and its fields invert; the app's own
+   panels around them keep their theme. */
+[data-native-workspace="pdf"] .editor.dark-pages .paper {
+  background: #111;
+}
+[data-native-workspace="pdf"] .editor.dark-pages .paper > canvas,
+[data-native-workspace="pdf"] .editor.dark-pages .image-preview,
+[data-native-workspace="pdf"] .editor.dark-pages .form-layer,
+[data-native-workspace="pdf"] .editor.dark-pages .page-text-input,
+[data-native-workspace="pdf"] .editor.dark-pages .text-line-input,
+[data-native-workspace="pdf"] .editor.dark-pages .thumb-paper canvas {
+  filter: invert(1) hue-rotate(180deg);
+}
+[data-native-workspace="pdf"] .editor.dark-pages .thumb-paper {
+  background: #111;
+}
+[data-native-workspace="pdf"] .paper {
+  position: relative;
+  flex-shrink: 0;
+  background: #fff;
+  outline: 1px solid #00000015;
+  color: #111;
+}
+[data-native-workspace="pdf"] .paper > canvas:first-child {
+  display: block;
+}
+[data-native-workspace="pdf"] .drawing-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+}
+[data-native-workspace="pdf"] .drawing-overlay.active {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+[data-native-workspace="pdf"] .page-caption {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 16px 0 6px;
+}
+[data-native-workspace="pdf"] .hide-pages .page-sidebar {
+  display: none;
+}
+[data-native-workspace="pdf"] .statusbar {
+  height: 34px;
+  min-height: 34px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 max(12px, var(--safe-right)) 0 max(20px, var(--safe-left));
+  font-size: 10px;
+  color: var(--muted);
+  gap: 12px;
+}
+[data-native-workspace="pdf"] .status-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  white-space: nowrap;
+}
+[data-native-workspace="pdf"] .page-navigation {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+[data-native-workspace="pdf"] .page-navigation .icon-btn {
+  width: 25px;
+  min-width: 25px;
+  min-height: 25px;
+}
+[data-native-workspace="pdf"] .page-navigation svg {
+  width: 14px;
+}
+[data-native-workspace="pdf"] .page-input {
+  width: 38px;
+  min-height: 24px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 2px;
+  font-size: 11px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+[data-native-workspace="pdf"] .page-input::-webkit-inner-spin-button {
+  display: none;
+}
+[data-native-workspace="pdf"] .page-navigation > span {
+  margin-right: 5px;
+}
+[data-native-workspace="pdf"] .find-bar {
+  padding: 8px max(20px, var(--safe-right)) 8px max(20px, var(--safe-left));
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+[data-native-workspace="pdf"] .find-bar input {
+  max-width: 300px;
+  flex: 1;
+  min-width: 80px;
+}
+[data-native-workspace="pdf"] .search-count {
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 60px;
+}
+[data-native-workspace="pdf"] .textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 2;
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .textLayer :is(span, br) {
+  pointer-events: auto;
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+[data-native-workspace="pdf"] .textLayer > :not(.markedContent),
+[data-native-workspace="pdf"] .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x));
+}
+[data-native-workspace="pdf"] .textLayer .markedContent {
+  display: contents;
+}
+[data-native-workspace="pdf"] .textLayer mark.search-hit {
+  background: #f3c43870;
+  color: transparent;
+}
+[data-native-workspace="pdf"] .textLayer mark.search-hit-current {
+  background: #ff8a1ea6;
+  box-shadow: 0 0 0 1px #ff8a1e;
+}
+[data-native-workspace="pdf"] .textLayer ::selection {
+  background: color-mix(in srgb, var(--brand) 31%, transparent);
+}
+[data-native-workspace="pdf"] .textLayer br::selection {
+  background: transparent;
+}
+[data-native-workspace="pdf"] .highlight-targets {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .highlight-target {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+[data-native-workspace="pdf"] .highlight-target:hover,
+[data-native-workspace="pdf"] .highlight-target:focus-visible,
+[data-native-workspace="pdf"] .highlight-target[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  outline: 2px solid var(--brand);
+  /* Targets are clipped to their polygon, so the ring must sit inside the box. */
+  outline-offset: -2px;
+}
+[data-native-workspace="pdf"] .note-targets {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+/* Existing links: transparent editing buttons over their rectangles, shown in Select. */
+[data-native-workspace="pdf"] .link-targets {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .link-target {
+  position: absolute;
+  display: block;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 2px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+[data-native-workspace="pdf"] .link-target:hover,
+[data-native-workspace="pdf"] .link-target:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+[data-native-workspace="pdf"] .crop-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-native-workspace="pdf"] .note-target {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  border-radius: 3px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* A note that can be dragged, as other comments are; a finger drags it rather than the page. */
+[data-native-workspace="pdf"] .note-target.is-movable {
+  cursor: move;
+  touch-action: none;
+}
+[data-native-workspace="pdf"] .note-target.no-appearance {
+  display: grid;
+  place-items: center;
+  color: var(--note-ink, #111111);
+}
+[data-native-workspace="pdf"] .note-target.no-appearance svg {
+  width: 100%;
+  height: 100%;
+  fill: var(--note-color, #f2c438);
+}
+[data-native-workspace="pdf"] .note-target:hover,
+[data-native-workspace="pdf"] .note-target:focus-visible,
+[data-native-workspace="pdf"] .note-target[aria-pressed='true'] {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+[data-native-workspace="pdf"] .note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: 8px;
+}
+[data-native-workspace="pdf"] .note-editor .note-text {
+  width: 100%;
+  min-height: 84px;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+[data-native-workspace="pdf"] .note-meta {
+  font-size: 11px;
+  margin: 0;
+}
+[data-native-workspace="pdf"] .note-editor-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+[data-native-workspace="pdf"] .note-editor-actions .btn {
+  font-size: 11px;
+  padding: 5px 8px;
+  min-height: 30px;
+}
+[data-native-workspace="pdf"] .note-editor-actions input[type='color'] {
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+}
+[data-native-workspace="pdf"] .highlight-edit-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  pointer-events: auto;
+  z-index: 2;
+}
+[data-native-workspace="pdf"] .highlight-edit-panel input[type='color'] {
+  width: 36px;
+  height: 32px;
+  border: 0;
+  padding: 2px;
+  background: transparent;
+}
+[data-native-workspace="pdf"] .image-targets,
+[data-native-workspace="pdf"] .image-preview,
+[data-native-workspace="pdf"] .image-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .image-targets {
+  z-index: 1;
+  overflow: hidden;
+}
+[data-native-workspace="pdf"] .image-preview {
+  z-index: 1;
+  overflow: hidden;
+}
+[data-native-workspace="pdf"] .image-preview canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+[data-native-workspace="pdf"] .image-controls {
+  z-index: 6;
+}
+[data-native-workspace="pdf"] .image-target,
+[data-native-workspace="pdf"] .path-target,
+[data-native-workspace="pdf"] .image-move {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+  cursor: move;
+}
+/* A finger moves the selected object; on any other it scrolls or zooms the page. */
+[data-native-workspace="pdf"] .image-move {
+  touch-action: none;
+}
+[data-native-workspace="pdf"] .image-target:hover,
+[data-native-workspace="pdf"] .image-target:focus-visible,
+[data-native-workspace="pdf"] .path-target:hover,
+[data-native-workspace="pdf"] .path-target:focus-visible {
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+/* The move control is clipped to the object's outline, which would also clip an outset ring. */
+[data-native-workspace="pdf"] .image-move:focus-visible {
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+[data-native-workspace="pdf"] .image-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+[data-native-workspace="pdf"] .image-outline polygon {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+[data-native-workspace="pdf"] .image-resize {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: #fff;
+  border: 2px solid var(--brand);
+  border-radius: 3px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  touch-action: none;
+}
+@media (pointer: coarse) {
+  [data-native-workspace="pdf"] .image-resize {
+    width: 24px;
+    height: 24px;
+  }
+}
+[data-native-workspace="pdf"] .image-edit-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  pointer-events: auto;
+}
+[data-native-workspace="pdf"] .image-edit-panel label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+[data-native-workspace="pdf"] .image-edit-panel input[type='number'] {
+  width: 62px;
+  padding: 4px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+[data-native-workspace="pdf"] .image-edit-panel .text-btn {
+  font-size: 11px;
+}
+[data-native-workspace="pdf"] .image-error {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--danger);
+  margin: 0;
+}
+/* Dialogs and feedback */
+[data-native-workspace="pdf"] dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(var(--native-height) - 40px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink);
+  overflow: hidden;
+}
+/* Only while open, so a closed dialog keeps the browser's display: none. A tall dialog
+   scrolls its body, leaving the title, the close button, and the actions where they are. */
+[data-native-workspace="pdf"] dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+[data-native-workspace="pdf"] dialog::backdrop {
+  background: var(--scrim);
+}
+[data-native-workspace="pdf"] dialog.leave-save-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+[data-native-workspace="pdf"] .dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+[data-native-workspace="pdf"] .dialog-head h2 {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.dialog-[data-native-workspace="pdf"] {
+  padding: 22px;
+  line-height: 1.6;
+  overflow-y: auto;
+}
+/* A list that scrolls takes the focus itself (the keyboard shortcuts); the dialog clips the
+   usual outside ring. */
+.dialog-[data-native-workspace="pdf"]:focus-visible {
+  outline-offset: -3px;
+}
+.dialog-[data-native-workspace="pdf"] p {
+  font-size: 13px;
+  /* A long unbroken file name in a confirmation must wrap, not push the dialog wider. */
+  overflow-wrap: anywhere;
+}
+[data-native-workspace="pdf"] .dialog-error {
+  margin-top: 16px;
+  color: var(--danger);
+}
+[data-native-workspace="pdf"] .dialog-actions {
+  display: flex;
+  flex-wrap: wrap; /* three choices (keep, leave, sign in and save) fit a phone by stacking */
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 0 22px 20px;
+}
+[data-native-workspace="pdf"] .dialog-actions:empty {
+  display: none;
+}
+[data-native-workspace="pdf"] .dialog-head {
+  flex: none;
+}
+[data-native-workspace="pdf"] .dialog-actions {
+  flex: none;
+}
+.dialog-[data-native-workspace="pdf"] .stack > .btn {
+  justify-content: flex-start;
+}
+.dialog-[data-native-workspace="pdf"] label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+.dialog-[data-native-workspace="pdf"] label.checkbox-row {
+  display: flex;
+  font-weight: 500;
+  margin: 0;
+}
+.dialog-[data-native-workspace="pdf"] .input {
+  width: 100%;
+}
+.dialog-[data-native-workspace="pdf"] hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  width: 100%;
+  margin: 0;
+}
+.dialog-[data-native-workspace="pdf"] form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+[data-native-workspace="pdf"] .checkbox-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-native-workspace="pdf"] .checkbox-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+[data-native-workspace="pdf"] .detail-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .detail-facts dt {
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .detail-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+[data-native-workspace="pdf"] .choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dialog-[data-native-workspace="pdf"] .choice-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+  cursor: pointer;
+}
+[data-native-workspace="pdf"] .choice-row input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  flex: none;
+}
+[data-native-workspace="pdf"] .choice-with-input {
+  display: flex;
+  /* On a small phone a long choice ("New part before pages") leaves its box too narrow to read;
+     the box goes to the next line instead. */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+[data-native-workspace="pdf"] .choice-with-input .input {
+  width: auto;
+  flex: 1 0 7em;
+  min-width: 0;
+}
+[data-native-workspace="pdf"] .choice-with-input .input.count-input {
+  flex: 0 1 7em;
+}
+/* Watermark and page number dialogs */
+[data-native-workspace="pdf"] .field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+[data-native-workspace="pdf"] .field-grid .field {
+  min-width: 0;
+}
+[data-native-workspace="pdf"] dialog.header-footer-dialog {
+  width: min(600px, calc(100vw - 32px));
+}
+[data-native-workspace="pdf"] .field-grid.header-slots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 520px) {
+  [data-native-workspace="pdf"] .field-grid.header-slots {
+    grid-template-columns: 1fr;
+  }
+}
+[data-native-workspace="pdf"] .field .input,
+[data-native-workspace="pdf"] .field select {
+  width: 100%;
+}
+[data-native-workspace="pdf"] .field-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+[data-native-workspace="pdf"] .field input[type='color'] {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+  flex: none;
+}
+[data-native-workspace="pdf"] .field input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+[data-native-workspace="pdf"] .field-inline output {
+  min-width: 4ch;
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+/* Signature dialog */
+[data-native-workspace="pdf"] dialog.signature-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.signature-[data-native-workspace="pdf"] {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-native-workspace="pdf"] .signature-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+[data-native-workspace="pdf"] .signature-tab {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 6px 6px 0 0;
+}
+[data-native-workspace="pdf"] .signature-tab:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+[data-native-workspace="pdf"] .signature-tab[aria-selected='true'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+[data-native-workspace="pdf"] .signature-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+[data-native-workspace="pdf"] .signature-pad-wrap {
+  position: relative;
+  height: 190px;
+  border: 1px dashed var(--strong);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+[data-native-workspace="pdf"] .signature-pad {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+/* The pad fills its clipped frame, so its focus ring is drawn inside it. */
+[data-native-workspace="pdf"] .signature-pad:focus-visible {
+  outline-offset: -3px;
+}
+[data-native-workspace="pdf"] .signature-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  font-size: 13px;
+  /* The pad is white paper in both themes, so the hint keeps the light theme's gray. */
+  color: #62615c;
+}
+[data-native-workspace="pdf"] .signature-preview {
+  display: block;
+  width: 100%;
+  height: 120px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+[data-native-workspace="pdf"] .signature-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-native-workspace="pdf"] .signature-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+[data-native-workspace="pdf"] .signature-row input[type='color'] {
+  width: 32px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+}
+[data-native-workspace="pdf"] .signature-saved-wrap h3 {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+[data-native-workspace="pdf"] .signature-saved {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+[data-native-workspace="pdf"] .signature-saved-row {
+  position: relative;
+}
+[data-native-workspace="pdf"] .signature-saved-item {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+[data-native-workspace="pdf"] .signature-saved-item:hover {
+  border-color: var(--accent);
+}
+[data-native-workspace="pdf"] .signature-thumb {
+  display: block;
+  /* Clear of the delete button in the card's top right corner, so it covers no ink. */
+  width: calc(100% - 28px);
+  height: 56px;
+}
+[data-native-workspace="pdf"] .signature-saved-row .icon-btn {
+  /* It sits on the white signature card in both themes, so it keeps the light theme's colors. */
+  --muted: #62615c;
+  --surface-2: #f2f1ee;
+  --strong: #c4c3bd;
+  --accent: #bf3f3f;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  color: var(--muted);
+}
+[data-native-workspace="pdf"] .signature-saved-row .icon-btn:focus-visible {
+  outline-offset: -2px;
+}
+.dialog-[data-native-workspace="pdf"] .signature-remember {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+}
+[data-native-workspace="pdf"] .shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 12px;
+}
+[data-native-workspace="pdf"] .shortcut-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+[data-native-workspace="pdf"] kbd {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+/* The box stays in the accessibility tree, empty and invisible, for the frame before its
+   text arrives: a live region announces only changes made while it is already rendered. */
+[data-native-workspace="pdf"] #toast:empty {
+  opacity: 0;
+}
+[data-native-workspace="pdf"] #toast {
+  position: fixed;
+  bottom: calc(50px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 12px 20px;
+  border: 1px solid var(--strong);
+  border-radius: 9px;
+  background: var(--ink);
+  color: var(--surface);
+  z-index: 100;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+  /* It holds no controls, and on a phone it can sit over the selection dock for a few
+     seconds: taps go through to whatever it covers. */
+  pointer-events: none;
+}
+@media (min-width: 1450px) {
+  [data-native-workspace="pdf"] .home-main {
+    padding-top: 80px;
+  }
+  [data-native-workspace="pdf"] .start-grid {
+    margin-bottom: 60px;
+  }
+}
+@media (max-width: 1000px) {
+  [data-native-workspace="pdf"] .toolbar {
+    gap: 5px;
+    padding-inline: max(10px, var(--safe-left)) max(10px, var(--safe-right));
+  }
+  [data-native-workspace="pdf"] .tool-btn {
+    padding: 7px;
+  }
+  [data-native-workspace="pdf"] .tool-group {
+    padding-right: 6px;
+  }
+  [data-native-workspace="pdf"] .contextbar {
+    padding-inline: max(16px, var(--safe-left)) max(16px, var(--safe-right));
+  }
+  [data-native-workspace="pdf"] .tool-hint {
+    max-width: 50%;
+  }
+  [data-native-workspace="pdf"] .tool-options {
+    gap: 5px;
+  }
+  [data-native-workspace="pdf"] .editor-brand {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .page-sidebar {
+    width: 156px;
+    min-width: 156px;
+  }
+  [data-native-workspace="pdf"] .thumbnails {
+    padding-inline: 10px;
+  }
+}
+/* Labeled tool buttons need about 880px; below that the toolbar would scroll sideways. */
+@media (max-width: 900px) {
+  [data-native-workspace="pdf"] .tool-btn {
+    min-width: 36px;
+  }
+  [data-native-workspace="pdf"] .tool-btn span {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  [data-native-workspace="pdf"] .topbar {
+    padding-inline: max(18px, var(--safe-left)) max(18px, var(--safe-right));
+    height: 58px;
+  }
+  [data-native-workspace="pdf"] .home-main {
+    padding: 36px 22px 24px;
+  }
+  [data-native-workspace="pdf"] .start-grid {
+    grid-template-columns: 1fr;
+    margin: 28px 0 34px;
+    gap: 12px;
+  }
+  [data-native-workspace="pdf"] .quick-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+  [data-native-workspace="pdf"] .quick-action {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 9px;
+    padding: 15px 8px;
+    font-size: 11px;
+    text-align: center;
+  }
+  [data-native-workspace="pdf"] .open-card {
+    padding: 24px;
+  }
+  [data-native-workspace="pdf"] .library-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 13px;
+  }
+  [data-native-workspace="pdf"] .library-tools {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+  /* The search field gives way on the smallest phones, staying within the list's width. */
+  [data-native-workspace="pdf"] .search-wrap {
+    flex: 0 1 180px;
+    min-width: 0;
+  }
+  [data-native-workspace="pdf"] .search-input {
+    width: 100%;
+  }
+  [data-native-workspace="pdf"] .local-note {
+    align-items: flex-start;
+    text-align: center;
+    font-size: 10px;
+    line-height: 1.6;
+    padding: 0 10px;
+  }
+  [data-native-workspace="pdf"] .local-note svg {
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  [data-native-workspace="pdf"] .home-footer {
+    padding-inline: 22px;
+  }
+  [data-native-workspace="pdf"] .file-date {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .file-row,
+  [data-native-workspace="pdf"] .file-table-head {
+    grid-template-columns: minmax(0, 1fr) 60px 32px;
+    padding: 10px 14px;
+  }
+  [data-native-workspace="pdf"] .file-table-head > span:nth-child(2) {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .editor-topbar {
+    height: 58px;
+    min-height: 58px;
+    padding-inline: max(7px, var(--safe-left)) max(7px, var(--safe-right));
+  }
+  /* The phone header has room for the lock, not for its label. */
+  [data-native-workspace="pdf"] .protection-badge span {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .protection-badge {
+    padding: 0 2px;
+  }
+  [data-native-workspace="pdf"] .document-name {
+    max-width: min(27vw, 100%);
+    font-size: 12px;
+  }
+  [data-native-workspace="pdf"] .editor-topbar .header-right {
+    gap: 3px;
+  }
+  [data-native-workspace="pdf"] .editor-topbar .btn {
+    padding: 6px 9px;
+  }
+  [data-native-workspace="pdf"] .download-btn span {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .toolbar {
+    min-height: 47px;
+  }
+  [data-native-workspace="pdf"] .toolbar .tool-group {
+    flex-shrink: 0;
+  }
+  [data-native-workspace="pdf"] .toolbar-end {
+    gap: 1px;
+  }
+  [data-native-workspace="pdf"] .editor .menubar {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .mobile-only {
+    display: inline-flex !important;
+  }
+  [data-native-workspace="pdf"] .topbar-row {
+    height: 58px;
+  }
+  [data-native-workspace="pdf"] .contextbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    min-height: 32px;
+    padding: 7px max(12px, var(--safe-right)) 7px max(12px, var(--safe-left));
+  }
+  [data-native-workspace="pdf"] .tool-hint {
+    max-width: 100%;
+    font-size: 10px;
+  }
+  [data-native-workspace="pdf"] .tool-options {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  [data-native-workspace="pdf"] .tool-options input[type='color'] {
+    flex-shrink: 0;
+  }
+  [data-native-workspace="pdf"] .tool-options .text-btn {
+    margin-left: auto;
+  }
+  [data-native-workspace="pdf"] .page-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 5;
+    width: 154px;
+    min-width: 154px;
+  }
+  [data-native-workspace="pdf"] .paper-wrap {
+    padding: 18px 14px;
+  }
+  [data-native-workspace="pdf"] .statusbar {
+    padding: 0 max(6px, var(--safe-right)) 0 max(9px, var(--safe-left));
+    gap: 6px;
+  }
+  [data-native-workspace="pdf"] .status-note {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .find-bar {
+    padding: 6px max(9px, var(--safe-right)) 6px max(9px, var(--safe-left));
+  }
+  [data-native-workspace="pdf"] .find-bar .input {
+    font-size: 12px;
+  }
+  [data-native-workspace="pdf"] .search-count {
+    font-size: 10px;
+  }
+  /* Until there is a count to show, its room goes to the find box, whose prompt was cut short. */
+  [data-native-workspace="pdf"] .search-count:empty {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .find-bar .icon-btn {
+    min-width: 28px;
+    width: 28px;
+  }
+  [data-native-workspace="pdf"] .account-label {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-native-workspace="pdf"] .editor-topbar .icon-btn {
+    min-width: 30px;
+    width: 30px;
+  }
+  [data-native-workspace="pdf"] .empty-library {
+    padding: 26px 20px;
+  }
+  [data-native-workspace="pdf"] .page-caption {
+    margin-top: 12px;
+  }
+}
+@media (max-width: 380px) {
+  [data-native-workspace="pdf"] .editor-topbar .btn span {
+    display: none;
+  }
+  [data-native-workspace="pdf"] .document-name {
+    max-width: 35vw;
+  }
+  [data-native-workspace="pdf"] .quick-action {
+    font-size: 10px;
+  }
+  [data-native-workspace="pdf"] .search-input {
+    width: 160px;
+  }
+  [data-native-workspace="pdf"] .toolbar {
+    padding-inline: 5px;
+    gap: 3px;
+  }
+  [data-native-workspace="pdf"] .tool-btn {
+    min-width: 32px;
+    padding: 6px;
+  }
+  [data-native-workspace="pdf"] .toolbar .icon-btn {
+    width: 30px;
+    min-width: 30px;
+  }
+  [data-native-workspace="pdf"] .home-main {
+    padding-inline: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-native-workspace="pdf"] *,
+  [data-native-workspace="pdf"] *:before,
+  [data-native-workspace="pdf"] *:after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@media (forced-colors: active) {
+  [data-native-workspace="pdf"] .btn.primary,
+  [data-native-workspace="pdf"] .tool-btn[aria-pressed='true'] {
+    border: 2px solid Highlight;
+  }
+  [data-native-workspace="pdf"] .thumbnail[aria-current='page'] {
+    outline: 2px solid Highlight;
+  }
+  [data-native-workspace="pdf"] .paper {
+    forced-color-adjust: none;
+  }
+}
+
+/* PDF.js text metrics and page rotation must track the rendered viewport. */
+[data-native-workspace="pdf"] .paper {
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+}
+[data-native-workspace="pdf"] .textLayer {
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1/var(--min-font-size));
+  color-scheme: only light;
+}
+[data-native-workspace="pdf"] .textLayer > :not(.markedContent),
+[data-native-workspace="pdf"] .textLayer .markedContent span:not(.markedContent) {
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+[data-native-workspace="pdf"] .textLayer[data-main-rotation='90'] {
+  transform: rotate(90deg) translateY(-100%);
+}
+[data-native-workspace="pdf"] .textLayer[data-main-rotation='180'] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+[data-native-workspace="pdf"] .textLayer[data-main-rotation='270'] {
+  transform: rotate(270deg) translateX(-100%);
+}
+@media (max-width: 760px) {
+  [data-native-workspace="pdf"] .toolbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 5px;
+  }
+  [data-native-workspace="pdf"] .toolbar-end {
+    margin-left: auto;
+  }
+  [data-native-workspace="pdf"] .toolbar .tool-group {
+    border-right: 0;
+  }
+  [data-native-workspace="pdf"] .toolbar .icon-btn,
+  [data-native-workspace="pdf"] .toolbar .tool-btn {
+    min-height: 36px;
+  }
+  [data-native-workspace="pdf"] .statusbar {
+    padding-bottom: var(--safe-bottom);
+    height: calc(34px + var(--safe-bottom));
+    min-height: calc(34px + var(--safe-bottom));
+  }
+}
+
+[data-native-workspace="pdf"] .text-targets {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+[data-native-workspace="pdf"] .text-target {
+  position: absolute;
+  transform-origin: 0 0;
+  pointer-events: auto;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 2px;
+  cursor: text;
+}
+[data-native-workspace="pdf"] .text-target:hover,
+[data-native-workspace="pdf"] .text-target:focus-visible {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 5%, transparent);
+  outline: none;
+}
+[data-native-workspace="pdf"] .page-text-input {
+  position: absolute;
+  z-index: 6;
+  transform-origin: 0 0;
+  border: 0;
+  outline: none;
+  border-radius: 1px;
+  padding: 0;
+  margin: 0;
+  color: #111;
+  background: #fff;
+  line-height: 1.35;
+  /* PDF text already supplies its glyph advances; browser kerning would add spacing
+     changes that neither the source commands nor the text writer apply. */
+  font-kerning: none;
+  resize: none;
+  min-width: 40px;
+  min-height: 24px;
+}
+[data-native-workspace="pdf"] .page-text-input:focus-visible {
+  /* The surrounding frame marks the active text box. */
+  outline: none;
+}
+[data-native-workspace="pdf"] .text-edit-actions {
+  color: var(--ink);
+  background: var(--surface);
+  padding: 6px;
+}
+[data-native-workspace="pdf"] .text-edit-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+[data-native-workspace="pdf"] .text-edit-buttons .btn {
+  font-size: 11px;
+  padding: 5px 7px;
+}
+[data-native-workspace="pdf"] .text-edit-error {
+  max-width: 280px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+[data-native-workspace="pdf"] .form-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+  color-scheme: only light;
+}
+[data-native-workspace="pdf"] .form-widget {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  outline: 1px solid color-mix(in srgb, var(--brand) 33%, transparent);
+  pointer-events: auto;
+}
+[data-native-workspace="pdf"] .form-widget:hover,
+[data-native-workspace="pdf"] .form-widget:focus-within {
+  outline: 1.5px solid var(--brand);
+}
+/* Required fields are outlined in red, as Acrobat highlights them. */
+[data-native-workspace="pdf"] .form-widget.is-required {
+  outline-color: color-mix(in srgb, var(--danger) 60%, transparent);
+}
+[data-native-workspace="pdf"] .form-widget .form-control {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 1px 2px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: transparent;
+  opacity: 0;
+  font: var(--field-font-size) / 1.2 sans-serif;
+  resize: none;
+  cursor: text;
+  box-shadow: none;
+}
+[data-native-workspace="pdf"] .form-widget .form-control:focus,
+[data-native-workspace="pdf"] .form-widget.has-draft .form-control {
+  opacity: 1;
+  color: var(--field-ink);
+  background: var(--field-background);
+  outline: none;
+}
+[data-native-workspace="pdf"] .form-widget.has-draft {
+  outline-color: var(--brand);
+}
+/* The field an error above the page is about. */
+[data-native-workspace="pdf"] .form-widget:has(.form-control[aria-invalid='true']),
+[data-native-workspace="pdf"] .form-widget:has(.form-control[aria-invalid='true']):focus-within {
+  outline: 2px solid var(--danger);
+}
+[data-native-workspace="pdf"] .form-widget .form-control:disabled {
+  cursor: default;
+}
+[data-native-workspace="pdf"] .form-widget:has(.form-control:disabled) {
+  outline: none;
+}
+[data-native-workspace="pdf"] .form-widget select.form-control {
+  cursor: pointer;
+}
+/* A list box always shows its own rows, so a click lands on the option it shows: the PDF's
+   drawing of the list spaces and scrolls its rows its own way. */
+[data-native-workspace="pdf"] .form-widget select.form-control[size]:not(:disabled) {
+  opacity: 1;
+  color: var(--field-ink);
+  background: var(--field-background);
+}
+[data-native-workspace="pdf"] .form-checkbox .form-control,
+[data-native-workspace="pdf"] .form-radio .form-control {
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid #111;
+  background: var(--field-background);
+  accent-color: var(--brand);
+}
+[data-native-workspace="pdf"] .form-radio .form-control {
+  border-radius: 50%;
+}
+[data-native-workspace="pdf"] .form-checkbox .form-control:checked::after {
+  content: '';
+  position: absolute;
+  left: 28%;
+  top: 12%;
+  width: 32%;
+  height: 60%;
+  border: solid #111;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+[data-native-workspace="pdf"] .form-radio .form-control:checked::after {
+  content: '';
+  position: absolute;
+  inset: 25%;
+  border-radius: 50%;
+  background: #111;
+}
+[data-native-workspace="pdf"] .form-edit-error {
+  margin: 0;
+  padding: 8px 20px;
+  color: var(--danger);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+@media (forced-colors: active) {
+  [data-native-workspace="pdf"] .form-widget {
+    outline-color: LinkText;
+  }
+  [data-native-workspace="pdf"] .form-widget:focus-within {
+    outline: 2px solid Highlight;
+  }
+  [data-native-workspace="pdf"] .form-widget .form-control:focus,
+  [data-native-workspace="pdf"] .form-widget.has-draft .form-control {
+    color: CanvasText;
+    background: Canvas;
+  }
+}
+
+[data-native-workspace="pdf"] .path-style-controls {
+  display: flex;
+  flex-basis: 100%;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+[data-native-workspace="pdf"] .path-paint-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+[data-native-workspace="pdf"] .path-paint-control input.path-opacity {
+  width: 46px;
+}
+[data-native-workspace="pdf"] .object-rotation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+[data-native-workspace="pdf"] .path-style-controls input[type='color'] {
+  width: 32px;
+  height: 28px;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+}
+
+[data-native-workspace="pdf"] .text-position-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+[data-native-workspace="pdf"] .text-position-controls label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+[data-native-workspace="pdf"] .text-position-controls input {
+  width: 74px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 4px;
+}
+[data-native-workspace="pdf"] .text-position-controls .btn {
+  font-size: 11px;
+  padding: 5px 7px;
+}
+[data-native-workspace="pdf"] .text-move {
+  touch-action: none;
+  cursor: move;
+}
+[data-native-workspace="pdf"] .text-width {
+  touch-action: none;
+  cursor: ew-resize;
+}
+[data-native-workspace="pdf"] .text-draft-background {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+[data-native-workspace="pdf"] .page-text-input.has-text-preview {
+  background: transparent;
+}
+
+[data-native-workspace="pdf"] .text-line-input {
+  white-space: pre;
+  overflow: auto;
+  line-height: 1.35;
+}
+
+/* Sheets prepared by Print: one image per page, shown only on paper. */
+[data-native-workspace="pdf"] .print-sheets {
+  display: none;
+}
+@media print {
+  [data-native-workspace="pdf"].printing > :not(.print-sheets) {
+    display: none !important;
+  }
+  [data-native-workspace="pdf"].printing .print-sheets {
+    display: block;
+  }
+  /* Viewport units in paged media follow the first page's box, whatever the orientation of
+     the sheet at hand, so a sheet takes the longer side as its height when it is portrait and
+     the shorter one when it is landscape; a fixed var(--native-height) overflowed landscape sheets onto a
+     blank page after each of them. */
+  [data-native-workspace="pdf"] .print-sheet {
+    width: 100%;
+    height: max(var(--native-height), 100vw);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    break-inside: avoid;
+  }
+  [data-native-workspace="pdf"] .print-sheet.landscape {
+    height: min(var(--native-height), 100vw);
+  }
+  [data-native-workspace="pdf"] .print-sheet + .print-sheet {
+    break-before: page;
+  }
+  [data-native-workspace="pdf"] .print-sheet img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: top center;
+  }
+  [data-native-workspace="pdf"] .print-sheet.landscape {
+    page: landscape;
+  }
+  @page landscape {
+    size: landscape;
+  }
+  /* The PDF page carries its own margins; the sheet has none, so nothing is scaled down and
+     the browser adds no header or footer. */
+  @page {
+    margin: 0;
+  }
+}
+/* Without the Print dialog, the browser's own command prints the current page alone. */
+@media print {
+  [data-native-workspace="pdf"] .topbar,
+  [data-native-workspace="pdf"] .toolbar,
+  [data-native-workspace="pdf"] .contextbar,
+  [data-native-workspace="pdf"] .statusbar,
+  [data-native-workspace="pdf"] .page-sidebar,
+  [data-native-workspace="pdf"] .properties-sidebar,
+  [data-native-workspace="pdf"] .find-bar,
+  [data-native-workspace="pdf"] .form-edit-error,
+  [data-native-workspace="pdf"] .page-caption,
+  [data-native-workspace="pdf"] .skip-link,
+  [data-native-workspace="pdf"] #toast,
+  [data-native-workspace="pdf"] .paper > :not(canvas:first-child) {
+    display: none !important;
+  }
+  [data-native-workspace="pdf"] .editor,
+  [data-native-workspace="pdf"] .editor-main,
+  [data-native-workspace="pdf"] .workspace {
+    display: block;
+    height: auto;
+    overflow: visible;
+    background: none;
+  }
+  [data-native-workspace="pdf"] .paper-wrap {
+    padding: 0;
+    min-width: 0;
+  }
+  [data-native-workspace="pdf"] .paper {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0;
+    outline: none;
+    break-inside: avoid;
+  }
+  /* Fit the page to the sheet in both directions while keeping its proportions, whatever the
+     on-screen zoom, so it never spills onto a second sheet. */
+  [data-native-workspace="pdf"] .paper > canvas:first-child {
+    width: 100% !important;
+    height: var(--native-height) !important;
+    object-fit: contain;
+    object-position: top center;
+  }
+  /* Dark page colors are for reading on screen; the sheet keeps the page's own colors. */
+  [data-native-workspace="pdf"] .editor.dark-pages .paper {
+    background: #fff;
+  }
+  [data-native-workspace="pdf"] .editor.dark-pages .paper > canvas {
+    filter: none;
+  }
+}
+
+[data-native-workspace="pdf"] .print-permissions-message {
+  display: none;
+}
+@media print {
+  [data-native-workspace="pdf"].pdf-restricted-print:not(.printing) > :not(.print-permissions-message) {
+    display: none !important;
+  }
+  [data-native-workspace="pdf"].pdf-restricted-print:not(.printing) > .print-permissions-message {
+    display: block !important;
+  }
+}

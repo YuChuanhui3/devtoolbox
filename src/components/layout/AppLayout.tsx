@@ -21,7 +21,7 @@ export function AppLayout() {
   const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
 
-  const isApiWorkbench = pathname === '/tools/http-simulator';
+  const isApiWorkbench = ['/tools/http-simulator', '/tools/whiteboard', '/tools/pdf-toolkit'].includes(pathname);
 
   useApplyTheme();
 

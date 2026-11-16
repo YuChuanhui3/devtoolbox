@@ -1,0 +1,1 @@
+export default "\n    <div id=\"app\">\n      <p class=\"app-loading\" role=\"status\">Loading your boards\u2026</p>\n    </div>\n    <div id=\"toast\" role=\"status\" aria-live=\"polite\"></div>\n    \n  ";

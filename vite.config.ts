@@ -45,6 +45,7 @@ const packageJson = JSON.parse(
 ) as { version: string };
 
 export default defineConfig({
+  optimizeDeps: { entries: ['index.html'] },
   plugins: [react(), tailwindcss(), lanSignalingPlugin(), mockPreviewPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),

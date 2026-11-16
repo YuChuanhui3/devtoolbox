@@ -19,3 +19,14 @@ coverage/
 # 临时文件
 *.log
 smoke-*.json
+
+# Generated native editor engine resources
+public/native/pdf/ocr/
+public/native/pdf/pdfjs/cmaps/
+public/native/pdf/pdfjs/standard_fonts/*
+!public/native/pdf/pdfjs/standard_fonts/liberation-source/
+public/native/pdf/pdfjs/wasm/
+public/native/pdf/pdfjs/iccs/
+public/assets/pdfjs-*/
+public/native/pdf/pdf-worker.mjs
+public/native/whiteboard/worker/whiteboard-worker.js
