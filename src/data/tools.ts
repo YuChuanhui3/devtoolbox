@@ -3,6 +3,7 @@ import type { Locale } from '@/i18n/locale';
 import { CATEGORIES } from './categories';
 
 const RAW_TOOLS: ToolMeta[] = [
+  { id: 'hold-up-sign', name: '小人举牌', nameEn: 'Hold Up Sign', category: 'image', description: '输入文字生成小人举牌图片，支持自动换行、随机造型和透明 PNG 下载，完全本地处理。', descriptionEn: 'Create a crowd holding your message, with random characters and local PNG export.', tags: ['举牌', '小人', '表情包', 'holdupsign'], icon: 'Image', priority: 'P1', isNew: true },
   { id: 'whiteboard', name: '白板', nameEn: 'Whiteboard', category: 'image', description: '完整白板工作区：无限画布、便签、连接线、思维导图、表格、模板、任务、评论、版本恢复与多格式导出，支持 Puter 云保存和协作。', descriptionEn: 'Full whiteboard workspace with templates, mind maps, tables, tasks, history, exports and optional Puter collaboration.', tags: ['白板', '绘图', 'whiteboard', 'canvas'], icon: 'PenTool', priority: 'P1', isNew: true, customDraft: true },
   { id: 'pdf-toolkit', name: 'PDF 工具箱', nameEn: 'PDF Toolkit', category: 'image', description: '完整 PDF 工作区：正文与图片编辑、批注、表单、签名、OCR、页面整理、脱敏、保护、比较和多格式导出。', descriptionEn: 'Full PDF workspace with text and image editing, annotations, forms, signatures, OCR, redaction and exports.', tags: ['pdf', '合并', '旋转', '页面'], icon: 'FileText', priority: 'P1', isNew: true, sensitive: true },
   // ---------------- 数据格式 ----------------
@@ -566,6 +567,7 @@ const CATEGORY_INDEX = new Map(CATEGORIES.map((category, index) => [category.id,
 
 /** 首字为汉字时的拼音读音，用于与英文工具名按字母混排；新增汉字首字未命中时排在末尾。 */
 const CJK_INITIAL_PINYIN: Record<string, string> = {
+  小: 'xiao',
   白: 'bai',
   编: 'bian',
   哈: 'ha',

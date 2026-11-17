@@ -5,6 +5,7 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
  * 每个工具独立分包，首屏只加载当前工具，降低初始 bundle 体积。
  */
 export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>> = {
+  'hold-up-sign': lazy(() => import('./HoldUpSignTool')),
   'whiteboard': lazy(() => import('./WhiteboardTool')),
   'pdf-toolkit': lazy(() => import('./PdfTool')),
   // 数据格式

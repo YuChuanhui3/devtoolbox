@@ -1098,7 +1098,6 @@ const pairs = {
   "open discussion": "discussion ouverte",
   "open discussions": "discussions ouvertes",
   "one|and {count} more": "et {count} autre",
-  "and {count} more": "et {count} autres",
   "Continue a list item on a new line":
     "Continuer un élément de liste sur une nouvelle ligne",
   "Tab / Shift + Tab": "Tab / Maj + Tab",
@@ -1679,7 +1678,6 @@ const pairs = {
   "Arrow / draw / eraser / frame": "Flèche / dessin / gomme / cadre",
   "Move around the canvas": "Naviguer dans le tableau",
   "Zoom toward the pointer": "Zoomer vers le pointeur",
-  "Select multiple objects": "Sélectionner plusieurs objets",
   "Move selected objects": "Déplacer les objets sélectionnés",
   "Edit the focused object": "Modifier l’objet actif",
   Undo: "Annuler",
@@ -1706,7 +1704,6 @@ const pairs = {
   "Your browser did not allow access to the clipboard. Press Ctrl/Cmd+V to paste.":
     "Votre navigateur n’a pas autorisé l’accès au presse-papiers. Appuyez sur Ctrl/Cmd+V pour coller.",
   Redo: "Rétablir",
-  "Delete selection": "Supprimer la sélection",
   "Keyboard-only? Use Board objects to select an object. Tool shortcuts add objects in the center of your view.":
     "Au clavier : utilisez Objets du tableau pour sélectionner un objet. Les raccourcis ajoutent les objets au centre de la vue.",
   "Drag to move this object. Use the corner handle to resize images.":
@@ -1740,7 +1737,6 @@ const pairs = {
     "Activez le stockage du site et rechargez la page pour commencer.",
   Reload: "Recharger",
   Close: "Fermer",
-  Create: "Créer",
   Cancel: "Annuler",
   Save: "Enregistrer",
   "Select objects first.": "Sélectionnez d’abord des objets.",
